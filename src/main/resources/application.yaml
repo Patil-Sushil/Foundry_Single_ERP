@@ -3,9 +3,9 @@ spring:
     name: foundry
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.11.41:5432/postgres}
-    username: ${SPRING_DATASOURCE_USERNAME:devuser}
-    password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:9090/FondryERP?useSSL=false}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:1422}
     driver-class-name: org.postgresql.Driver
 
   jpa:
