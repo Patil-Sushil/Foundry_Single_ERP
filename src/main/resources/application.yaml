@@ -1,6 +1,9 @@
+server:
+  port: 8080
+
 spring:
   application:
-    name: foundry
+    name: FoundryApplication
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:9090/FondryERP?useSSL=false}
@@ -9,10 +12,24 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update # Options: create, create-drop, validate, update, none
-    show-sql: true
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+
+jwt:
+  secret: change-this-to-256-bit-secret
+  expiration-minutes: 120
