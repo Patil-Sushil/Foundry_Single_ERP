@@ -9,6 +9,8 @@ import com.kalibyte.foundry.auth.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.auth.dto.UserRegistrationRequest;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
 import com.kalibyte.foundry.tenant.account.service.TenantService;
+import com.kalibyte.foundry.customer.dto.CustomerRequest;
+import com.kalibyte.foundry.customer.service.CustomerService;
 import com.kalibyte.foundry.common.util.ContextUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class DataSeeder implements CommandLineRunner {
     private final AuthService authService;
     private final TenantService tenantService;
     private final PasswordEncoder passwordEncoder;
+    private final CustomerService customerService;
 
     @Override
     public void run(String... args) throws Exception {
@@ -77,6 +80,30 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedTenant(String code, String name, String ownerEmail) {
         if (userRepository.existsByEmail(ownerEmail)) {
+            log.info("Tenant {} already exists (owner: {}), ensuring customers are seeded...", name, ownerEmail);
+            try {
+                User owner = userRepository.findByEmail(ownerEmail).orElseThrow();
+                if (owner.getTenantId() == null) {
+                    log.warn("Owner {} exists but has no tenantId. Skipping.", ownerEmail);
+                    return;
+                }
+                
+                TenantEntity tenant = tenantService.findById(owner.getTenantId());
+                
+                // Set context to existing tenant to check customers
+                CustomUserDetails principal = CustomUserDetails.create(owner, tenant.getCode(), tenant.getSchemaName());
+                SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+                );
+                ContextUtil.setTenant(tenant.getSchemaName());
+                
+                seedCustomers();
+            } catch (Exception e) {
+                log.error("Failed to check/seed customers for existing tenant: " + name, e);
+            } finally {
+                SecurityContextHolder.clearContext();
+                ContextUtil.clear();
+            }
             return;
         }
 
@@ -90,27 +117,67 @@ public class DataSeeder implements CommandLineRunner {
             req.setOwnerEmail(ownerEmail);
             req.setOwnerPassword("Admin@123");
             TenantEntity tenant = authService.registerFoundry(req);
+            log.info("Registered tenant: {} with schema: {}", name, tenant.getSchemaName());
 
             // Mock Security Context as the new Admin to create sub-users
             User owner = userRepository.findByEmail(ownerEmail).orElseThrow();
             
+            // Set Security Context
             CustomUserDetails principal = CustomUserDetails.create(owner, tenant.getCode(), tenant.getSchemaName());
             SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
             );
 
+            // Set Tenant Context for Hibernate
+            ContextUtil.setTenant(tenant.getSchemaName());
+            log.debug("Context set for schema: {}", tenant.getSchemaName());
+
             // Create Sub Users
-            // Use tenant.getCode() because the actual code has a timestamp appended
             String actualCode = tenant.getCode();
             createSubUser("production@" + actualCode + ".foundry.com", "PRODUCTION");
             createSubUser("sales@" + actualCode + ".foundry.com", "SALES");
             createSubUser("store@" + actualCode + ".foundry.com", "STORE");
 
-            SecurityContextHolder.clearContext();
+            // Seed Customers
+            seedCustomers();
+            log.info("Successfully seeded tenant: {}", name);
 
         } catch (Exception e) {
             log.error("Failed to seed tenant: " + name, e);
+        } finally {
+            SecurityContextHolder.clearContext();
+            ContextUtil.clear();
         }
+    }
+
+    private void seedCustomers() {
+        log.debug("Checking if customers need seeding...");
+        try {
+            // This query will now use the correct schema due to ContextUtil.setTenant()
+            if (customerService.listCustomers(0, 10, "name").getTotalElements() > 0) {
+                log.debug("Customers already exist, skipping seeding.");
+                return;
+            }
+            
+            log.info("Seeding customers into tenant schema...");
+            createCustomer("Acme Corp", "acme@company.com", "NET30");
+            createCustomer("TechFlow Industries", "tech@company.com", "NET60");
+            createCustomer("Steel Traders", "steel@company.com", "ADVANCE");
+            createCustomer("Metal Suppliers", "metal@company.com", "COD");
+            createCustomer("Iron Works", "iron@company.com", "NET30");
+            log.info("Finished seeding customers.");
+        } catch (Exception e) {
+            log.error("Error during customer seeding: {}. This usually means the table does not exist in the tenant schema.", e.getMessage());
+        }
+    }
+
+    private void createCustomer(String name, String email, String terms) {
+        CustomerRequest req = new CustomerRequest();
+        req.setName(name);
+        req.setEmail(email);
+        req.setPaymentTerms(terms);
+        req.setCreditLimit(new java.math.BigDecimal("100000.00"));
+        customerService.createCustomer(req);
     }
 
     private void createSubUser(String email, String role) {

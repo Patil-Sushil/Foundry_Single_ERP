@@ -72,14 +72,12 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getOwnerEmail())) {
             throw new BusinessException("Email already in use.");
         }
-
         // 1-3. Create Tenant & Schema (Delegated to TenantService)
         TenantEntity tenant = tenantService.createTenant(
                 request.getFoundryName(),
                 request.getAddress(),
                 request.getGstNumber()
         );
-
         // 4. Create Owner User
         User user = new User();
         user.setEmail(request.getOwnerEmail());

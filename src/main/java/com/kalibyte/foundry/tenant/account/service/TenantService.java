@@ -44,4 +44,9 @@ public class TenantService {
         return tenantRepository.findByCode(code)
                 .orElseThrow(() -> new BusinessException("Tenant not found with code: " + code));
     }
+
+    public TenantEntity findById(Long id) {
+        return tenantRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("Tenant not found with ID: " + id));
+    }
 }

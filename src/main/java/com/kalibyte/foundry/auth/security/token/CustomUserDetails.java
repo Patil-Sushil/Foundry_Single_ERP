@@ -43,6 +43,11 @@ public class CustomUserDetails implements UserDetails {
     }
 
     @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return authorities;
+    }
+
+    @Override
     public String getUsername() {
         return email;
     }

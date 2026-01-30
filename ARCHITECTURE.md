@@ -1,0 +1,110 @@
+# Foundry Project Architecture & Specifications
+
+## 1. Overview
+**Foundry** is a multi-tenant B2B SaaS platform built for the metal casting industry. It follows a modular monolithic architecture with a **schema-per-tenant** multi-tenancy strategy to ensure data isolation while maintaining a single codebase.
+
+---
+
+## 2. Tech Stack
+- **Language:** Java 21
+- **Framework:** Spring Boot 3.2.2
+- **Build Tool:** Maven
+- **Persistence:** Spring Data JPA (Hibernate 6)
+- **Database:** PostgreSQL
+- **Migrations:** Flyway (Dynamic schema migrations)
+- **Security:** Spring Security + JSON Web Tokens (JWT)
+- **Documentation:** SpringDoc OpenAPI (Swagger UI)
+- **Utilities:** Lombok, MapStruct, ModelMapper
+- **Validation:** Jakarta Validation (Hibernate Validator)
+
+---
+
+## 3. High-Level Architecture
+The application follows a standard **Layered Architecture**:
+1.  **Controller Layer:** REST endpoints, request/response DTOs, and validation.
+2.  **Service Layer:** Business logic and transaction management.
+3.  **Repository Layer:** Data access via Spring Data JPA.
+4.  **Entity Layer:** Domain models and database mappings.
+
+---
+
+## 4. Multi-Tenancy Strategy: Schema-per-Tenant
+Foundry implements multi-tenancy at the database level using PostgreSQL schemas.
+
+### Key Components:
+- **`TenantAwareFilter`**: A servlet filter that intercepts requests, retrieves the schema name from the authenticated user's details (`CustomUserDetails`), and sets it in a thread-local context.
+- **`ContextUtil`**: Uses `ThreadLocal` to hold the current tenant's schema identifier.
+- **`DataSourceConfig`**:
+    - **`CurrentTenantIdentifierResolver`**: Resolves the schema name from `ContextUtil`.
+    - **`MultiTenantConnectionProvider`**: Executes `SET search_path TO <schema>` on every connection obtained from the pool.
+- **`SchemaManager`**: Programmatically handles the creation of new database schemas and executes Flyway migrations for them when a new tenant is onboarded.
+
+---
+
+## 5. Module Breakdown
+
+### `auth`
+Handles authentication, authorization, and user management.
+- **Security**: JWT-based stateless authentication.
+- **Entities**: `User`, `Role`, `AuditLog`.
+- **Logic**: User registration, login, token refresh, and method-level security.
+
+### `tenant`
+Manages the lifecycle of tenants (Foundries).
+- **Onboarding**: Creates a new `TenantEntity` in the `public` schema.
+- **Infrastructure**: Triggers `SchemaManager` to create a dedicated schema and run initial migrations (`db/migration/tenant`).
+
+### `masterdata`
+Contains business-specific modules.
+- **Example**: `Customer` management (specific to each tenant's schema).
+
+### `common`
+Shared components and cross-cutting concerns.
+- **Audit**: `AuditEntityListener` and `BaseEntity` for automatic `createdBy`, `updatedAt` tracking.
+- **Exceptions**: `GlobalExceptionHandler` with custom exceptions like `BusinessException`, `ResourceNotFoundException`.
+- **Response**: Unified `ApiResponse<T>` and `PageResponse<T>` wrappers.
+- **Utils**: `PaginationUtils`, `DateUtils`, `TenantUtils`.
+
+### `infrastructure`
+Core infrastructure for multi-tenancy and shared configurations.
+- **Tenancy**: Annotations like `@TenantAware`, `@TenantRequired` and the `TenantAwareFilter`.
+
+---
+
+## 6. Database Structure
+The database is divided into a `public` schema and multiple tenant-specific schemas.
+
+### Public Schema (`db/migration/public`)
+Contains shared system data:
+- `tenants`: Registry of all tenants in the system.
+- `users`: User accounts (linked to a tenant via schema name).
+- `roles`: Shared or system roles.
+- `audit_logs`: Global audit trail.
+
+### Tenant Schema (`db/migration/tenant`)
+Contains business data isolated for each tenant:
+- `customers`: Tenant-specific customer records.
+- *...other business entities.*
+
+---
+
+## 7. API Standards
+- **RESTful**: Follows standard REST principles.
+- **Versioning**: Not explicitly defined in paths yet, but managed via modules.
+- **Response Format**:
+  ```json
+  {
+    "success": true,
+    "message": "Operation successful",
+    "data": { ... },
+    "timestamp": "2026-01-29T..."
+  }
+  ```
+- **Error Handling**: Uses `GlobalExceptionHandler` to return consistent error structures and HTTP status codes.
+
+---
+
+## 8. Development & Deployment
+- **Profiles**: `dev` (H2/Local PostgreSQL), `prod` (Cloud PostgreSQL).
+- **Environment Variables**: Uses variables like `SPRING_DATASOURCE_URL`, `JWT_SECRET` for configuration.
+- **Flyway**: Automatically runs migrations for the `public` schema on startup. Tenant migrations are run programmatically during tenant creation.
