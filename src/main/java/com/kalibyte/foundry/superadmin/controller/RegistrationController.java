@@ -1,6 +1,6 @@
-package com.kalibyte.foundry.auth.controller;
+package com.kalibyte.foundry.superadmin.controller;
 
-import com.kalibyte.foundry.auth.dto.FoundryRegistrationRequest;
+import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.auth.service.AuthService;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import jakarta.validation.Valid;

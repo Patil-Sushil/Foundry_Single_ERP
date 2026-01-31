@@ -26,6 +26,7 @@
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<!-- FIX: Explicitly define Flyway version so both Core and Plugin match -->
 		<flyway.version>10.6.0</flyway.version>
+		<jjwt.version>0.13.0</jjwt.version>
 	</properties>
 
 	<dependencies>
@@ -74,21 +75,20 @@
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
-			<version>0.11.5</version>
+			<version>${jjwt.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
-			<version>0.11.5</version>
+			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
-			<version>0.11.5</version>
+			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
 		</dependency>
-
 		<!-- Utilities -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>

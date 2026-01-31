@@ -33,4 +33,5 @@ logging:
 
 jwt:
   secret: BkIN8PvLM5BPM7Y0VXdFEV2H7CAzAze7WWytah2NG65
-  expiration: 604800000
+  expiration: 900000             # 15 minutes (Access Token)
+  refresh-expiration: 604800000

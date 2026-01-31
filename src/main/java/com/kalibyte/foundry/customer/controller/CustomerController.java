@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@CrossOrigin("*")
 @RequestMapping("/api/masterdata/customers")
 @RequiredArgsConstructor
 public class CustomerController {

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.role (
 
 CREATE TABLE IF NOT EXISTS public.users (
     id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100),
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     tenant_id BIGINT REFERENCES public.tenant(id),

@@ -1,20 +1,20 @@
 package com.kalibyte.foundry.auth.service;
 
-import com.kalibyte.foundry.auth.dto.FoundryRegistrationRequest;
+import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.auth.dto.LoginRequest;
 import com.kalibyte.foundry.auth.dto.LoginResponse;
-import com.kalibyte.foundry.auth.dto.UserRegistrationRequest;
+import com.kalibyte.foundry.users.dto.UserRegistrationRequest;
 import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.entity.User;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
-import com.kalibyte.foundry.auth.repository.UserRepository;
+import com.kalibyte.foundry.users.repository.UserRepository;
 import com.kalibyte.foundry.common.exception.BusinessException;
-import com.kalibyte.foundry.common.util.ContextUtil;
 import com.kalibyte.foundry.auth.security.token.CustomUserDetails;
 import com.kalibyte.foundry.auth.security.token.JwtTokenProvider;
 import com.kalibyte.foundry.auth.security.util.SecurityUtils;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
 import com.kalibyte.foundry.tenant.account.service.TenantService;
+import com.kalibyte.foundry.users.service.impl.UserServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -42,7 +42,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserService userService;
+    private final UserServiceImpl userService;
 
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
@@ -81,6 +81,8 @@ public class AuthService {
         // 4. Create Owner User
         User user = new User();
         user.setEmail(request.getOwnerEmail());
+        user.setName(request.getOwnerName());
+        user.setPhone(request.getOwnerPhone());
         user.setPassword(passwordEncoder.encode(request.getOwnerPassword()));
         user.setTenantId(tenant.getId());
         user.setEnabled(true);
@@ -112,6 +114,8 @@ public class AuthService {
 
         User user = new User();
         user.setEmail(request.getEmail());
+        user.setName(request.getName());
+        user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setTenantId(tenantId);
         user.setEnabled(true);

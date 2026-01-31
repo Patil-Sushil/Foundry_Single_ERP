@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.auth.dto;
+package com.kalibyte.foundry.superadmin.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -17,10 +17,16 @@ public class FoundryRegistrationRequest {
     private String gstNumber;
 
     @NotBlank
+    private String ownerName;
+
+    @NotBlank
     @Email
     private String ownerEmail;
 
     @NotBlank
     @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$")
     private String ownerPassword;
+
+    @NotBlank
+    private String ownerPhone;
 }

@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.auth.security.token;
 
 import com.kalibyte.foundry.auth.entity.User;
-import com.kalibyte.foundry.auth.repository.UserRepository;
+import com.kalibyte.foundry.users.repository.UserRepository;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
 import com.kalibyte.foundry.tenant.account.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;

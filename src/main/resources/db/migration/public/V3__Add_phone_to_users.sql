@@ -1,0 +1,2 @@
+ALTER TABLE public.users
+    ADD COLUMN IF NOT EXISTS phone VARCHAR(10) UNIQUE;

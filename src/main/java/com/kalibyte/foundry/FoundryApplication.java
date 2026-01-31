@@ -9,5 +9,4 @@ public class FoundryApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(FoundryApplication.class, args);
 	}
-
 }

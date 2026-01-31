@@ -3,10 +3,10 @@ package com.kalibyte.foundry.common.seeder;
 import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.entity.User;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
-import com.kalibyte.foundry.auth.repository.UserRepository;
+import com.kalibyte.foundry.users.repository.UserRepository;
 import com.kalibyte.foundry.auth.service.AuthService;
-import com.kalibyte.foundry.auth.dto.FoundryRegistrationRequest;
-import com.kalibyte.foundry.auth.dto.UserRegistrationRequest;
+import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
+import com.kalibyte.foundry.users.dto.UserRegistrationRequest;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
 import com.kalibyte.foundry.tenant.account.service.TenantService;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
@@ -49,7 +49,7 @@ public class DataSeeder implements CommandLineRunner {
         if (roleRepository.count() == 0) {
             log.info("Seeding Roles...");
             List<String> roles = Arrays.asList(
-                "SUPER_ADMIN", "ADMIN", "PRODUCTION", "SALES", "STORE", "INVENTORY"
+                "SUPER_ADMIN", "ADMIN", "PRODUCTION", "SALES", "STORE"
             );
             
             for (String roleName : roles) {
@@ -114,8 +114,10 @@ public class DataSeeder implements CommandLineRunner {
             req.setFoundryName(name);
             req.setAddress("123 Industrial Area");
             req.setGstNumber("GST" + code.toUpperCase());
+            req.setOwnerName("test");
             req.setOwnerEmail(ownerEmail);
             req.setOwnerPassword("Admin@123");
+            req.setOwnerPhone("8888888888");
             TenantEntity tenant = authService.registerFoundry(req);
             log.info("Registered tenant: {} with schema: {}", name, tenant.getSchemaName());
 
@@ -185,6 +187,7 @@ public class DataSeeder implements CommandLineRunner {
             UserRegistrationRequest req = new UserRegistrationRequest();
             req.setEmail(email);
             req.setPassword("User@123");
+            req.setPhone("1234567890");
             req.setRole(role);
             authService.createUser(req);
         }

@@ -24,9 +24,8 @@ public class TenantAwareFilter implements Filter {
         
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
-            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-            if (userDetails.getSchemaName() != null) {
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
+	        if (userDetails.getSchemaName() != null) {
                 log.debug("Setting tenant context to: {} for user: {}", userDetails.getSchemaName(), userDetails.getEmail());
                 ContextUtil.setTenant(userDetails.getSchemaName());
             }
