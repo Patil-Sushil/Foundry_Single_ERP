@@ -1,20 +1,19 @@
 package com.kalibyte.foundry.auth.service;
 
-import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.auth.dto.LoginRequest;
 import com.kalibyte.foundry.auth.dto.LoginResponse;
-import com.kalibyte.foundry.users.dto.UserRegistrationRequest;
+import com.kalibyte.foundry.auth.dto.TokenRefreshRequest;
 import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.entity.User;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
-import com.kalibyte.foundry.users.repository.UserRepository;
-import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.auth.security.token.CustomUserDetails;
+import com.kalibyte.foundry.auth.security.token.CustomUserDetailsService;
 import com.kalibyte.foundry.auth.security.token.JwtTokenProvider;
-import com.kalibyte.foundry.auth.security.util.SecurityUtils;
+import com.kalibyte.foundry.common.exception.BusinessException;
+import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
 import com.kalibyte.foundry.tenant.account.service.TenantService;
-import com.kalibyte.foundry.users.service.impl.UserServiceImpl;
+import com.kalibyte.foundry.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -42,7 +41,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserServiceImpl userService;
+    private final CustomUserDetailsService customUserDetailsService;
 
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
@@ -51,6 +50,7 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
+        String refreshToken = tokenProvider.generateRefreshToken(authentication);
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         List<String> roles = userDetails.getAuthorities().stream()
@@ -59,9 +59,37 @@ public class AuthService {
 
         return LoginResponse.builder()
                 .token(jwt)
+                .refreshToken(refreshToken)
                 .id(userDetails.getId())
                 .email(userDetails.getEmail())
                 .roles(roles)
+                .tenantCode(userDetails.getTenantCode())
+                .tenantSchema(userDetails.getSchemaName())
+                .build();
+    }
+
+    public LoginResponse refreshToken(TokenRefreshRequest request) {
+        String refreshToken = request.getRefreshToken();
+        
+        if (!tokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException("Invalid or expired refresh token");
+        }
+
+        String username = tokenProvider.getUsernameFromToken(refreshToken);
+        
+        // Load user details to ensure user is still active and permissions are up to date
+        // cast to CustomUserDetails because we know that's what we load
+        CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(username);
+        
+        // Generate new access token
+        String newAccessToken = tokenProvider.generateAccessToken(userDetails);
+        
+        return LoginResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(refreshToken) // Return the same refresh token
+                .id(userDetails.getId())
+                .email(userDetails.getEmail())
+                .roles(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
                 .tenantCode(userDetails.getTenantCode())
                 .tenantSchema(userDetails.getSchemaName())
                 .build();
@@ -95,35 +123,5 @@ public class AuthService {
         userRepository.save(user);
 
         return tenant;
-    }
-
-    @Transactional
-    public void createUser(UserRegistrationRequest request) {
-        // Get current admin user to identify tenant
-        String email = SecurityUtils.getCurrentUserEmail();
-        User adminUser = userService.getByEmail(email);
-        Long tenantId = adminUser.getTenantId();
-
-        if (tenantId == null) {
-             throw new BusinessException("Current user is not associated with any tenant.");
-        }
-
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException("Email already in use.");
-        }
-
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setName(request.getName());
-        user.setPhone(request.getPhone());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setTenantId(tenantId);
-        user.setEnabled(true);
-
-        Role role = roleRepository.findByName(request.getRole())
-                .orElseThrow(() -> new BusinessException("Role " + request.getRole() + " not found."));
-        user.setRoles(new HashSet<>(Collections.singletonList(role)));
-
-        userRepository.save(user);
     }
 }

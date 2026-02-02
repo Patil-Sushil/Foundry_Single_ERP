@@ -22,13 +22,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserManagementController {
 
-    private final AuthService authService;
     private final UserServiceImpl userService;
 
     @PostMapping("/create-user")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> createUser(@Valid @RequestBody UserRegistrationRequest request) {
-        authService.createUser(request);
+        userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, "User created successfully", null));
     }

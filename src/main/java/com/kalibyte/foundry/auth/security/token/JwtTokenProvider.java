@@ -47,6 +47,10 @@ public class JwtTokenProvider {
         return generateToken(userPrincipal, jwtExpirationInMs);
     }
 
+    public String generateAccessToken(CustomUserDetails userPrincipal) {
+        return generateToken(userPrincipal, jwtExpirationInMs);
+    }
+
     public String generateRefreshToken(Authentication authentication) {
         CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
         return generateToken(userPrincipal, refreshExpirationInMs);

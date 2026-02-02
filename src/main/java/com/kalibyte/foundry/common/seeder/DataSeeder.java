@@ -3,8 +3,8 @@ package com.kalibyte.foundry.common.seeder;
 import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.entity.User;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
+import com.kalibyte.foundry.superadmin.service.impl.SuperAdminServiceImpl;
 import com.kalibyte.foundry.users.repository.UserRepository;
-import com.kalibyte.foundry.auth.service.AuthService;
 import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.users.dto.UserRegistrationRequest;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
@@ -12,6 +12,7 @@ import com.kalibyte.foundry.tenant.account.service.TenantService;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.service.CustomerService;
 import com.kalibyte.foundry.common.util.ContextUtil;
+import com.kalibyte.foundry.users.service.impl.UserServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -33,13 +34,15 @@ public class DataSeeder implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
-    private final AuthService authService;
+    private final UserServiceImpl userService;
+    private final SuperAdminServiceImpl authService;
     private final TenantService tenantService;
     private final PasswordEncoder passwordEncoder;
     private final CustomerService customerService;
 
+
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         seedRoles();
         seedSuperAdmin();
         seedDummyTenants();
@@ -189,7 +192,7 @@ public class DataSeeder implements CommandLineRunner {
             req.setPassword("User@123");
             req.setPhone("1234567890");
             req.setRole(role);
-            authService.createUser(req);
+            userService.createUser(req);
         }
     }
 }
