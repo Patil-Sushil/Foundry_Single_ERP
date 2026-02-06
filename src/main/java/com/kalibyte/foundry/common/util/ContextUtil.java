@@ -1,17 +1,19 @@
 package com.kalibyte.foundry.common.util;
 
 public class ContextUtil {
-    private static final ThreadLocal<String> currentTenant = new ThreadLocal<>();
+    private static final ThreadLocal<String> TENANT = new ThreadLocal<>();
 
-    public static void setTenant(String tenantId) {
-        currentTenant.set(tenantId);
+    private ContextUtil() {}
+
+    public static void setTenant(String tenant) {
+        TENANT.set(tenant);
     }
 
     public static String getTenant() {
-        return currentTenant.get();
+        return TENANT.get();
     }
 
     public static void clear() {
-        currentTenant.remove();
+        TENANT.remove();
     }
 }

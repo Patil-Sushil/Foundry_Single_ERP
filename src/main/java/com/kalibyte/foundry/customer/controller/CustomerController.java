@@ -63,7 +63,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{phone}")
-    @PreAuthorize("hasAuthority('ADMIN', 'SALES')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<Optional<CustomerResponse>>> getCustomer(@PathVariable String phone) {
         Optional<CustomerResponse> customerResponse = customerService.findByPhone(phone);
         return ResponseEntity.ok(new ApiResponse<>(true, "Customer fetched successfully", customerResponse));

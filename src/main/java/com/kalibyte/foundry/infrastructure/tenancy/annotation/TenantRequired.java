@@ -1,4 +1,10 @@
 package com.kalibyte.foundry.infrastructure.tenancy.annotation;
 
-public class TenantRequired {
+
+import java.lang.annotation.*;
+
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface TenantRequired {
 }

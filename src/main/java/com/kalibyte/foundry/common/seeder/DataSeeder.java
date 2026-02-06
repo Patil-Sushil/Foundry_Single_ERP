@@ -3,29 +3,31 @@ package com.kalibyte.foundry.common.seeder;
 import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.entity.User;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
-import com.kalibyte.foundry.superadmin.service.impl.SuperAdminServiceImpl;
-import com.kalibyte.foundry.users.repository.UserRepository;
-import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
-import com.kalibyte.foundry.users.dto.UserRegistrationRequest;
-import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
-import com.kalibyte.foundry.tenant.account.service.TenantService;
+import com.kalibyte.foundry.auth.security.token.CustomUserDetails;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.service.CustomerService;
-import com.kalibyte.foundry.common.util.ContextUtil;
+import com.kalibyte.foundry.enquiry.entity.MetalCategory;
+import com.kalibyte.foundry.enquiry.entity.MetalType;
+import com.kalibyte.foundry.enquiry.repository.MetalCategoryRepository;
+import com.kalibyte.foundry.enquiry.repository.MetalTypeRepository;
+import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
+import com.kalibyte.foundry.superadmin.service.impl.SuperAdminServiceImpl;
+import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
+import com.kalibyte.foundry.tenant.account.service.TenantService;
+import com.kalibyte.foundry.users.dto.UserRegistrationRequest;
+import com.kalibyte.foundry.users.repository.UserRepository;
 import com.kalibyte.foundry.users.service.impl.UserServiceImpl;
+import com.kalibyte.foundry.common.util.ContextUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.kalibyte.foundry.auth.security.token.CustomUserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Arrays;
-import java.util.List;
+import java.math.BigDecimal;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -39,7 +41,8 @@ public class DataSeeder implements CommandLineRunner {
     private final TenantService tenantService;
     private final PasswordEncoder passwordEncoder;
     private final CustomerService customerService;
-
+    private final MetalCategoryRepository metalCategoryRepository;
+    private final MetalTypeRepository metalTypeRepository;
 
     @Override
     public void run(String... args) {
@@ -48,33 +51,35 @@ public class DataSeeder implements CommandLineRunner {
         seedDummyTenants();
     }
 
+    /* ---------------- ROLES ---------------- */
+
     private void seedRoles() {
-        if (roleRepository.count() == 0) {
-            log.info("Seeding Roles...");
-            List<String> roles = Arrays.asList(
-                "SUPER_ADMIN", "ADMIN", "PRODUCTION", "SALES", "STORE"
-            );
-            
-            for (String roleName : roles) {
-                roleRepository.save(new Role(null, roleName, roleName + " Role"));
-            }
-        }
+        if (roleRepository.count() > 0) return;
+
+        log.info("Seeding Roles...");
+        List<String> roles = List.of("SUPER_ADMIN", "ADMIN", "PRODUCTION", "SALES", "STORE");
+        roles.forEach(r -> roleRepository.save(new Role(null, r, r + " Role")));
     }
 
+    /* ---------------- SUPER ADMIN ---------------- */
+
     private void seedSuperAdmin() {
-        if (!userRepository.existsByEmail("superadmin@foundry.com")) {
-            log.info("Seeding Super Admin...");
-            User admin = new User();
-            admin.setEmail("superadmin@foundry.com");
-            admin.setPassword(passwordEncoder.encode("Admin@123"));
-            admin.setEnabled(true);
-            
-            Role adminRole = roleRepository.findByName("SUPER_ADMIN").orElseThrow();
-            admin.setRoles(new HashSet<>(Collections.singletonList(adminRole)));
-            
-            userRepository.save(admin);
-        }
+        if (userRepository.existsByEmail("superadmin@foundry.com")) return;
+
+        log.info("Seeding Super Admin...");
+        User admin = new User();
+        admin.setEmail("superadmin@foundry.com");
+        admin.setPassword(passwordEncoder.encode("Admin@123"));
+        admin.setEnabled(true);
+        admin.setPhone("9000000000");
+
+        Role role = roleRepository.findByName("SUPER_ADMIN").orElseThrow();
+        admin.setRoles(Set.of(role));
+
+        userRepository.save(admin);
     }
+
+    /* ---------------- TENANTS ---------------- */
 
     private void seedDummyTenants() {
         seedTenant("foundry_alpha", "Alpha Foundry", "admin@foundry_alpha.foundry.com");
@@ -82,117 +87,141 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedTenant(String code, String name, String ownerEmail) {
+
         if (userRepository.existsByEmail(ownerEmail)) {
-            log.info("Tenant {} already exists (owner: {}), ensuring customers are seeded...", name, ownerEmail);
-            try {
-                User owner = userRepository.findByEmail(ownerEmail).orElseThrow();
-                if (owner.getTenantId() == null) {
-                    log.warn("Owner {} exists but has no tenantId. Skipping.", ownerEmail);
-                    return;
-                }
-                
-                TenantEntity tenant = tenantService.findById(owner.getTenantId());
-                
-                // Set context to existing tenant to check customers
-                CustomUserDetails principal = CustomUserDetails.create(owner, tenant.getCode(), tenant.getSchemaName());
-                SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
-                );
-                ContextUtil.setTenant(tenant.getSchemaName());
-                
-                seedCustomers();
-            } catch (Exception e) {
-                log.error("Failed to check/seed customers for existing tenant: " + name, e);
-            } finally {
-                SecurityContextHolder.clearContext();
-                ContextUtil.clear();
-            }
+            log.info("Tenant {} already exists, ensuring master data...", name);
+            User owner = userRepository.findByEmail(ownerEmail).orElseThrow();
+            TenantEntity tenant = tenantService.findById(owner.getTenantId());
+            setTenantContext(owner, tenant);
+            seedMetalMasters();
+            seedCustomers();
+            clearContext();
             return;
         }
 
-        log.info("Seeding Tenant: {}", name);
         try {
-            // Register Foundry (Creates Tenant + Schema + Admin User)
+            log.info("Seeding Tenant: {}", name);
+
             FoundryRegistrationRequest req = new FoundryRegistrationRequest();
             req.setFoundryName(name);
             req.setAddress("123 Industrial Area");
             req.setGstNumber("GST" + code.toUpperCase());
-            req.setOwnerName("test");
+            req.setOwnerName("Admin");
             req.setOwnerEmail(ownerEmail);
             req.setOwnerPassword("Admin@123");
-            req.setOwnerPhone("8888888888");
+            req.setOwnerPhone(generatePhone());
+
             TenantEntity tenant = authService.registerFoundry(req);
-            log.info("Registered tenant: {} with schema: {}", name, tenant.getSchemaName());
 
-            // Mock Security Context as the new Admin to create sub-users
             User owner = userRepository.findByEmail(ownerEmail).orElseThrow();
-            
-            // Set Security Context
-            CustomUserDetails principal = CustomUserDetails.create(owner, tenant.getCode(), tenant.getSchemaName());
-            SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
-            );
+            setTenantContext(owner, tenant);
 
-            // Set Tenant Context for Hibernate
-            ContextUtil.setTenant(tenant.getSchemaName());
-            log.debug("Context set for schema: {}", tenant.getSchemaName());
-
-            // Create Sub Users
-            String actualCode = tenant.getCode();
-            createSubUser("production@" + actualCode + ".foundry.com", "PRODUCTION");
-            createSubUser("sales@" + actualCode + ".foundry.com", "SALES");
-            createSubUser("store@" + actualCode + ".foundry.com", "STORE");
-
-            // Seed Customers
+            seedMetalMasters();
             seedCustomers();
-            log.info("Successfully seeded tenant: {}", name);
+            seedSubUsers(tenant);
+
+            log.info("Tenant [{}] seeded successfully", name);
 
         } catch (Exception e) {
-            log.error("Failed to seed tenant: " + name, e);
+            log.error("Failed to seed tenant: {}", name, e);
         } finally {
-            SecurityContextHolder.clearContext();
-            ContextUtil.clear();
+            clearContext();
         }
     }
+
+    /* ---------------- METAL MASTER DATA ---------------- */
+
+    private void seedMetalMasters() {
+        if (metalCategoryRepository.count() > 0) {
+            log.debug("Metal master data already exists, skipping.");
+            return;
+        }
+
+        log.info("Seeding Metal Categories & Types...");
+
+        Map<String, List<String>> data = Map.of(
+                "Ferrous", List.of("Iron", "Steel", "Cast Iron"),
+                "Non-Ferrous", List.of("Aluminium", "Copper", "Brass"),
+                "Precious", List.of("Gold", "Silver")
+        );
+
+        data.forEach((catName, types) -> {
+            MetalCategory category = new MetalCategory();
+            category.setName(catName);
+            category.setActive(true);
+            metalCategoryRepository.save(category);
+
+            types.forEach(t -> {
+                MetalType type = new MetalType();
+                type.setName(t);
+                type.setCategory(category);
+                metalTypeRepository.save(type);
+            });
+        });
+
+        log.info("Metal master data seeded.");
+    }
+
+    /* ---------------- CUSTOMERS ---------------- */
 
     private void seedCustomers() {
-        log.debug("Checking if customers need seeding...");
-        try {
-            // This query will now use the correct schema due to ContextUtil.setTenant()
-            if (customerService.listCustomers(0, 10, "name").getTotalElements() > 0) {
-                log.debug("Customers already exist, skipping seeding.");
-                return;
-            }
-            
-            log.info("Seeding customers into tenant schema...");
-            createCustomer("Acme Corp", "acme@company.com", "NET30");
-            createCustomer("TechFlow Industries", "tech@company.com", "NET60");
-            createCustomer("Steel Traders", "steel@company.com", "ADVANCE");
-            createCustomer("Metal Suppliers", "metal@company.com", "COD");
-            createCustomer("Iron Works", "iron@company.com", "NET30");
-            log.info("Finished seeding customers.");
-        } catch (Exception e) {
-            log.error("Error during customer seeding: {}. This usually means the table does not exist in the tenant schema.", e.getMessage());
-        }
+        if (customerService.listCustomers(0, 1, "name").getTotalElements() > 0) return;
+
+        log.info("Seeding customers...");
+        createCustomer("Acme Corp", "acme@company.com");
+        createCustomer("Steel Traders", "steel@company.com");
+        createCustomer("Metal Suppliers", "metal@company.com");
     }
 
-    private void createCustomer(String name, String email, String terms) {
+    private void createCustomer(String name, String email) {
         CustomerRequest req = new CustomerRequest();
         req.setName(name);
         req.setEmail(email);
-        req.setPaymentTerms(terms);
-        req.setCreditLimit(new java.math.BigDecimal("100000.00"));
+        req.setPaymentTerms("NET30");
+        req.setCreditLimit(new BigDecimal("100000"));
         customerService.createCustomer(req);
     }
 
+    /* ---------------- SUB USERS ---------------- */
+
+    private void seedSubUsers(TenantEntity tenant) {
+        createSubUser("production@" + tenant.getCode() + ".foundry.com", "PRODUCTION");
+        createSubUser("sales@" + tenant.getCode() + ".foundry.com", "SALES");
+        createSubUser("store@" + tenant.getCode() + ".foundry.com", "STORE");
+    }
+
     private void createSubUser(String email, String role) {
-        if (!userRepository.existsByEmail(email)) {
-            UserRegistrationRequest req = new UserRegistrationRequest();
-            req.setEmail(email);
-            req.setPassword("User@123");
-            req.setPhone("1234567890");
-            req.setRole(role);
-            userService.createUser(req);
-        }
+        if (userRepository.existsByEmail(email)) return;
+
+        UserRegistrationRequest req = new UserRegistrationRequest();
+        req.setEmail(email);
+        req.setPassword("User@123");
+        req.setPhone(generatePhone());
+        req.setRole(role);
+        userService.createUser(req);
+    }
+
+    /* ---------------- CONTEXT HELPERS ---------------- */
+
+    private void setTenantContext(User user, TenantEntity tenant) {
+        CustomUserDetails principal =
+                CustomUserDetails.create(user, tenant.getCode(), tenant.getSchemaName());
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities()
+                )
+        );
+
+        ContextUtil.setTenant(tenant.getSchemaName());
+    }
+
+    private void clearContext() {
+        SecurityContextHolder.clearContext();
+        ContextUtil.clear();
+    }
+
+    private String generatePhone() {
+        return "9" + (System.nanoTime() % 1_000_000_000L);
     }
 }

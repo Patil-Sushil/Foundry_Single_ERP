@@ -4,6 +4,8 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
+
+
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -64,11 +66,17 @@
 			<!-- Version is managed by ${flyway.version} property above -->
 		</dependency>
 
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
+
 		<!-- FIX: Added version here because Parent POM doesn't manage this specific artifact -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
-			<version>${flyway.version}</version>
+			<version>10.15.0</version> <!-- Use latest version -->
 		</dependency>
 
 		<!-- JWT -->
@@ -176,3 +184,4 @@
 	</build>
 
 </project>
+

@@ -8,7 +8,6 @@ import com.kalibyte.foundry.superadmin.dto.FoundryRegistrationRequest;
 import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
 import com.kalibyte.foundry.tenant.account.service.TenantService;
 import com.kalibyte.foundry.users.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +40,8 @@ public class SuperAdminServiceImpl {
 				request.getAddress(),
 				request.getGstNumber()
 		);
+
+
 		// 4. Create Owner User
 		User user = new User();
 		user.setEmail(request.getOwnerEmail());

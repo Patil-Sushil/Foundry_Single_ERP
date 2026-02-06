@@ -6,32 +6,35 @@ spring:
     name: FoundryApplication
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.11.41:5432/foundry_dev_db?useSSL=false}
-    username: ${SPRING_DATASOURCE_USERNAME:devuser}
-    password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:9090/FoundryERP?useSSL=false}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:1422}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
+        multiTenancy: SCHEMA
         format_sql: true
         show_sql: false
 
   flyway:
     enabled: true
-    baselineOnMigrate: true
+    baseline-on-migrate: true
+    schemas: public
     locations: classpath:db/migration/public
+
 
 logging:
   level:
     com.kalibyte.foundry: DEBUG
+    org.flywaydb: DEBUG
     org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql: TRACE
 
 jwt:
-  secret: BkIN8PvLM5BPM7Y0VXdFEV2H7CAzAze7WWytah2NG65
-  expiration: 900000             # 15 minutes (Access Token)
+  secret: Q0tQeXJmOW9Jb2ZxV2F5cFhUeG5sQzFkQkZpQzZ3c0ZxS0p4cA==
+  expiration: 900000
   refresh-expiration: 604800000
