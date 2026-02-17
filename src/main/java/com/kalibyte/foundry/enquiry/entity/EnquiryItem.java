@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.enquiry.entity;
 
+import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.enquiry.entity.ENUM.CastingProcess;
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,11 +14,8 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EnquiryItem {
+public class EnquiryItem extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enquiry_id", nullable = false)

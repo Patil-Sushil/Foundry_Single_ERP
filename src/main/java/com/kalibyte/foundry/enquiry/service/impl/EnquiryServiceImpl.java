@@ -2,33 +2,21 @@ package com.kalibyte.foundry.enquiry.service.impl;
 
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.common.response.PageResponse;
-import com.kalibyte.foundry.common.util.TenantUtils;
+import com.kalibyte.foundry.common.util.SecurityUtils;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
-import com.kalibyte.foundry.enquiry.dto.EnquiryCreateRequest;
-import com.kalibyte.foundry.enquiry.dto.EnquiryItemCreateRequest;
-import com.kalibyte.foundry.enquiry.dto.EnquiryItemResponse;
-import com.kalibyte.foundry.enquiry.dto.EnquiryResponse;
-import com.kalibyte.foundry.enquiry.entity.Enquiry;
-import com.kalibyte.foundry.enquiry.entity.EnquiryItem;
-import com.kalibyte.foundry.enquiry.entity.MetalCategory;
-import com.kalibyte.foundry.enquiry.entity.MetalType;
-import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
-import com.kalibyte.foundry.enquiry.repository.MetalCategoryRepository;
-import com.kalibyte.foundry.enquiry.repository.MetalTypeRepository;
+import com.kalibyte.foundry.enquiry.dto.*;
+import com.kalibyte.foundry.enquiry.entity.*;
+import com.kalibyte.foundry.enquiry.repository.*;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -39,28 +27,21 @@ public class EnquiryServiceImpl implements EnquiryService {
     private final CustomerRepository customerRepository;
     private final MetalCategoryRepository metalCategoryRepository;
     private final MetalTypeRepository metalTypeRepository;
-    private final EnquiryRepository.EnquiryNumberGenerator enquiryNumberGenerator;
 
     @Override
     public EnquiryResponse create(EnquiryCreateRequest request) {
 
-        Long tenantId = TenantUtils.getTenantId();
-
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
-        long yearlyCount = enquiryRepository.countForYear(
-                tenantId,
-                LocalDate.now().getYear()
-        );
-
         Enquiry enquiry = Enquiry.builder()
-                .tenantId(tenantId)
-                .enquiryNo(enquiryNumberGenerator.generate(tenantId, yearlyCount))
+                .enquiryNo(generateEnquiryNumber())
                 .enquiryDate(request.getEnquiryDate())
                 .customer(customer)
                 .status("NEW")
                 .build();
+
+        enquiry.setCreatedBy(SecurityUtils.getCurrentUsername());
 
         List<EnquiryItem> items = new ArrayList<>();
         BigDecimal totalWeight = BigDecimal.ZERO;
@@ -103,30 +84,41 @@ public class EnquiryServiceImpl implements EnquiryService {
         return toResponse(enquiry);
     }
 
+    private String generateEnquiryNumber() {
+
+        int year = LocalDate.now().getYear();
+        String prefix = "ENQ-" + year + "-";
+
+        String lastNumber = enquiryRepository
+                .findTopByEnquiryNoStartingWithOrderByEnquiryNoDesc(prefix)
+                .map(Enquiry::getEnquiryNo)
+                .orElse(null);
+
+        int nextSequence = 1;
+
+        if (lastNumber != null) {
+            String[] parts = lastNumber.split("-");
+            nextSequence = Integer.parseInt(parts[2]) + 1;
+        }
+
+        return String.format("%s%05d", prefix, nextSequence);
+    }
+
     @Override
     public PageResponse<EnquiryResponse> getAll(int page, int size) {
 
-        Long tenantId = TenantUtils.getTenantId();
+        Pageable pageable = PageRequest.of(page, size, Sort.by("enquiryDate").descending());
 
-        Pageable pageable =
-                PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Enquiry> enquiryPage = enquiryRepository.findAll(pageable);
 
-        Page<Enquiry> enquiryPage =
-                enquiryRepository.findAllByTenantId(tenantId, pageable);
-
-        return PageResponse.from(enquiryPage.map(this::toResponse));
+        return PageResponse.from(enquiryPage, this::toResponse);
     }
-
 
     @Override
     public EnquiryResponse getById(UUID enquiryId) {
 
-        Long tenantId = TenantUtils.getTenantId();
-
-        Enquiry enquiry = enquiryRepository
-                .findByIdAndTenantId(enquiryId, tenantId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Enquiry not found"));
+        Enquiry enquiry = enquiryRepository.findById(enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
 
         return toResponse(enquiry);
     }
@@ -159,5 +151,4 @@ public class EnquiryServiceImpl implements EnquiryService {
                 .items(itemResponses)
                 .build();
     }
-
 }

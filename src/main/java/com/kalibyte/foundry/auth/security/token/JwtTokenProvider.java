@@ -1,9 +1,6 @@
 package com.kalibyte.foundry.auth.security.token;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -17,7 +14,6 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
@@ -30,106 +26,72 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private long jwtExpirationInMs;
 
-    @Value("${jwt.refresh-expiration:604800000}") // Default 7 days
-    private long refreshExpirationInMs;
-
     private SecretKey key;
 
     @PostConstruct
     public void init() {
-        // Ensure the secret is Base64 encoded in your properties
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateToken(Authentication authentication) {
-        CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
-        return generateToken(userPrincipal, jwtExpirationInMs);
-    }
 
-    public String generateAccessToken(CustomUserDetails userPrincipal) {
-        return generateToken(userPrincipal, jwtExpirationInMs);
-    }
+        CustomUserDetails user =
+                (CustomUserDetails) authentication.getPrincipal();
 
-    public String generateRefreshToken(Authentication authentication) {
-        CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
-        return generateToken(userPrincipal, refreshExpirationInMs);
-    }
-
-    public String generateToken(CustomUserDetails userPrincipal, long expiration) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
+        Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
-        List<String> roles = userPrincipal.getAuthorities().stream()
+        List<String> roles = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList());
+                .toList();
 
         return Jwts.builder()
-                .subject(userPrincipal.getUsername()) // email
-                .claim("userId", userPrincipal.getId())
-                .claim("tenantId", userPrincipal.getTenantId())
-                .claim("tenantCode", userPrincipal.getTenantCode())
-                .claim("tenantSchema", userPrincipal.getSchemaName())
+                .subject(user.getUsername())
+                .claim("userId", user.getId().toString())   // store UUID as String
                 .claim("roles", roles)
-                .issuer("foundry-app")
-                .id(UUID.randomUUID().toString()) // jti
+                .issuer("foundry-erp")
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }
 
-    public String getUsernameFromToken(String token) {
-        return extractClaim(token, Claims::getSubject);
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.error("Invalid JWT token", ex);
+        }
+        return false;
     }
 
-    public Long getUserIdFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("userId", Long.class));
-    }
+    public CustomUserDetails getUserDetailsFromToken(String token) {
 
-    public String getTenantSchemaFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("tenantSchema", String.class));
-    }
-
-    public Long getTenantIdFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("tenantId", Long.class));
-    }
-    
-    public String getTenantCodeFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("tenantCode", String.class));
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<String> getRolesFromToken(String token) {
-        return extractClaim(token, claims -> claims.get("roles", List.class));
-    }
-
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
+        Claims claims = Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-    }
 
-    public boolean validateToken(String authToken) {
-        try {
-            Jwts.parser()
-                    .verifyWith(key)
-                    .clockSkewSeconds(30) // Allow 30 seconds skew
-                    .build()
-                    .parseSignedClaims(authToken);
-            return true;
-        } catch (ExpiredJwtException ex) {
-            log.error("Expired JWT token");
-        } catch (JwtException | IllegalArgumentException ex) {
-            log.error("Invalid JWT token: {}", ex.getMessage());
-        }
-        return false;
+        UUID userId = UUID.fromString(claims.get("userId", String.class));
+        String email = claims.getSubject();
+        List<String> roles = claims.get("roles", List.class);
+
+        List<GrantedAuthority> authorities = roles.stream()
+                .map(role -> (GrantedAuthority) () -> role)
+                .toList();
+
+        return CustomUserDetails.builder()
+                .id(userId)
+                .email(email)
+                .password(null)
+                .authorities(authorities)
+                .build();
     }
 }
+

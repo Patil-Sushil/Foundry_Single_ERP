@@ -1,42 +1,31 @@
 package com.kalibyte.foundry.enquiry.entity;
 
-import aj.org.objectweb.asm.ConstantDynamic;
+import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.enquiry.entity.ENUM.CastingProcess;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.UuidGenerator;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-
 
 @Entity
 @Table(
         name = "enquiry",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id","enquiry_no"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "enquiry_no"})
 )
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Enquiry {
-
-    @Id
-    @GeneratedValue
-    @org.hibernate.annotations.UuidGenerator
-    @Column(nullable = false, updatable = false)
-    private UUID id;
-
-    @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+public class Enquiry extends BaseEntity {
 
     @Column(name = "enquiry_no", nullable = false, unique = true)
     private String enquiryNo;
 
-    @Column(name = "enquiry_date",nullable = false)
+    @Column(name = "enquiry_date", nullable = false)
     private LocalDate enquiryDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,5 +43,6 @@ public class Enquiry {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @Builder.Default  // Required for @Builder with default value
     private List<EnquiryItem> enquiryItems = new ArrayList<>();
 }

@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.customer.service.impl;
 
-import com.kalibyte.foundry.common.util.ContextUtil;
+import ch.qos.logback.core.util.ContextUtil;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.dto.CustomerResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
@@ -44,9 +44,7 @@ public class CustomerServiceImpl implements CustomerService {
             customer.setCountry("India");
         }
         customer.setStatus("ACTIVE");
-        
         Customer saved = customerRepository.save(customer);
-        log.info("Created customer: {} in tenant: {}", saved.getId(), ContextUtil.getTenant());
         
         return modelMapper.map(saved, CustomerResponse.class);
     }

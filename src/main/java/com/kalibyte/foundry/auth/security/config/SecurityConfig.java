@@ -3,7 +3,6 @@ package com.kalibyte.foundry.auth.security.config;
 import com.kalibyte.foundry.auth.security.filter.JwtAuthenticationFilter;
 import com.kalibyte.foundry.auth.security.handler.JwtAuthenticationEntryPoint;
 import com.kalibyte.foundry.auth.security.token.CustomUserDetailsService;
-import com.kalibyte.foundry.infrastructure.tenancy.filter.TenantAwareFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,7 +34,6 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final TenantAwareFilter tenantAwareFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -46,29 +44,39 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
             .authorizeHttpRequests(auth -> auth
-                // Public Endpoints
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/api/public/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/error"
-                ).permitAll()
-                
-                // Admin specific endpoints (Example)
-                .requestMatchers("/api/admin/register-foundry").hasAuthority("SUPER_ADMIN")
-                
-                // All other requests need authentication
-                .anyRequest().authenticated()
-            )
-            
-            .authenticationProvider(authenticationProvider())
-            
-            // Filter Order: JWT Auth -> Tenant Context -> UsernamePassword (Standard)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(tenantAwareFilter, JwtAuthenticationFilter.class);
 
+                // Public
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/error"
+                ).permitAll()
+
+                // Admin
+                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+
+                // Sales
+                .requestMatchers("/api/enquiry/**", "/api/quotation/**")
+                .hasAnyAuthority("ADMIN", "SALES")
+
+                // Production
+                .requestMatchers("/api/production/**")
+                .hasAnyAuthority("ADMIN", "PRODUCTION")
+
+                // Finance
+                .requestMatchers("/api/finance/**")
+                .hasAnyAuthority("ADMIN", "FINANCE")
+
+                .anyRequest().authenticated()
+        )
+
+
+                .authenticationProvider(authenticationProvider())
+            
+            // Filter Order: JWT Auth -> UsernamePassword (Standard)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

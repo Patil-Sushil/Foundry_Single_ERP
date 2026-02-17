@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.auth.controller;
 
+import com.kalibyte.foundry.auth.dto.ChangePasswordRequest;
 import com.kalibyte.foundry.auth.dto.LoginRequest;
 import com.kalibyte.foundry.auth.dto.LoginResponse;
 import com.kalibyte.foundry.auth.dto.TokenRefreshRequest;
@@ -23,9 +24,15 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Login successful", response));
     }
 
-    @PostMapping("/refresh-token")
-    public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-        LoginResponse response = authService.refreshToken(request);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Token refreshed successfully", response));
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        authService.changePassword(request);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Password changed successfully", null)
+        );
     }
+
 }

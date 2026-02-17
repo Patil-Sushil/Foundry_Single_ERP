@@ -4,31 +4,26 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "audit_log", schema = "public")
-@Setter
+@Table(name = "audit_log")
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class AuditLog {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
     @Column(name = "user_id")
-    private Long userId;
-
-    @Column(name = "tenant_id")
-    private Long tenantId;
+    private UUID userId;
 
     @Column(nullable = false)
     private String action;
 
     private LocalDateTime timestamp;
-
-    @PrePersist
-    public void prePersist() {
-        this.timestamp = LocalDateTime.now();
-    }
 }

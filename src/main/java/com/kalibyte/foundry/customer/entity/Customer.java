@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.customer.entity;
 
+import com.kalibyte.foundry.common.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -21,7 +22,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class Customer {
+public class Customer extends BaseEntity {
 
     @Id
     @GeneratedValue
@@ -60,19 +61,4 @@ public class Customer {
 
     private String status;
 
-    @Column(name = "created_at", updatable = false)
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    @LastModifiedDate
-    private LocalDateTime updatedAt;
-
-    @Column(name = "created_by", updatable = false)
-    @CreatedBy
-    private String createdBy;
-
-    @Column(name = "updated_by")
-    @LastModifiedBy
-    private String updatedBy;
 }

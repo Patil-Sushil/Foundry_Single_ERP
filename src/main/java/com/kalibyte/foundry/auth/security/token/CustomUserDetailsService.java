@@ -1,9 +1,7 @@
 package com.kalibyte.foundry.auth.security.token;
 
 import com.kalibyte.foundry.auth.entity.User;
-import com.kalibyte.foundry.users.repository.UserRepository;
-import com.kalibyte.foundry.tenant.account.entity.TenantEntity;
-import com.kalibyte.foundry.tenant.account.repository.TenantRepository;
+import com.kalibyte.foundry.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,24 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
-    private final TenantRepository tenantRepository;
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found with email: " + email)
+                );
 
-        String tenantCode = null;
-        String schemaName = "public";
-
-        if (user.getTenantId() != null) {
-            TenantEntity tenant = tenantRepository.findById(user.getTenantId())
-                    .orElseThrow(() -> new UsernameNotFoundException("Tenant not found for user: " + email));
-            tenantCode = tenant.getCode();
-            schemaName = tenant.getSchemaName();
-        }
-
-        return CustomUserDetails.create(user, tenantCode, schemaName);
+        return CustomUserDetails.create(user);
     }
 }

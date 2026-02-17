@@ -1,0 +1,9 @@
+package com.kalibyte.foundry.auth.entity.ENUMS;
+
+public enum RoleName {
+    ADMIN,
+    SALES,
+    DESIGN,
+    FINANCE,
+    PRODUCTION
+}

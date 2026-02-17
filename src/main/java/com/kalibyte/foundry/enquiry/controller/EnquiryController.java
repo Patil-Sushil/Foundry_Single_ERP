@@ -5,7 +5,6 @@ import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.enquiry.dto.EnquiryCreateRequest;
 import com.kalibyte.foundry.enquiry.dto.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
-import com.kalibyte.foundry.infrastructure.tenancy.annotation.TenantRequired;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +14,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/enquiries")
 @RequiredArgsConstructor
-@TenantRequired
 public class EnquiryController {
 
     private final EnquiryService enquiryService;
