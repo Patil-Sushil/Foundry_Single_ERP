@@ -13,18 +13,18 @@
 		<relativePath/>
 	</parent>
 
-	<groupId>com.metalworks</groupId>
+	<groupId>com.kalibyte</groupId>
 	<artifactId>FoundryApplication</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Foundry SaaS</name>
-	<description>Multi-Tenant B2B SaaS for Foundries</description>
+	<name>Foundry Application</name>
+	<description>Single tenant application </description>
 
 	<properties>
 		<java.version>21</java.version>
 		<mapstruct.version>1.5.5.Final</mapstruct.version>
-		<lombok.version>1.18.36</lombok.version>  <!-- ✅ FIXED: Updated from 1.18.34 -->
+		<lombok.version>1.18.36</lombok.version>
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-		<flyway.version>10.6.0</flyway.version>
+		<flyway.version>9.22.3</flyway.version>
 		<jjwt.version>0.13.0</jjwt.version>
 	</properties>
 
@@ -60,13 +60,6 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>
-		</dependency>
-
-		<!-- ✅ FIXED: Only ONE flyway-database-postgresql entry -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-database-postgresql</artifactId>
-			<version>10.15.0</version>
 		</dependency>
 
 		<!-- JWT -->

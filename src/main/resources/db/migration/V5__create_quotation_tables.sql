@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS quotations (
 
 -- Create quotation_items table
 CREATE TABLE IF NOT EXISTS quotation_items (
-                                               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id BIGINT NOT NULL,
     quotation_id UUID NOT NULL,
     product_name VARCHAR(255),
