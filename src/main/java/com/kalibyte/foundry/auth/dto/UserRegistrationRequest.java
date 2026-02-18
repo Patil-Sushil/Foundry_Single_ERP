@@ -17,4 +17,7 @@ public class UserRegistrationRequest {
 
     private RoleName role;
 
+    private String name;
+
+    private String phone;
 }

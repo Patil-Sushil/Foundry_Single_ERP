@@ -22,7 +22,7 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN','SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN','SALES')")
     public ResponseEntity<ApiResponse<CustomerResponse>> createCustomer(@RequestBody CustomerRequest request) {
         CustomerResponse response = customerService.createCustomer(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -30,7 +30,7 @@ public class CustomerController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'PRODUCTION', 'SALES', 'STORE', 'INVENTORY')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRODUCTION', 'SALES', 'STORE', 'INVENTORY')")
     public ResponseEntity<ApiResponse<Page<CustomerResponse>>> listCustomers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -40,14 +40,24 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'PRODUCTION', 'SALES', 'STORE', 'INVENTORY')")
-    public ResponseEntity<ApiResponse<CustomerResponse>> getCustomer(@PathVariable UUID customerId) {
-        CustomerResponse response = customerService.getCustomer(customerId);
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRODUCTION', 'SALES', 'STORE', 'INVENTORY')")
+    public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerById(@PathVariable UUID customerId) {
+        CustomerResponse response = customerService.getCustomerById(customerId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Customer fetched successfully", response));
     }
 
-    @PutMapping("/{customerId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+
+    @GetMapping("/phone/{phone}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRODUCTION', 'SALES', 'STORE', 'INVENTORY')")
+    public ResponseEntity<ApiResponse<CustomerResponse>> findByPhone(@PathVariable String phone) {
+        Optional<CustomerResponse> customerResponse = customerService.findByPhone(phone);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Customer fetched successfully", customerResponse.orElse(null)));
+
+    }
+
+
+    @PatchMapping("/{customerId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CustomerResponse>> updateCustomer(
             @PathVariable UUID customerId,
             @RequestBody CustomerRequest request) {
@@ -56,16 +66,9 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{customerId}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCustomer(@PathVariable UUID customerId) {
         customerService.deleteCustomer(customerId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Customer deleted successfully", null));
-    }
-
-    @GetMapping("/{phone}")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<ApiResponse<Optional<CustomerResponse>>> getCustomer(@PathVariable String phone) {
-        Optional<CustomerResponse> customerResponse = customerService.findByPhone(phone);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Customer fetched successfully", customerResponse));
     }
 }

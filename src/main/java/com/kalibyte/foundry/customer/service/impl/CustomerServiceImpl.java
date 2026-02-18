@@ -1,6 +1,5 @@
 package com.kalibyte.foundry.customer.service.impl;
 
-import ch.qos.logback.core.util.ContextUtil;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.dto.CustomerResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
@@ -34,10 +33,15 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerResponse createCustomer(CustomerRequest request) {
         validator.validate(request);
-        
-        if (emailExistsInTenant(request.getEmail())) {
-            throw new DuplicateCustomerException("Email already exists in tenant");
+
+        if (customerRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateCustomerException("Email already exists");
         }
+
+        if(customerRepository.findByPhone(request.getPhone()).isPresent()){
+            throw new DuplicateCustomerException("Phone number already exists");
+        }
+
 
         Customer customer = modelMapper.map(request, Customer.class);
         if (customer.getCountry() == null) {
@@ -51,7 +55,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    public CustomerResponse getCustomer(UUID customerId) {
+    public CustomerResponse getCustomerById(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
         return modelMapper.map(customer, CustomerResponse.class);
@@ -72,11 +76,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
         
-        // Check email uniqueness if email changed
-        if (!customer.getEmail().equals(request.getEmail()) && emailExistsInTenant(request.getEmail())) {
-             throw new DuplicateCustomerException("Email already exists in tenant");
-        }
-        
+
         validator.validate(request);
         modelMapper.map(request, customer);
         
@@ -97,13 +97,20 @@ public class CustomerServiceImpl implements CustomerService {
         customerRepository.save(customer);
     }
 
+
     @Override
-    public boolean emailExistsInTenant(String email) {
+    public boolean existsByEmail(String email) {
         return customerRepository.existsByEmail(email);
     }
 
+
+
     @Override
     public Optional<CustomerResponse> findByPhone(String phone) {
-        return customerRepository.findByPhone(phone);
+
+        return customerRepository.findByPhone(phone)
+                .map(customer -> modelMapper.map(customer, CustomerResponse.class));
     }
+
+
 }

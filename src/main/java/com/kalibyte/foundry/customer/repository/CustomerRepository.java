@@ -12,9 +12,12 @@ import java.util.UUID;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     Optional<Customer> findByEmail(String email);
+
     Page<Customer> findAll(Pageable pageable);
+
     boolean existsByEmail(String email);
 
-    Optional<CustomerResponse> findByPhone(String phone);
+    Optional<Customer> findByPhone(String phone);
+
 
 }
