@@ -30,12 +30,15 @@ public class CustomUserDetails implements UserDetails {
 
     public static CustomUserDetails create(User user) {
 
+
+
         List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName().name()))
                 .collect(Collectors.toList());
 
         return new CustomUserDetails(
-                user.getId(),        // Now matches Long
+
+                user.getId(),
                 user.getEmail(),
                 user.getPassword(),
                 authorities
