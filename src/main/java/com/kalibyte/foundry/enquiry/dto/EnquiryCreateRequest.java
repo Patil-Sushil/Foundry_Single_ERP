@@ -20,26 +20,6 @@ public class EnquiryCreateRequest {
     @NotNull
     private LocalDate enquiryDate;
 
-//    @NotNull
-//    private Long metalCategoryId;
-//
-//    @NotBlank(message = "Part name is required")
-//    private String partName;
-//
-//
-//    @NotNull
-//    private Long metalTypeId;
-//
-//    @NotNull
-//    private BigDecimal approxPieceWeight;
-//
-//    @NotNull
-//    private Integer requiredQuantity;
-//
-//
-//    private String referenceNumber;
-//    private String remarks;
-
     @NotEmpty(message = "At least one enquiry item is required")
     @Valid
     private List<EnquiryItemCreateRequest> enquiryItems;
