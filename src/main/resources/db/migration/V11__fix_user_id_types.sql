@@ -1,0 +1,4 @@
+-- V11: Fix User ID types in Inventory (Dummy as we fixed V7-V9 directly)
+-- =============================================
+-- This migration is kept for sequence consistency but does nothing
+-- as tables were created with UUID columns directly in V7, V8, V9.
