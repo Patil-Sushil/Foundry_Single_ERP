@@ -2,6 +2,7 @@ package com.kalibyte.foundry.auth.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "users")
+@Where(clause = "deleted = false")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,6 +36,10 @@ public class User {
 
 
     private boolean enabled = true;
+
+    @Column(name = "deleted")
+    private boolean deleted = false;
+
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

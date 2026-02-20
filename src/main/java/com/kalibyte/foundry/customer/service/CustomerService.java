@@ -9,11 +9,10 @@ import java.util.UUID;
 
 public interface CustomerService {
     CustomerResponse createCustomer(CustomerRequest request);
-    CustomerResponse getCustomer(UUID customerId);
+    CustomerResponse getCustomerById(UUID customerId);
     Page<CustomerResponse> listCustomers(int page, int size, String sort);
     CustomerResponse updateCustomer(UUID customerId, CustomerRequest request);
     void deleteCustomer(UUID customerId);
-    boolean emailExistsInTenant(String email);
-
+    boolean existsByEmail(String email);
     Optional<CustomerResponse> findByPhone(String phone);
 }

@@ -55,19 +55,19 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // Admin
-                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                 // Sales
                 .requestMatchers("/api/enquiry/**", "/api/quotation/**")
-                .hasAnyAuthority("ADMIN", "SALES")
+                .hasAnyRole("ADMIN", "SALES")
 
                 // Production
                 .requestMatchers("/api/production/**")
-                .hasAnyAuthority("ADMIN", "PRODUCTION")
+                .hasAnyRole("ADMIN", "PRODUCTION")
 
                 // Finance
                 .requestMatchers("/api/finance/**")
-                .hasAnyAuthority("ADMIN", "FINANCE")
+                .hasAnyRole("ADMIN", "FINANCE")
 
                 .anyRequest().authenticated()
         )
