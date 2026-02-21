@@ -5,10 +5,19 @@ import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.util.SecurityUtils;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
-import com.kalibyte.foundry.enquiry.dto.*;
+import com.kalibyte.foundry.enquiry.dto.request.EnquiryCreateRequest;
+import com.kalibyte.foundry.enquiry.dto.request.EnquiryItemCreateRequest;
+import com.kalibyte.foundry.enquiry.dto.response.EnquiryItemResponse;
+import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.entity.*;
-import com.kalibyte.foundry.enquiry.repository.*;
+import com.kalibyte.foundry.enquiry.entity.ENUM.MetalCategory;
+import com.kalibyte.foundry.enquiry.entity.ENUM.MetalType;
+import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
+import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
+import com.kalibyte.foundry.pattern.entity.Pattern;
+import com.kalibyte.foundry.pattern.entity.PatternReceipt;
+import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -25,8 +34,7 @@ public class EnquiryServiceImpl implements EnquiryService {
 
     private final EnquiryRepository enquiryRepository;
     private final CustomerRepository customerRepository;
-    private final MetalCategoryRepository metalCategoryRepository;
-    private final MetalTypeRepository metalTypeRepository;
+    private final PatternRepository patternRepository;
 
     @Override
     public EnquiryResponse create(EnquiryCreateRequest request) {
@@ -48,11 +56,35 @@ public class EnquiryServiceImpl implements EnquiryService {
 
         for (EnquiryItemCreateRequest itemReq : request.getEnquiryItems()) {
 
-            MetalCategory category = metalCategoryRepository.findById(itemReq.getMetalCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Metal category not found"));
+            if (Boolean.TRUE.equals(itemReq.getPatternProvidedByCustomer())) {
+                if (itemReq.getPatternReceipt() == null) {
+                    throw new IllegalArgumentException(
+                            "Pattern receipt required when customer provides pattern"
+                    );
+                }
+            } else {
+                if (itemReq.getPatternId() == null) {
+                    throw new IllegalArgumentException(
+                            "Pattern ID required when pattern not provided by customer"
+                    );
+                }
+            }
 
-            MetalType type = metalTypeRepository.findById(itemReq.getMetalTypeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Metal type not found"));
+            //  ENUM BASED METAL VALIDATION
+            MetalType type = itemReq.getMetalType();
+
+            if (type == null) {
+                throw new IllegalArgumentException("Metal type is required");
+            }
+
+            //  Automatically derive category
+            MetalCategory category = type.getCategory();
+
+            if (!MetalType.isValidForCategory(type, category)) {
+                throw new IllegalArgumentException(
+                        "Selected metal type does not belong to selected category"
+                );
+            }
 
             BigDecimal itemWeight =
                     itemReq.getApproxPieceWeightKg()
@@ -60,18 +92,40 @@ public class EnquiryServiceImpl implements EnquiryService {
 
             totalWeight = totalWeight.add(itemWeight);
 
-            EnquiryItem item = EnquiryItem.builder()
-                    .enquiry(enquiry)
-                    .partName(itemReq.getPartName())
-                    .metalCategory(category)
-                    .metalType(type)
-                    .castingProcess(itemReq.getCastingProcess())
-                    .requiredQuantity(itemReq.getRequiredQuantity())
-                    .approxPieceWeightKg(itemReq.getApproxPieceWeightKg())
-                    .totalWeightKg(itemWeight)
-                    .patternAvailable(itemReq.getPatternAvailable())
-                    .machineRequired(itemReq.getMachineRequired())
-                    .build();
+            EnquiryItem item = new EnquiryItem();
+            item.setEnquiry(enquiry);
+            item.setPartName(itemReq.getPartName());
+            item.setMetalCategory(category);
+            item.setMetalType(type);
+            item.setCastingProcess(itemReq.getCastingProcess());
+            item.setRequiredQuantity(itemReq.getRequiredQuantity());
+            item.setApproxPieceWeightKg(itemReq.getApproxPieceWeightKg());
+            item.setTotalWeightKg(itemWeight);
+            item.setMachineRequired(itemReq.getMachineRequired());
+            item.setPatternProvidedByCustomer(itemReq.getPatternProvidedByCustomer());
+
+            if (Boolean.TRUE.equals(itemReq.getPatternProvidedByCustomer())) {
+
+                PatternReceiptRequest pr = itemReq.getPatternReceipt();
+
+                PatternReceipt receipt = PatternReceipt.builder()
+                        .inwardDate(pr.getInwardDate())
+                        .outwardDate(pr.getOutwardDate())
+                        .name(pr.getName())
+                        .type(pr.getType())
+                        .material(pr.getMaterial())
+                        .build();
+
+                receipt.setCreatedBy(SecurityUtils.getCurrentUsername());
+                item.setPatternReceipt(receipt);
+
+            } else {
+
+                Pattern pattern = patternRepository.findById(itemReq.getPatternId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Pattern not found"));
+
+                item.setPattern(pattern);
+            }
 
             items.add(item);
         }
@@ -108,7 +162,6 @@ public class EnquiryServiceImpl implements EnquiryService {
     public PageResponse<EnquiryResponse> getAll(int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("enquiryDate").descending());
-
         Page<Enquiry> enquiryPage = enquiryRepository.findAll(pageable);
 
         return PageResponse.from(enquiryPage, this::toResponse);
@@ -123,23 +176,74 @@ public class EnquiryServiceImpl implements EnquiryService {
         return toResponse(enquiry);
     }
 
+    @Override
+    public PageResponse<EnquiryResponse> getByCustomerId(UUID customerId, int page, int size) {
+
+        // Check if customer exists
+        if (!customerRepository.existsById(customerId)){
+            throw new ResourceNotFoundException("Customer not found");
+        }
+
+        Pageable pageable = PageRequest.of(page, size,Sort.by("enquiryDate").descending());
+
+        Page<Enquiry>enquiryPage = enquiryRepository.findByCustomerId(customerId, pageable);
+
+        return PageResponse.from(enquiryPage, this::toResponse);
+    }
+
     private EnquiryResponse toResponse(Enquiry enquiry) {
 
-        List<EnquiryItemResponse> itemResponses =
-                enquiry.getEnquiryItems()
-                        .stream()
-                        .map(item -> EnquiryItemResponse.builder()
-                                .partName(item.getPartName())
-                                .metalCategory(item.getMetalCategory().getName())
-                                .metalType(item.getMetalType().getName())
-                                .requiredQuantity(item.getRequiredQuantity())
-                                .approxPieceWeightKg(item.getApproxPieceWeightKg())
-                                .totalWeightKg(item.getTotalWeightKg())
-                                .castingProcess(item.getCastingProcess())
-                                .patternAvailable(item.getPatternAvailable())
-                                .machineRequired(item.getMachineRequired())
-                                .build())
-                        .toList();
+        List<EnquiryItemResponse> itemResponses = enquiry.getEnquiryItems()
+                .stream()
+                .map(item -> {
+
+                    String patternName = null;
+                    String patternType = null;
+                    String patternMaterial = null;
+                    LocalDate inwardDate = null;
+                    LocalDate outwardDate = null;
+
+                    if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
+
+                        PatternReceipt pr = item.getPatternReceipt();
+
+                        if (pr != null) {
+                            patternName = pr.getName();
+                            patternType = pr.getType().name();
+                            patternMaterial = pr.getMaterial().name();
+                            inwardDate = pr.getInwardDate();
+                            outwardDate = pr.getOutwardDate();
+                        }
+
+                    } else {
+
+                        Pattern pattern = item.getPattern();
+
+                        if (pattern != null) {
+                            patternName = pattern.getName();
+                            patternType = pattern.getType().name();
+                            patternMaterial = pattern.getMaterial().name();
+                        }
+                    }
+
+                    return EnquiryItemResponse.builder()
+                            .partName(item.getPartName())
+                            .metalCategory(item.getMetalCategory().getDisplayName())
+                            .metalType(item.getMetalType().getDisplayName())
+                            .requiredQuantity(item.getRequiredQuantity())
+                            .approxPieceWeightKg(item.getApproxPieceWeightKg())
+                            .totalWeightKg(item.getTotalWeightKg())
+                            .castingProcess(item.getCastingProcess())
+                            .machineRequired(item.getMachineRequired())
+                            .patternProvidedByCustomer(item.getPatternProvidedByCustomer())
+                            .patternName(patternName)
+                            .patternType(patternType)
+                            .patternMaterial(patternMaterial)
+                            .inwardDate(inwardDate)
+                            .outwardDate(outwardDate)
+                            .build();
+                })
+                .toList();
 
         return EnquiryResponse.builder()
                 .id(enquiry.getId())

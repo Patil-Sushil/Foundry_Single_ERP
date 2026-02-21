@@ -32,6 +32,8 @@ public class Enquiry extends BaseEntity {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+
+
     @Column(nullable = false)
     private String status;
 

@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.customer.service.impl;
 
+import com.kalibyte.foundry.common.util.SecurityUtils;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.dto.CustomerResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
@@ -48,7 +49,9 @@ public class CustomerServiceImpl implements CustomerService {
             customer.setCountry("India");
         }
         customer.setStatus("ACTIVE");
+        customer.setCreatedBy(SecurityUtils.getCurrentUsername());
         Customer saved = customerRepository.save(customer);
+
         
         return modelMapper.map(saved, CustomerResponse.class);
     }
@@ -83,7 +86,8 @@ public class CustomerServiceImpl implements CustomerService {
         if (customer.getCountry() == null) {
             customer.setCountry("India");
         }
-        
+
+        customer.setUpdatedBy(SecurityUtils.getCurrentUsername());
         Customer updated = customerRepository.save(customer);
         return modelMapper.map(updated, CustomerResponse.class);
     }

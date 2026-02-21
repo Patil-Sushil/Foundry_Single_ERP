@@ -1,7 +1,10 @@
 package com.kalibyte.foundry.enquiry.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
-import com.kalibyte.foundry.enquiry.entity.ENUM.CastingProcess;
+import com.kalibyte.foundry.enquiry.entity.ENUM.MetalCategory;
+import com.kalibyte.foundry.enquiry.entity.ENUM.MetalType;
+import com.kalibyte.foundry.pattern.entity.Pattern;
+import com.kalibyte.foundry.pattern.entity.PatternReceipt;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +19,6 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class EnquiryItem extends BaseEntity {
 
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enquiry_id", nullable = false)
     private Enquiry enquiry;
@@ -24,12 +26,12 @@ public class EnquiryItem extends BaseEntity {
     @Column(name = "part_name", nullable = false)
     private String partName;
 
-    @ManyToOne
-    @JoinColumn(name = "metal_category_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metal_category", nullable = false)
     private MetalCategory metalCategory;
 
-    @ManyToOne
-    @JoinColumn(name = "metal_type_id", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metal_type", nullable = false)
     private MetalType metalType;
 
     @Column(name = "required_quantity", nullable = false)
@@ -44,8 +46,20 @@ public class EnquiryItem extends BaseEntity {
     @Column(name = "casting_process", nullable = false)
     private String castingProcess;
 
-    @Column(name = "pattern_available", nullable = false)
-    private Boolean patternAvailable;
+    // ===== Pattern Logic =====
+
+    @Column(name = "pattern_provided_by_customer", nullable = false)
+    private Boolean patternProvidedByCustomer;
+
+    // Used when customer does NOT provide pattern
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pattern_id")
+    private Pattern pattern;
+
+    // Used when customer provides pattern
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "pattern_receipt_id")
+    private PatternReceipt patternReceipt;
 
     @Column(name = "machine_required", nullable = false)
     private Boolean machineRequired;

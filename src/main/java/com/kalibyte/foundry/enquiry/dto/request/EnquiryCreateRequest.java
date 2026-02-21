@@ -1,11 +1,10 @@
-package com.kalibyte.foundry.enquiry.dto;
+package com.kalibyte.foundry.enquiry.dto.request;
 
-import com.kalibyte.foundry.enquiry.entity.ENUM.CastingProcess;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
-import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +19,7 @@ public class EnquiryCreateRequest {
     @NotNull
     private LocalDate enquiryDate;
 
-    @NotEmpty(message = "At least one enquiry item is required")
     @Valid
+    @NotEmpty(message = "At least one enquiry item is required")
     private List<EnquiryItemCreateRequest> enquiryItems;
 }

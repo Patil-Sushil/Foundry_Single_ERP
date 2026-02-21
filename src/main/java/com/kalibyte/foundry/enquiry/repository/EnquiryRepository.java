@@ -20,4 +20,14 @@ public interface EnquiryRepository extends JpaRepository<Enquiry, UUID> {
     Page<Enquiry> findAll(Pageable pageable);
 
     Optional<Enquiry> findTopByEnquiryNoStartingWithOrderByEnquiryNoDesc(String prefix);
+
+
+    // Solving N+1
+    @EntityGraph(attributePaths = {
+            "customer",
+            "enquiryItems",
+            "enquiryItems.pattern",
+            "enquiryItems.patternReceipt"
+    })
+    Page<Enquiry>findByCustomerId(UUID customerId, Pageable pageable);
 }

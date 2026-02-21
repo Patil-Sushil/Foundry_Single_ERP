@@ -5,14 +5,9 @@ import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.service.CustomerService;
-import com.kalibyte.foundry.enquiry.entity.MetalCategory;
-import com.kalibyte.foundry.enquiry.entity.MetalType;
-import com.kalibyte.foundry.enquiry.repository.MetalCategoryRepository;
-import com.kalibyte.foundry.enquiry.repository.MetalTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -22,29 +17,28 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile("dev") // Only runs in dev profile
 public class DataSeeder implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
-    private final MetalCategoryRepository metalCategoryRepository;
-    private final MetalTypeRepository metalTypeRepository;
     private final CustomerService customerService;
 
     @Override
     public void run(String... args) {
+        log.info("===== STARTING DATA SEEDING =====");
+
         seedRoles();
-        seedMetalMasters();
         seedCustomers();
+
+        log.info("===== DATA SEEDING COMPLETE =====");
     }
 
     /* ---------------- ROLES ---------------- */
 
     private void seedRoles() {
 
-        log.info("Seeding Roles...");
+        log.info("Seeding roles...");
 
         for (RoleName roleName : RoleName.values()) {
-
             roleRepository.findByName(roleName)
                     .orElseGet(() -> {
                         Role role = new Role();
@@ -54,47 +48,11 @@ public class DataSeeder implements CommandLineRunner {
                     });
         }
 
-        log.info("Roles seeded successfully.");
+        log.info("Roles seeded.");
     }
 
-    /* ---------------- METAL MASTER DATA ---------------- */
 
-    private void seedMetalMasters() {
-
-        if (metalCategoryRepository.count() > 0) {
-            log.info("Metal master already exists. Skipping.");
-            return;
-        }
-
-        log.info("Seeding Metal Categories & Types...");
-
-        Map<String, List<String>> data = Map.of(
-                "Ferrous", List.of("Cast Iron", "SG Iron", "Mild Steel"),
-                "Non-Ferrous", List.of("Aluminium", "Copper", "Brass"),
-                "Alloy Steel", List.of("SS 304", "SS 316")
-        );
-
-        data.forEach((categoryName, types) -> {
-
-            MetalCategory category = new MetalCategory();
-            category.setName(categoryName);
-            category.setActive(true);
-
-            metalCategoryRepository.save(category);
-
-            types.forEach(typeName -> {
-                MetalType type = new MetalType();
-                type.setName(typeName);
-                type.setCategory(category);
-                type.setActive(true);
-                metalTypeRepository.save(type);
-            });
-        });
-
-        log.info("Metal master seeded.");
-    }
-
-    /* ---------------- SAMPLE CUSTOMERS ---------------- */
+    /* ---------------- CUSTOMERS ---------------- */
 
     private void seedCustomers() {
 
@@ -103,20 +61,21 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        log.info("Seeding sample customers...");
+        log.info("Seeding customers...");
 
-        createCustomer("Acme Castings", "acme@company.com");
-        createCustomer("Steel Industries", "steel@company.com");
-        createCustomer("Metal Traders", "metal@company.com");
+        createCustomer("Acme Castings", "acme@company.com", "9000000001");
+        createCustomer("Steel Industries", "steel@company.com", "9000000002");
+        createCustomer("Metal Traders", "metal@company.com", "9000000003");
 
         log.info("Customers seeded.");
     }
 
-    private void createCustomer(String name, String email) {
+    private void createCustomer(String name, String email, String phone) {
 
         CustomerRequest req = new CustomerRequest();
         req.setName(name);
         req.setEmail(email);
+        req.setPhone(phone); // IMPORTANT FIX
         req.setPaymentTerms("NET30");
         req.setCreditLimit(new BigDecimal("100000"));
 

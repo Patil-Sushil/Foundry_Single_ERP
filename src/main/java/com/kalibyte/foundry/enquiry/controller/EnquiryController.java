@@ -2,8 +2,8 @@ package com.kalibyte.foundry.enquiry.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.common.response.PageResponse;
-import com.kalibyte.foundry.enquiry.dto.EnquiryCreateRequest;
-import com.kalibyte.foundry.enquiry.dto.EnquiryResponse;
+import com.kalibyte.foundry.enquiry.dto.request.EnquiryCreateRequest;
+import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,5 +41,15 @@ public class EnquiryController {
             @PathVariable("id") UUID id
     ) {
         return ApiResponse.success(enquiryService.getById(id));
+    }
+
+    // Get all enquiries related to a specific customer
+    @GetMapping("/customer/{customerId}")
+    public ApiResponse<PageResponse<EnquiryResponse>> getEnquiriesByCustomerId(
+            @PathVariable UUID customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(enquiryService.getByCustomerId(customerId, page, size));
     }
 }

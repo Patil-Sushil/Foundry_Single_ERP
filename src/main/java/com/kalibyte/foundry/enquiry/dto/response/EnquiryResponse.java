@@ -1,8 +1,5 @@
-package com.kalibyte.foundry.enquiry.dto;
+package com.kalibyte.foundry.enquiry.dto.response;
 
-import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.enquiry.entity.MetalCategory;
-import com.kalibyte.foundry.enquiry.entity.MetalType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
