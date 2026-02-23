@@ -13,6 +13,7 @@ import com.kalibyte.foundry.quotation.entity.QuotationItem;
 import com.kalibyte.foundry.quotation.entity.enums.QuotationStatus;
 import com.kalibyte.foundry.quotation.mapper.QuotationMapper;
 import com.kalibyte.foundry.quotation.repository.QuotationRepository;
+import com.kalibyte.foundry.quotation.service.QuotationEmailService;
 import com.kalibyte.foundry.quotation.service.QuotationService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -33,6 +35,7 @@ public class QuotationServiceImpl implements QuotationService {
     private final CustomerRepository customerRepository;
     private final EnquiryRepository enquiryRepository;
     private final QuotationMapper quotationMapper;
+    private final QuotationEmailService quotationEmailService;
 
     // ========================= CREATE =========================
 
@@ -72,8 +75,12 @@ public class QuotationServiceImpl implements QuotationService {
             item.setQuantity(itemReq.getQuantity());
             item.setUnitPrice(itemReq.getUnitPrice());
 
-            BigDecimal lineTotal = itemReq.getUnitPrice()
-                    .multiply(itemReq.getQuantity());
+            BigDecimal lineTotal =
+                    itemReq.getNetWeightKg()
+                            .multiply(itemReq.getUnitPrice())
+                            .multiply(itemReq.getQuantity());
+
+            item.setLineTotal(lineTotal);
 
             item.setLineTotal(lineTotal);
             quotation.getItems().add(item);
@@ -110,6 +117,18 @@ public class QuotationServiceImpl implements QuotationService {
 
         Quotation quotation = get(id);
 
+        // Block modification if approved
+        if (quotation.getStatus() == QuotationStatus.APPROVED) {
+            throw new IllegalStateException("Approved quotation cannot be modified");
+        }
+
+
+        // If already sent, reset to draft (new revision)
+        if (quotation.getStatus() == QuotationStatus.SENT) {
+            quotation.setStatus(QuotationStatus.DRAFT);
+            quotation.setSentAt(null);
+        }
+
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
@@ -120,8 +139,11 @@ public class QuotationServiceImpl implements QuotationService {
         quotation.setDeliveryLocation(request.getDeliveryLocation());
         quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
+        // Remove old items
         quotation.getItems().clear();
 
+
+        // Add new items
         request.getItems().forEach(itemReq -> {
             QuotationItem item = new QuotationItem();
             item.setQuotation(quotation);
@@ -135,14 +157,20 @@ public class QuotationServiceImpl implements QuotationService {
             item.setUnitPrice(itemReq.getUnitPrice());
 
             BigDecimal lineTotal =
-                    itemReq.getUnitPrice().multiply(itemReq.getQuantity());
+                    itemReq.getNetWeightKg()
+                            .multiply(itemReq.getUnitPrice())
+                            .multiply(itemReq.getQuantity());
+
+            item.setLineTotal(lineTotal);
 
             item.setLineTotal(lineTotal);
             quotation.getItems().add(item);
         });
 
+        // Increase revision number
         quotation.setRevisionNo(quotation.getRevisionNo() + 1);
 
+        // Recalculate totals
         recalculateTotals(quotation);
 
         return quotationRepository.save(quotation);
@@ -151,13 +179,37 @@ public class QuotationServiceImpl implements QuotationService {
     // ========================= STATUS =========================
 
     @Override
-    public Quotation updateStatus(UUID id, QuotationStatus status) {
+    public Quotation updateStatus(UUID id, QuotationStatus newStatus) {
 
         Quotation quotation = get(id);
-        quotation.setStatus(status);
+
+        validateStatusTransition(quotation.getStatus(), newStatus);
+
+        quotation.setStatus(newStatus);
         quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
+        switch (newStatus) {
+            case SENT -> quotation.setSentAt(LocalDateTime.now());
+            case APPROVED -> quotation.setApprovedAt(LocalDateTime.now());
+            case REJECTED -> quotation.setRejectedAt(LocalDateTime.now());
+            default -> {}
+        }
+
         return quotationRepository.save(quotation);
+    }
+
+    private void validateStatusTransition(QuotationStatus current, QuotationStatus next){
+        if (current == QuotationStatus.APPROVED){
+            throw new  IllegalStateException("Approved quotation cannot be modified");
+        }
+
+        if (current == QuotationStatus.DRAFT && next == QuotationStatus.APPROVED){
+            throw new IllegalStateException("Draft quotation must be sent before approval");
+        }
+        if (current == QuotationStatus.SENT &&
+                !(next == QuotationStatus.APPROVED || next == QuotationStatus.REJECTED)) {
+            throw new IllegalStateException("Sent quotation can only be Approved or Rejected");
+        }
     }
 
     // ========================= HELPER =========================
@@ -190,5 +242,28 @@ public class QuotationServiceImpl implements QuotationService {
         }
 
         return String.format("%s%05d", prefix, nextSequence);
+    }
+
+    // ========================= EMAIL =========================
+
+    public Quotation sendByEmail(UUID id) {
+
+        Quotation quotation = get(id);
+
+        if (quotation.getStatus() != QuotationStatus.DRAFT) {
+            throw new IllegalStateException("Only DRAFT quotation can be sent");
+        }
+
+        if (quotation.getCustomer().getEmail() == null) {
+            throw new IllegalStateException("Customer email not available");
+        }
+
+        quotationEmailService.sendQuotationEmail(quotation);
+
+        quotation.setStatus(QuotationStatus.SENT);
+        quotation.setSentAt(java.time.LocalDateTime.now());
+        quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
+
+        return quotationRepository.save(quotation);
     }
 }

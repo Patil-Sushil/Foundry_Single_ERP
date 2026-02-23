@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +19,7 @@ import java.util.List;
 @Setter
 public class Quotation extends BaseEntity {
 
-    @Column(name = "quotation_number", nullable = false, unique = true, length = 50)  // ✅ Fix here
+    @Column(name = "quotation_number", nullable = false, unique = true, length = 50)
     private String quotationNumber;
 
     @Column(name = "quotation_date")
@@ -62,6 +63,21 @@ public class Quotation extends BaseEntity {
 
     @Column(name = "delivery_location", length = 255)
     private String deliveryLocation;
+
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
+    @Column(name = "viewed_at")
+    private LocalDateTime viewedAt;
 
     @OneToMany(
             mappedBy = "quotation",

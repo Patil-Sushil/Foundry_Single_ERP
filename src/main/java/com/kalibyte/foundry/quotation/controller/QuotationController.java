@@ -79,4 +79,16 @@ public class QuotationController {
     }
 
 
+    // Custom action to send quotation by email
+    @PostMapping("/{id}/send/email")
+    public ResponseEntity<ApiResponse<QuotationResponse>> sendByEmail(
+            @PathVariable UUID id
+    ) {
+        Quotation quotation = quotationService.sendByEmail(id);
+        return ResponseEntity.ok(
+                ApiResponse.success(quotationMapper.toResponse(quotation))
+        );
+    }
+
+
 }

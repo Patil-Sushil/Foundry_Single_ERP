@@ -48,9 +48,6 @@ public class QuotationItem extends BaseEntity {
     @Column(name = "line_total", precision = 19, scale = 2)
     private BigDecimal lineTotal;
 
-    @OneToOne(mappedBy = "quotationItem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private QuotationCost cost;
-
     // Business method
     public void calculateLineTotal() {
         if (quantity != null && unitPrice != null) {
@@ -58,11 +55,6 @@ public class QuotationItem extends BaseEntity {
         }
     }
 
-    // Helper method for bidirectional relationship
-    public void setCost(QuotationCost cost) {
-        this.cost = cost;
-        if (cost != null) {
-            cost.setQuotationItem(this);
-        }
-    }
+
+
 }

@@ -21,4 +21,5 @@ public interface QuotationService {
 
     Quotation updateStatus(UUID id, QuotationStatus status);
 
+    Quotation sendByEmail(UUID id);
 }

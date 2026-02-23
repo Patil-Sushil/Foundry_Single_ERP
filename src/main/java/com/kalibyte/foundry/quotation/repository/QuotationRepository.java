@@ -19,7 +19,6 @@ public interface QuotationRepository extends JpaRepository<Quotation, UUID> {
     @EntityGraph(attributePaths = {
             "customer",
             "items",
-            "items.cost"
     })
     Optional<Quotation> findById(UUID id);
 
