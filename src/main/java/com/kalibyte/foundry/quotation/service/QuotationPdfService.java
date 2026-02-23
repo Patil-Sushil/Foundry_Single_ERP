@@ -1,11 +1,15 @@
 package com.kalibyte.foundry.quotation.service;
 
+import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.io.image.ImageDataFactory;
-import com.itextpdf.kernel.colors.*;
+import com.itextpdf.kernel.colors.ColorConstants;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
 import com.itextpdf.layout.*;
-import com.itextpdf.layout.borders.*;
+import com.itextpdf.layout.borders.Border;
+import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.*;
 import com.kalibyte.foundry.quotation.entity.Quotation;
@@ -14,7 +18,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.math.BigDecimal;
 
 @Service
@@ -28,13 +31,25 @@ public class QuotationPdfService {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
+
+            // Load Unicode Font (₹ support) – iText 8.0.5
+            PdfFont font = PdfFontFactory.createFont(
+                    new ClassPathResource("fonts/NotoSans-Regular.ttf")
+                            .getInputStream()
+                            .readAllBytes(),
+                    PdfEncodings.IDENTITY_H
+            );
+            document.setFont(font);
+
             // ================= LOGO =================
             try {
-                ClassPathResource resource =
-                        new ClassPathResource("static/logo.png");
-                InputStream inputStream = resource.getInputStream();
                 Image logo = new Image(
-                        ImageDataFactory.create(inputStream.readAllBytes()));
+                        ImageDataFactory.create(
+                                new ClassPathResource("static/logo.png")
+                                        .getInputStream()
+                                        .readAllBytes()
+                        )
+                );
                 logo.setWidth(140);
                 logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
                 document.add(logo);
@@ -57,7 +72,7 @@ public class QuotationPdfService {
 
             addSeparator(document);
 
-            // ================= TOP BLOCK =================
+            // ================= TOP SECTION =================
             Table top = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
                     .useAllAvailableWidth();
 
@@ -151,30 +166,49 @@ public class QuotationPdfService {
             addSeparator(document);
 
             // ================= SIGNATURE =================
-            Table sign = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
+            addSeparator(document);
+
+            Table signTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
                     .useAllAvailableWidth();
 
-            sign.addCell(new Cell()
+            // Left Cell
+            Cell leftCell = new Cell()
                     .add(new Paragraph("For Mittal Precision Steel Foundry"))
-                    .setBorder(Border.NO_BORDER));
+                    .setBorder(Border.NO_BORDER)
+                    .setVerticalAlignment(VerticalAlignment.BOTTOM);
 
-            Cell rightCell = new Cell().setBorder(Border.NO_BORDER)
+            signTable.addCell(leftCell);
+
+            // Right Cell
+            Cell rightCell = new Cell()
+                    .setBorder(Border.NO_BORDER)
                     .setTextAlignment(TextAlignment.RIGHT);
 
+            // Add some spacing before signature
+            rightCell.add(new Paragraph("\n\n"));
+
+            // Add Signature Image
             try {
-                ClassPathResource signRes =
-                        new ClassPathResource("static/signature.png");
-                InputStream is = signRes.getInputStream();
                 Image signImg = new Image(
-                        ImageDataFactory.create(is.readAllBytes()));
-                signImg.setWidth(120);
+                        ImageDataFactory.create(
+                                new ClassPathResource("static/signature.png")
+                                        .getInputStream()
+                                        .readAllBytes()
+                        )
+                );
+                signImg.setWidth(100);
+                signImg.setHorizontalAlignment(HorizontalAlignment.RIGHT);
                 rightCell.add(signImg);
             } catch (Exception ignored) {}
 
-            rightCell.add(new Paragraph("Authorized Signatory"));
-            sign.addCell(rightCell);
+            // Add text below image
+            rightCell.add(new Paragraph("Authorized Signatory")
+                    .setFontSize(10)
+                    .setMarginTop(5));
 
-            document.add(sign);
+            signTable.addCell(rightCell);
+
+            document.add(signTable);
 
             document.close();
             return out.toByteArray();
@@ -204,9 +238,11 @@ public class QuotationPdfService {
         document.add(new LineSeparator(new SolidLine()));
     }
 
+    //  Proper Indian currency formatting
     private String formatINR(BigDecimal amount) {
         long value = amount.longValue();
         String s = String.valueOf(value);
+
         if (s.length() <= 3) return "₹ " + s;
 
         String last3 = s.substring(s.length() - 3);
