@@ -1,15 +1,14 @@
 package com.kalibyte.foundry.inventory.ledger.entity;
 
+import com.kalibyte.foundry.inventory.common.BaseInventoryEntity;
 import com.kalibyte.foundry.inventory.inward.entity.MaterialInward;
 import com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "vendor_ledger")
@@ -18,11 +17,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VendorLedger {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class VendorLedger extends BaseInventoryEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vendor_id", nullable = false)
@@ -45,11 +40,4 @@ public class VendorLedger {
     @Builder.Default
     @Column(name = "entry_date", nullable = false)
     private LocalDate entryDate = LocalDate.now();
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "created_by")
-    private String createdBy;
 }

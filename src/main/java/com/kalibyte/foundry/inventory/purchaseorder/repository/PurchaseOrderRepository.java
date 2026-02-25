@@ -34,4 +34,6 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
 
     @Query("SELECT COUNT(p) FROM PurchaseOrder p WHERE YEAR(p.poDate) = :year")
     long countByYear(@Param("year") int year);
+
+    boolean existsByPoNumber(String poNumber);
 }

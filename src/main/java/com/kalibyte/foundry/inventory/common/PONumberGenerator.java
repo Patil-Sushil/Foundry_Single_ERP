@@ -13,10 +13,15 @@ public class PONumberGenerator {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String generate() {
         int year = LocalDate.now().getYear();
         long count = purchaseOrderRepository.countByYear(year);
-        return String.format("PO-%d-%04d", year, count + 1);
+        String poNumber;
+        do {
+            count++;
+            poNumber = String.format("PO-%d-%04d", year, count);
+        } while (purchaseOrderRepository.existsByPoNumber(poNumber));
+        return poNumber;
     }
 }

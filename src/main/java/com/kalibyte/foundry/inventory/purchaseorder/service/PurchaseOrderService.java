@@ -1,6 +1,5 @@
 package com.kalibyte.foundry.inventory.purchaseorder.service;
 
-import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.inventory.common.PONumberGenerator;
 import com.kalibyte.foundry.inventory.item.entity.Item;
@@ -11,7 +10,6 @@ import com.kalibyte.foundry.inventory.purchaseorder.dto.response.LastPurchaseRat
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.OrderItemDetail;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.PurchaseOrderResponse;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.PurchaseOrderSummary;
-import com.kalibyte.foundry.inventory.purchaseorder.entity.ItemVendorRate;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.OrderItem;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.enums.POStatus;
@@ -40,7 +38,7 @@ public class PurchaseOrderService {
     private final PONumberGenerator poNumberGenerator;
 
     @Transactional
-    public PurchaseOrderResponse create(CreatePurchaseOrderRequest request, UUID userId) {
+    public PurchaseOrderResponse create(CreatePurchaseOrderRequest request) {
         Vendor vendor = vendorRepository.findById(request.vendorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + request.vendorId()));
 
@@ -50,9 +48,8 @@ public class PurchaseOrderService {
                 .status(POStatus.OPEN)
                 .notes(request.notes())
                 .expectedDeliveryDate(request.expectedDeliveryDate())
-                .createdByUserId(userId)
+                .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
                 .build();
-        po.setCreatedBy(String.valueOf(userId));
 
         for (OrderItemRequest itemRequest : request.items()) {
             Item item = itemRepository.findById(itemRequest.itemId())

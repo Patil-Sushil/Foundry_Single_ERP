@@ -50,7 +50,7 @@ public class MaterialInwardService {
     private final InwardNumberGenerator inwardNumberGenerator;
 
     @Transactional
-    public InwardResponse startFromPO(Long poId, StartInwardRequest request, UUID userId) {
+    public InwardResponse startFromPO(Long poId, StartInwardRequest request) {
         PurchaseOrder po = purchaseOrderRepository.findWithDetails(poId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase Order not found with id: " + poId));
 
@@ -68,9 +68,8 @@ public class MaterialInwardService {
                 .vendorChallanNumber(request.vendorChallanNumber())
                 .inwardDate(LocalDate.now())
                 .status(InwardStatus.DRAFT)
-                .createdByUserId(userId)
+                .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
                 .build();
-        inward.setCreatedBy(String.valueOf(userId));
 
         for (OrderItem orderItem : po.getOrderItems()) {
             ReceivedItem receivedItem = ReceivedItem.builder()
@@ -87,7 +86,7 @@ public class MaterialInwardService {
     }
 
     @Transactional
-    public InwardResponse updateReceivedQuantities(Long inwardId, List<UpdateReceivedQuantityRequest> updates, UUID userId) {
+    public InwardResponse updateReceivedQuantities(Long inwardId, List<UpdateReceivedQuantityRequest> updates) {
         MaterialInward inward = materialInwardRepository.findById(inwardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + inwardId));
 
@@ -150,11 +149,11 @@ public class MaterialInwardService {
     }
 
     @Transactional
-    public InwardResponse confirm(Long inwardId, UUID userId) {
+    public InwardResponse confirm(Long inwardId) {
         MaterialInward inward = materialInwardRepository.findWithFullDetails(inwardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + inwardId));
 
-        inward.confirm(userId); // Updates status and confirmedBy
+        inward.confirm(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId()); // Updates status and confirmedBy
 
         for (ReceivedItem receivedItem : inward.getReceivedItems()) {
             Item item = receivedItem.getItem();

@@ -37,4 +37,6 @@ public interface MaterialInwardRepository extends JpaRepository<MaterialInward, 
 
     @Query("SELECT COUNT(m) FROM MaterialInward m WHERE YEAR(m.inwardDate) = :year")
     long countByYear(@Param("year") int year);
+
+    boolean existsByInwardNumber(String inwardNumber);
 }

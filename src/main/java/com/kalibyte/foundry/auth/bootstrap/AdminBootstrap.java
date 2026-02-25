@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,7 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(2)
 public class AdminBootstrap implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -28,6 +30,9 @@ public class AdminBootstrap implements CommandLineRunner {
 
     @Value("${app.default-admin.password}")
     private String adminPassword;
+
+    @Value("${app.default-admin.phone:0000000000}")
+    private String adminPhone;
 
     @Override
     public void run(String... args) {
@@ -45,6 +50,7 @@ public class AdminBootstrap implements CommandLineRunner {
         admin.setName("System Administrator");
         admin.setEmail(adminEmail);
         admin.setPassword(passwordEncoder.encode(adminPassword));
+        admin.setPhone(adminPhone);
         admin.setEnabled(true);
         admin.setRoles(Set.of(adminRole));
 

@@ -8,6 +8,8 @@ import com.kalibyte.foundry.customer.service.CustomerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -17,6 +19,8 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Profile("seed") // Only runs in dev profile
+@Order(1)
 public class DataSeeder implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
@@ -63,19 +67,19 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Seeding customers...");
 
-        createCustomer("Acme Castings", "acme@company.com", "9000000001");
-        createCustomer("Steel Industries", "steel@company.com", "9000000002");
-        createCustomer("Metal Traders", "metal@company.com", "9000000003");
+        createCustomer("Acme Castings", "acme@company.com","1111111111");
+        createCustomer("Steel Industries", "steel@company.com","2222222222");
+        createCustomer("Metal Traders", "metal@company.com","3333333333");
 
         log.info("Customers seeded.");
     }
 
-    private void createCustomer(String name, String email, String phone) {
+    private void createCustomer(String name, String email,String phone) {
 
         CustomerRequest req = new CustomerRequest();
         req.setName(name);
         req.setEmail(email);
-        req.setPhone(phone); // IMPORTANT FIX
+        req.setPhone(phone);
         req.setPaymentTerms("NET30");
         req.setCreditLimit(new BigDecimal("100000"));
 

@@ -13,10 +13,15 @@ public class IssueNumberGenerator {
 
     private final MaterialIssueRepository materialIssueRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String generate() {
         int year = LocalDate.now().getYear();
         long count = materialIssueRepository.countByYear(year);
-        return String.format("ISS-%d-%04d", year, count + 1);
+        String issueNumber;
+        do {
+            count++;
+            issueNumber = String.format("ISS-%d-%04d", year, count);
+        } while (materialIssueRepository.existsByIssueNumber(issueNumber));
+        return issueNumber;
     }
 }

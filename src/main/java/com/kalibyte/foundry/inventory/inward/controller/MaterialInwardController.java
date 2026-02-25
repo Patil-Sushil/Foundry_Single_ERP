@@ -35,19 +35,17 @@ public class MaterialInwardController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<InwardResponse> startFromPO(
             @PathVariable Long poId,
-            @Valid @RequestBody StartInwardRequest request,
-            UserPrincipal user) {
+            @Valid @RequestBody StartInwardRequest request) {
         return ApiResponse.success("Inward started successfully", 
-                materialInwardService.startFromPO(poId, request, user.getUserId()));
+                materialInwardService.startFromPO(poId, request));
     }
 
     @PutMapping("/{id}/received-quantities")
     public ApiResponse<InwardResponse> updateReceivedQuantities(
             @PathVariable Long id,
-            @Valid @RequestBody List<UpdateReceivedQuantityRequest> requests,
-            UserPrincipal user) {
+            @Valid @RequestBody List<UpdateReceivedQuantityRequest> requests) {
         return ApiResponse.success("Received quantities updated successfully", 
-                materialInwardService.updateReceivedQuantities(id, requests, user.getUserId()));
+                materialInwardService.updateReceivedQuantities(id, requests));
     }
 
     @GetMapping("/{id}/review")
@@ -58,10 +56,9 @@ public class MaterialInwardController {
 
     @PostMapping("/{id}/confirm")
     public ApiResponse<InwardResponse> confirm(
-            @PathVariable Long id,
-            UserPrincipal user) {
+            @PathVariable Long id) {
         return ApiResponse.success("Inward confirmed successfully", 
-                materialInwardService.confirm(id, user.getUserId()));
+                materialInwardService.confirm(id));
     }
 
     @GetMapping("/{id}")

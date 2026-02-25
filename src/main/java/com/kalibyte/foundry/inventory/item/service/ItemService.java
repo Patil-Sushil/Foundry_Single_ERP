@@ -29,7 +29,7 @@ public class ItemService {
     private final DepartmentRepository departmentRepository;
 
     @Transactional
-    public ItemResponse create(CreateItemRequest request, UUID userId) {
+    public ItemResponse create(CreateItemRequest request) {
         Department department = null;
         if (request.departmentId() != null) {
             department = departmentRepository.findById(request.departmentId())
@@ -55,7 +55,6 @@ public class ItemService {
                 .isActive(true)
                 .build();
 
-        item.setCreatedBy(String.valueOf(userId));
         return toResponse(itemRepository.save(item));
     }
 

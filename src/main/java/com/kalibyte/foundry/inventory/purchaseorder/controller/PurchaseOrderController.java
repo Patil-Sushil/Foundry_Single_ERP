@@ -33,10 +33,9 @@ public class PurchaseOrderController {
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PurchaseOrderResponse> create(
-            @Valid @RequestBody CreatePurchaseOrderRequest request,
-            UserPrincipal user) {
+            @Valid @RequestBody CreatePurchaseOrderRequest request) {
         return ApiResponse.success("Purchase Order created successfully", 
-                purchaseOrderService.create(request, user.getUserId()));
+                purchaseOrderService.create(request));
     }
 
     @GetMapping

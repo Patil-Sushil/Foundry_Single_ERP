@@ -32,11 +32,10 @@ public class ItemController {
 
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<ItemResponse> create(
-            @Valid @RequestBody CreateItemRequest request,
-            UserPrincipal user) {
-        return ApiResponse.success("Item created successfully", itemService.create(request, user.getUserId()));
+            @Valid @RequestBody CreateItemRequest request) {
+        return ApiResponse.success("Item created successfully", itemService.create(request));
     }
 
     @GetMapping

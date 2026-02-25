@@ -1,7 +1,9 @@
 package com.kalibyte.foundry.common.exception;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,6 +21,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
         log.warn("Business exception: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse<>(false, ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(com.kalibyte.foundry.inventory.department.exception.DuplicateDepartmentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateDepartmentException(com.kalibyte.foundry.inventory.department.exception.DuplicateDepartmentException ex) {
+        log.warn("Duplicate department: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiResponse<>(false, ex.getMessage(), null));
     }
@@ -59,5 +68,11 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception occurred", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiResponse<>(false, "An internal server error occurred: " + ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(DuplicateVendorException.class)
+    public  ResponseEntity<ApiResponse<Void>> handleDuplicateVendorException(DuplicateVendorException ex) {
+        log.error("Duplicate vendor: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 }

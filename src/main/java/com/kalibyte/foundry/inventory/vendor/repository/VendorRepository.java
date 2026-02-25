@@ -11,4 +11,6 @@ public interface VendorRepository extends JpaRepository<Vendor, Long> {
     Page<Vendor> findByIsActive(Boolean isActive, Pageable pageable);
 
     Page<Vendor> findByNameContainingIgnoreCaseOrPhoneContaining(String name, String phone, Pageable pageable);
+
+	Vendor findByPhone(String phone);
 }

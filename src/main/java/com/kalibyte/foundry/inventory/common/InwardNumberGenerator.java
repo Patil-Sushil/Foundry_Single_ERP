@@ -13,10 +13,15 @@ public class InwardNumberGenerator {
 
     private final MaterialInwardRepository materialInwardRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String generate() {
         int year = LocalDate.now().getYear();
         long count = materialInwardRepository.countByYear(year);
-        return String.format("MI-%d-%04d", year, count + 1);
+        String inwardNumber;
+        do {
+            count++;
+            inwardNumber = String.format("MI-%d-%04d", year, count);
+        } while (materialInwardRepository.existsByInwardNumber(inwardNumber));
+        return inwardNumber;
     }
 }

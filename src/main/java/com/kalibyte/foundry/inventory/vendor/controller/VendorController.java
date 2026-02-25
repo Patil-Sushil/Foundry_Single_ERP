@@ -32,9 +32,8 @@ public class VendorController {
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<VendorResponse> create(
-            @Valid @RequestBody CreateVendorRequest request,
-            UserPrincipal user) {
-        return ApiResponse.success("Vendor created successfully", vendorService.create(request, user.getUserId()));
+            @Valid @RequestBody CreateVendorRequest request) {
+        return ApiResponse.success("Vendor created successfully", vendorService.create(request));
     }
 
     @GetMapping

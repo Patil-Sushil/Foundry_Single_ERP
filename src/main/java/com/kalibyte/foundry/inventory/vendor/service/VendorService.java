@@ -6,6 +6,7 @@ import com.kalibyte.foundry.inventory.vendor.dto.request.UpdateVendorRequest;
 import com.kalibyte.foundry.inventory.vendor.dto.response.VendorResponse;
 import com.kalibyte.foundry.inventory.vendor.dto.response.VendorSummary;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
+import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,7 +25,11 @@ public class VendorService {
     private final VendorRepository vendorRepository;
 
     @Transactional
-    public VendorResponse create(CreateVendorRequest request, UUID userId) {
+    public VendorResponse create(CreateVendorRequest request) {
+        Vendor vendor1 = vendorRepository.findByPhone(request.phone());
+        if(vendor1 != null){
+            throw new DuplicateVendorException("Vendor by the phone :"+ request.phone() +" is already in database");
+        }
         Vendor vendor = Vendor.builder()
                 .name(request.name())
                 .phone(request.phone())
@@ -32,7 +37,7 @@ public class VendorService {
                 .address(request.address())
                 .isActive(true)
                 .build();
-        vendor.setCreatedBy(String.valueOf(userId)); 
+        
         return toResponse(vendorRepository.save(vendor));
     }
 

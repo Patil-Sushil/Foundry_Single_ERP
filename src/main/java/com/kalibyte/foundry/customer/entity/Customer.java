@@ -21,14 +21,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EntityListeners(AuditingEntityListener.class)
 public class Customer extends BaseEntity {
-
-    @Id
-    @GeneratedValue
-    @org.hibernate.annotations.UuidGenerator
-    @Column(updatable = false, nullable = false)
-    private UUID id;
 
     @Column(nullable = false)
     private String name;

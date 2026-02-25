@@ -74,7 +74,6 @@ public class VendorLedgerService {
                 .amount(inward.getTotalAmount())
                 .description("Material received - " + inward.getInwardNumber())
                 .entryDate(inward.getInwardDate())
-                .createdBy(inward.getConfirmedByUserId() != null ? String.valueOf(inward.getConfirmedByUserId()) : null)
                 .build();
         
         vendorLedgerRepository.save(ledger);

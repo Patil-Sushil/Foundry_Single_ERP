@@ -4,6 +4,7 @@ public enum RoleName {
     ADMIN,
     SALES,
     DESIGN,
+    STORE,
     FINANCE,
     PRODUCTION
 }

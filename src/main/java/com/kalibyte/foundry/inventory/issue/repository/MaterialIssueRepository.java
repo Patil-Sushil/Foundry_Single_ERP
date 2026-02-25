@@ -43,4 +43,6 @@ public interface MaterialIssueRepository extends JpaRepository<MaterialIssue, Lo
 
     @Query("SELECT COUNT(m) FROM MaterialIssue m WHERE YEAR(m.issueDate) = :year")
     long countByYear(@Param("year") int year);
+
+    boolean existsByIssueNumber(String issueNumber);
 }

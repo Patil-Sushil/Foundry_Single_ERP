@@ -37,19 +37,18 @@ public class MaterialIssueService {
     private final IssueNumberGenerator issueNumberGenerator;
 
     @Transactional
-    public MaterialIssueResponse recordIssue(RecordIssueRequest request, UUID issuedByUserId) {
+    public MaterialIssueResponse recordIssue(RecordIssueRequest request) {
         Department department = departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
 
         MaterialIssue issue = MaterialIssue.builder()
                 .issueNumber(issueNumberGenerator.generate())
                 .department(department)
-                .issuedByUserId(issuedByUserId)
+                .issuedByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
                 .issueDate(request.issueDate() != null ? request.issueDate() : LocalDate.now())
                 .purpose(request.purpose())
                 .notes(request.notes())
                 .build();
-        issue.setCreatedBy(String.valueOf(issuedByUserId));
 
         for (IssueItemRequest itemRequest : request.items()) {
             Item item = itemRepository.findById(itemRequest.itemId())
