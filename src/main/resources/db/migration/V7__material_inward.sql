@@ -33,7 +33,7 @@ CREATE TABLE received_items (
     id BIGSERIAL PRIMARY KEY,
     material_inward_id BIGINT NOT NULL REFERENCES material_inwards(id) ON DELETE CASCADE,
     item_id BIGINT NOT NULL REFERENCES items(id),
-    order_item_id BIGINT REFERENCES order_items(id),
+    order_item_id BIGINT REFERENCES purchase_order_items(id),
     po_quantity DECIMAL(15,3),
     received_quantity DECIMAL(15,3) NOT NULL,
     unit_rate DECIMAL(12,2) NOT NULL,

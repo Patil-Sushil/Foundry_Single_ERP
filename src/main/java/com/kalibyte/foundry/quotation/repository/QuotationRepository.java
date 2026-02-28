@@ -16,6 +16,7 @@ public interface QuotationRepository extends JpaRepository<Quotation, UUID> {
 
     Optional<Quotation> findTopByQuotationNumberStartingWithOrderByQuotationNumberDesc(String prefix);
 
+    // Solving N+1
     @EntityGraph(attributePaths = {
             "customer",
             "items",

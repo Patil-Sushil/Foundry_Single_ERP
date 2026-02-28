@@ -15,7 +15,7 @@ public record CreatePurchaseOrderRequest(
 
     @NotEmpty(message = "Order items cannot be empty")
     @Valid
-    List<OrderItemRequest> items,
+    List<PurchaseOrderItemRequest> items,
 
     String notes
 ) implements Serializable {}

@@ -56,7 +56,7 @@ public class QuotationPdfService {
             } catch (Exception ignored) {}
 
             // ================= COMPANY HEADER =================
-            document.add(new Paragraph("MITTAL PRECISION STEEL FOUNDRY")
+            document.add(new Paragraph("KALI-BYTE PRECISION STEEL FOUNDRY")
                     .setBold()
                     .setFontSize(20)
                     .setFontColor(ColorConstants.BLUE)
@@ -173,7 +173,7 @@ public class QuotationPdfService {
 
             // Left Cell
             Cell leftCell = new Cell()
-                    .add(new Paragraph("For Mittal Precision Steel Foundry"))
+                    .add(new Paragraph("For Kali-Byte Precision Steel Foundry"))
                     .setBorder(Border.NO_BORDER)
                     .setVerticalAlignment(VerticalAlignment.BOTTOM);
 

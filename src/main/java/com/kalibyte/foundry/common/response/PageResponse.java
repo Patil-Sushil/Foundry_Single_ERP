@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.common.response;
 
+import com.kalibyte.foundry.order.dto.response.OrderResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -53,6 +54,19 @@ public class PageResponse<T> {
                 .last(page.isLast())
                 .first(page.isFirst())
                 .empty(page.isEmpty())
+                .build();
+    }
+
+    public static PageResponse<OrderResponse> of(Page<OrderResponse> map) {
+        return PageResponse.<OrderResponse>builder()
+                .content(map.getContent())
+                .pageNumber(map.getNumber())
+                .pageSize(map.getSize())
+                .totalElements(map.getTotalElements())
+                .totalPages(map.getTotalPages())
+                .last(map.isLast())
+                .first(map.isFirst())
+                .empty(map.isEmpty())
                 .build();
     }
 }

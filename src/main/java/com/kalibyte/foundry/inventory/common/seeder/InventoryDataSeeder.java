@@ -21,7 +21,7 @@ import com.kalibyte.foundry.inventory.ledger.entity.VendorLedger;
 import com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType;
 import com.kalibyte.foundry.inventory.ledger.repository.VendorLedgerRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.ItemVendorRate;
-import com.kalibyte.foundry.inventory.purchaseorder.entity.OrderItem;
+import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrderItem;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.enums.POStatus;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRepository;
@@ -261,7 +261,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
     }
 
     private void addOrderItem(PurchaseOrder po, Item item, double qty, double rate) {
-        OrderItem oi = OrderItem.builder()
+        PurchaseOrderItem oi = PurchaseOrderItem.builder()
                 .purchaseOrder(po)
                 .item(item)
                 .orderedQuantity(BigDecimal.valueOf(qty))
@@ -285,7 +285,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         return materialInwardRepository.save(mi);
     }
 
-    private void receiveItem(MaterialInward mi, Item item, double qty, double rate, OrderItem oi) {
+    private void receiveItem(MaterialInward mi, Item item, double qty, double rate, PurchaseOrderItem oi) {
         ReceivedItem ri = ReceivedItem.builder()
                 .materialInward(mi)
                 .item(item)

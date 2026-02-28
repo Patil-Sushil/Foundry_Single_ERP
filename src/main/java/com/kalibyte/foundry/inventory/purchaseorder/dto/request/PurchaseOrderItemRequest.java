@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
-public record OrderItemRequest(
+public record PurchaseOrderItemRequest(
     @NotNull(message = "Item ID is required")
     Long itemId,
 
