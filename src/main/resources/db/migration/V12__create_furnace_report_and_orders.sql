@@ -1,3 +1,26 @@
+CREATE TABLE furnace_reports (
+    id BIGSERIAL PRIMARY KEY,
+    furnace_ref_no VARCHAR(50) NOT NULL UNIQUE,
+    operator_name VARCHAR(50) NOT NULL,
+    shift VARCHAR(8),
+    incharge_name VARCHAR(50),
+    date DATE
+);
+
+CREATE TABLE furnace_heats (
+    id BIGSERIAL PRIMARY KEY,
+    sipercentage double precision,
+    cpcpercentage double precision,
+    mgpercentage double precision,
+    furnace_id BIGINT NOT NULL REFERENCES furnace_reports(id) ON DELETE CASCADE,
+    total_weight double precision NOT NULL ,
+    start_reading double precision NOT NULL ,
+    stop_reading double precision NOT NULL ,
+    difference_reading double precision DEFAULT 0,
+    power_to_weight double precision DEFAULT 0,
+    pouring_temp double precision
+);
+
 -- ============================================
 -- EXTENSION (UUID)
 -- ============================================
