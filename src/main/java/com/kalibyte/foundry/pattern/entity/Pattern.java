@@ -2,6 +2,7 @@ package com.kalibyte.foundry.pattern.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.pattern.entity.ENUMS.PatternMaterial;
+import com.kalibyte.foundry.pattern.entity.ENUMS.PatternStatus;
 import com.kalibyte.foundry.pattern.entity.ENUMS.PatternType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,6 +16,9 @@ import lombok.*;
 @AllArgsConstructor
 public class Pattern extends BaseEntity {
 
+    @Column(name = "pattern_number", nullable = false, unique = true, updatable = false)
+    private String patternNumber;
+
     @Column(nullable = false)
     private String name;
 
@@ -25,4 +29,18 @@ public class Pattern extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PatternMaterial material;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PatternStatus status;
+
+    @Column(name = "rack_number")
+    private String rackNumber;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.status == null) {
+            this.status = PatternStatus.AVAILABLE; // Default
+        }
+    }
 }
