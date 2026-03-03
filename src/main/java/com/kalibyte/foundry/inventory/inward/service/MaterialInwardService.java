@@ -16,7 +16,7 @@ import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.ledger.service.VendorLedgerService;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.ItemVendorRate;
-import com.kalibyte.foundry.inventory.purchaseorder.entity.OrderItem;
+import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrderItem;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
@@ -32,7 +32,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -71,7 +70,7 @@ public class MaterialInwardService {
                 .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
                 .build();
 
-        for (OrderItem orderItem : po.getOrderItems()) {
+        for (PurchaseOrderItem orderItem : po.getOrderItems()) {
             ReceivedItem receivedItem = ReceivedItem.builder()
                     .item(orderItem.getItem())
                     .orderItem(orderItem)
@@ -164,7 +163,7 @@ public class MaterialInwardService {
 
             // Update Order Item Received Quantity if linked
             if (receivedItem.getOrderItem() != null) {
-                OrderItem orderItem = receivedItem.getOrderItem();
+                PurchaseOrderItem orderItem = receivedItem.getOrderItem();
                 orderItem.addReceivedQuantity(receivedItem.getReceivedQuantity());
             }
 

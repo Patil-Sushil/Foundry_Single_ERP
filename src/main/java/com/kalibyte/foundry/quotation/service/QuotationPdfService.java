@@ -56,18 +56,18 @@ public class QuotationPdfService {
             } catch (Exception ignored) {}
 
             // ================= COMPANY HEADER =================
-            document.add(new Paragraph("MITTAL PRECISION STEEL FOUNDRY")
+            document.add(new Paragraph("KALI-BYTE PRECISION STEEL FOUNDRY")
                     .setBold()
                     .setFontSize(20)
                     .setFontColor(ColorConstants.BLUE)
                     .setTextAlignment(TextAlignment.CENTER));
 
             document.add(new Paragraph(
-                    "Plot No: A-12, MIDC Industrial Area, Kolhapur - 416234")
+                    "Plot No: A-12, MIDC Industrial Area, sangli - 416436")
                     .setTextAlignment(TextAlignment.CENTER));
 
             document.add(new Paragraph(
-                    "GST No: 27AACM1234P125 | Contact: 0214-2654321 | Email: info@mittalfoundry.com")
+                    "GST No: 27AACM1234P125 | Contact: 0214-2654321 | Email: info@kalibytefoundry.com")
                     .setTextAlignment(TextAlignment.CENTER));
 
             addSeparator(document);
@@ -173,7 +173,7 @@ public class QuotationPdfService {
 
             // Left Cell
             Cell leftCell = new Cell()
-                    .add(new Paragraph("For Mittal Precision Steel Foundry"))
+                    .add(new Paragraph("For Kali-Byte Precision Steel Foundry"))
                     .setBorder(Border.NO_BORDER)
                     .setVerticalAlignment(VerticalAlignment.BOTTOM);
 

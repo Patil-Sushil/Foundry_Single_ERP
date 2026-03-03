@@ -49,18 +49,18 @@ public class PurchaseOrder extends BaseInventoryEntity {
 
     @Builder.Default
     @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> orderItems = new ArrayList<>();
+    private List<PurchaseOrderItem> orderItems = new ArrayList<>();
 
     // --- DOMAIN METHODS ---
 
-    public void addOrderItem(OrderItem item) {
+    public void addOrderItem(PurchaseOrderItem item) {
         item.setPurchaseOrder(this);
         this.orderItems.add(item);
     }
 
     public BigDecimal getTotalOrderValue() {
         return orderItems.stream()
-                .map(OrderItem::getTotalValue)
+                .map(PurchaseOrderItem::getTotalValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -72,7 +72,7 @@ public class PurchaseOrder extends BaseInventoryEntity {
     }
 
     public void updateStatusAfterInward() {
-        boolean allReceived = orderItems.stream().allMatch(OrderItem::isFullyReceived);
+        boolean allReceived = orderItems.stream().allMatch(PurchaseOrderItem::isFullyReceived);
         if (allReceived) {
             this.status = POStatus.RECEIVED;
         } else {

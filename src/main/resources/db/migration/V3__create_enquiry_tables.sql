@@ -48,7 +48,8 @@ CREATE TABLE enquiry (
 
                          total_weight_kg NUMERIC(12,3) NOT NULL,
                          expected_delivery_date DATE,
-                         status VARCHAR(30) DEFAULT 'NEW',
+
+                         status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
 
                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                          updated_at TIMESTAMP,
@@ -58,7 +59,10 @@ CREATE TABLE enquiry (
                          CONSTRAINT fk_enquiry_customer
                              FOREIGN KEY (customer_id)
                                  REFERENCES customer(id)
-                                 ON DELETE RESTRICT
+                                 ON DELETE RESTRICT,
+
+                         CONSTRAINT chk_enquiry_status
+                             CHECK (status IN ('PENDING','QUOTED','CLOSED'))
 );
 
 CREATE INDEX idx_enquiry_customer ON enquiry(customer_id);

@@ -2,7 +2,7 @@ package com.kalibyte.foundry.inventory.inward.entity;
 
 import com.kalibyte.foundry.inventory.inward.entity.enums.ReceiptStatus;
 import com.kalibyte.foundry.inventory.item.entity.Item;
-import com.kalibyte.foundry.inventory.purchaseorder.entity.OrderItem;
+import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrderItem;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,7 +32,7 @@ public class ReceivedItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_item_id")
-    private OrderItem orderItem;
+    private PurchaseOrderItem orderItem;
 
     @Column(name = "po_quantity")
     private BigDecimal poQuantity;

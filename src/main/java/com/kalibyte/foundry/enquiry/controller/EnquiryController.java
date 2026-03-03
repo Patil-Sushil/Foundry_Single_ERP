@@ -3,7 +3,9 @@ package com.kalibyte.foundry.enquiry.controller;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.enquiry.dto.request.EnquiryCreateRequest;
+import com.kalibyte.foundry.enquiry.dto.request.UpdateEnquiryStatusRequest;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
+import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,5 +53,16 @@ public class EnquiryController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return ApiResponse.success(enquiryService.getByCustomerId(customerId, page, size));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ApiResponse<EnquiryResponse> updateStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateEnquiryStatusRequest request) {
+
+        EnquiryResponse response =
+                enquiryService.updateStatus(id, request.getStatus());
+
+        return ApiResponse.success(response);
     }
 }

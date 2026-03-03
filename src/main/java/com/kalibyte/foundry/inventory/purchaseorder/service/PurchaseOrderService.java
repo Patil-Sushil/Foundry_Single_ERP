@@ -5,12 +5,12 @@ import com.kalibyte.foundry.inventory.common.PONumberGenerator;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.request.CreatePurchaseOrderRequest;
-import com.kalibyte.foundry.inventory.purchaseorder.dto.request.OrderItemRequest;
+import com.kalibyte.foundry.inventory.purchaseorder.dto.request.PurchaseOrderItemRequest;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.LastPurchaseRate;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.OrderItemDetail;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.PurchaseOrderResponse;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.PurchaseOrderSummary;
-import com.kalibyte.foundry.inventory.purchaseorder.entity.OrderItem;
+import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrderItem;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.enums.POStatus;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRepository;
@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -51,11 +50,11 @@ public class PurchaseOrderService {
                 .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
                 .build();
 
-        for (OrderItemRequest itemRequest : request.items()) {
+        for (PurchaseOrderItemRequest itemRequest : request.items()) {
             Item item = itemRepository.findById(itemRequest.itemId())
                     .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemRequest.itemId()));
 
-            OrderItem orderItem = OrderItem.builder()
+            PurchaseOrderItem orderItem = PurchaseOrderItem.builder()
                     .item(item)
                     .orderedQuantity(itemRequest.quantity())
                     .unitRate(itemRequest.unitRate())

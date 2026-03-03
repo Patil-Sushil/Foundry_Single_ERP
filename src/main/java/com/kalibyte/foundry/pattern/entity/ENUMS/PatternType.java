@@ -1,8 +1,10 @@
 package com.kalibyte.foundry.pattern.entity.ENUMS;
 
 public enum PatternType {
-    WOOD,
-    METAL,
-    ALUMINIUM,
-    RESIN,
+    SPLIT_PATTERN,
+    MATCH_PLATE_PATTERN,
+    COPE_AND_DRAG_PATTERN,
+    GATED_PATTERN,
+    LOOSE_PIECE_PATTERN,
 }
+

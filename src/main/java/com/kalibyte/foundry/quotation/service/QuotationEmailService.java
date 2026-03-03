@@ -33,7 +33,7 @@ public class QuotationEmailService {
                     Please find attached quotation %s.
 
                     Regards,
-                    Mittal Precision Steel Foundry
+                    Kali-Byte Precision Steel Foundry
                     """.formatted(
                     quotation.getCustomer().getName(),
                     quotation.getQuotationNumber()
