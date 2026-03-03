@@ -7,9 +7,10 @@ import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.order.dto.request.OrderCreateRequest;
 import com.kalibyte.foundry.order.dto.request.OrderItemRequest;
 import com.kalibyte.foundry.order.dto.response.OrderResponse;
+import com.kalibyte.foundry.order.entity.ENUM.OrderType;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
-import com.kalibyte.foundry.order.entity.OrderStatus;
+import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
 import com.kalibyte.foundry.order.mapper.OrderMapper;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.order.service.OrderService;
@@ -74,6 +75,7 @@ public class OrderServiceImpl implements OrderService {
         Quotation quotation = quotationRepository.findById(request.getQuotationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Quotation not found"));
 
+
         if (!QuotationStatus.APPROVED.equals(quotation.getStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -92,6 +94,7 @@ public class OrderServiceImpl implements OrderService {
                 .orderNumber(generateOrderNumber())
                 .customer(quotation.getCustomer())
                 .quotation(quotation)
+                .orderType(OrderType.QUOTATION)
                 .orderDate(LocalDate.now())
                 .deliveryDate(request.getDeliveryDate())
                 .status(OrderStatus.CREATED)
@@ -137,6 +140,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .customer(customer)
+                .orderType(OrderType.DIRECT)
                 .orderDate(LocalDate.now())
                 .deliveryDate(request.getDeliveryDate())
                 .status(OrderStatus.CREATED)

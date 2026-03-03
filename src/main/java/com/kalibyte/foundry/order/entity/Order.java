@@ -2,6 +2,8 @@ package com.kalibyte.foundry.order.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
+import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
+import com.kalibyte.foundry.order.entity.ENUM.OrderType;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,6 +27,10 @@ public class Order extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false)
+    private OrderType orderType;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quotation_id", nullable = false, unique = true)

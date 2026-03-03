@@ -1,12 +1,8 @@
 package com.kalibyte.foundry.order.validation;
 
-import com.kalibyte.foundry.order.entity.OrderStatus;
-import org.apache.coyote.BadRequestException;
+import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Map;
-import java.util.Set;
 
 public class OrderStatusTransitionValidator {
 

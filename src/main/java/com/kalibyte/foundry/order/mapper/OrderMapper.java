@@ -31,6 +31,7 @@ public class OrderMapper {
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
                 .status(order.getStatus())
+                .orderType(order.getOrderType())
                 .orderDate(order.getOrderDate())
                 .deliveryDate(order.getDeliveryDate())
 

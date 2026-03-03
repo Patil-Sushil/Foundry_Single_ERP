@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.order.entity;
+package com.kalibyte.foundry.order.entity.ENUM;
 
 public enum OrderStatus {
     CREATED,

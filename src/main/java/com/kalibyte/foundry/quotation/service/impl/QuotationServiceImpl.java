@@ -5,6 +5,8 @@ import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.util.SecurityUtils;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
+import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
+import com.kalibyte.foundry.enquiry.entity.Enquiry;
 import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
 import com.kalibyte.foundry.quotation.dto.request.QuotationCreateRequest;
 import com.kalibyte.foundry.quotation.dto.response.QuotationResponse;
@@ -88,7 +90,11 @@ public class QuotationServiceImpl implements QuotationService {
 
         recalculateTotals(quotation);
 
+        Enquiry enquiry = quotation.getEnquiry();
+        enquiry.setStatus(EnquiryStatus.QUOTED);
+
         return quotationRepository.save(quotation);
+
     }
 
     // ========================= GET =========================

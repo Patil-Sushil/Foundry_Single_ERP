@@ -2,6 +2,7 @@ package com.kalibyte.foundry.enquiry.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
+import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,8 +35,9 @@ public class Enquiry extends BaseEntity {
 
 
 
-    @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EnquiryStatus status;
 
     @Column(name = "total_weight_kg", nullable = false)
     private BigDecimal totalWeightKg;

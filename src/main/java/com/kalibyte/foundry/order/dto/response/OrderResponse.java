@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.order.dto.response;
 
-import com.kalibyte.foundry.order.entity.OrderStatus;
+import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
+import com.kalibyte.foundry.order.entity.ENUM.OrderType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +21,8 @@ public class OrderResponse {
     private UUID id;
     private String orderNumber;
     private OrderStatus status;
+
+    private OrderType orderType;
 
     private LocalDate orderDate;
     private LocalDate deliveryDate;

@@ -10,6 +10,7 @@ import com.kalibyte.foundry.enquiry.dto.request.EnquiryItemCreateRequest;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryItemResponse;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.entity.*;
+import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
 import com.kalibyte.foundry.enquiry.entity.ENUM.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.ENUM.MetalType;
 import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
@@ -46,7 +47,7 @@ public class EnquiryServiceImpl implements EnquiryService {
                 .enquiryNo(generateEnquiryNumber())
                 .enquiryDate(request.getEnquiryDate())
                 .customer(customer)
-                .status("NEW")
+                .status(EnquiryStatus.PENDING) // Default status for new enquiries
                 .build();
 
         enquiry.setCreatedBy(SecurityUtils.getCurrentUsername());
@@ -189,6 +190,38 @@ public class EnquiryServiceImpl implements EnquiryService {
         Page<Enquiry>enquiryPage = enquiryRepository.findByCustomerId(customerId, pageable);
 
         return PageResponse.from(enquiryPage, this::toResponse);
+    }
+
+    @Override
+    public EnquiryResponse updateStatus(UUID enquiryId, EnquiryStatus newStatus) {
+        Enquiry enquiry = enquiryRepository.findById(enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+        EnquiryStatus CurrentStatus = enquiry.getStatus();
+
+        validateSatusTransition(CurrentStatus, newStatus);
+
+        enquiry.setStatus(newStatus);
+        enquiry.setUpdatedBy(SecurityUtils.getCurrentUsername());
+
+        return toResponse(enquiry);
+
+
+    }
+
+    private void validateSatusTransition(EnquiryStatus current, EnquiryStatus newStatus) {
+        if (current == EnquiryStatus.CLOSED) {
+            throw new IllegalStateException("Cannot change status of CLOSED enquiry");
+        }
+
+        if (current == EnquiryStatus.PENDING &&
+                !(newStatus == EnquiryStatus.QUOTED || newStatus == EnquiryStatus.CLOSED)) {
+            throw new IllegalStateException("Invalid status transition from PENDING");
+        }
+
+        if (current == EnquiryStatus.QUOTED &&
+                newStatus != EnquiryStatus.CLOSED) {
+            throw new IllegalStateException("Invalid status transition from QUOTED");
+        }
     }
 
     private EnquiryResponse toResponse(Enquiry enquiry) {

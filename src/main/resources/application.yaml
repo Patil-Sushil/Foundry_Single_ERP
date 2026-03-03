@@ -42,7 +42,7 @@ spring:
 
 jwt:
   secret: Q0tQeXJmOW9Jb2ZxV2F5cFhUeG5sQzFkQkZpQzZ3c0ZxS0p4cA==
-  expiration: 900000
+  expiration: 604800000
   refresh-expiration: 604800000
 
 app:

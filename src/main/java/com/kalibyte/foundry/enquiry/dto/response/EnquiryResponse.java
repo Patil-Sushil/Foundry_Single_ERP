@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.enquiry.dto.response;
 
+import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,7 +20,7 @@ public class EnquiryResponse {
     private LocalDate enquiryDate;
     private String customerName;
     private BigDecimal totalWeightKg;
-    private String status;
+    private EnquiryStatus status;
 
     private List<EnquiryItemResponse> items;
 }

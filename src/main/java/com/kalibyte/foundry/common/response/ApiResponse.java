@@ -24,7 +24,7 @@ public class ApiResponse<T> {
         this.message = message;
     }
 
-    /** ✅ Correct success wrapper */
+    /**  Correct success wrapper */
     public static <T> ApiResponse<T> success(T data) {
         ApiResponse<T> response = new ApiResponse<>();
         response.success = true;
@@ -32,7 +32,7 @@ public class ApiResponse<T> {
         return response;
     }
 
-    /** ✅ Optional: success with message */
+    /**  Optional: success with message */
     public static <T> ApiResponse<T> success(String message, T data) {
         ApiResponse<T> response = new ApiResponse<>();
         response.success = true;
@@ -41,7 +41,7 @@ public class ApiResponse<T> {
         return response;
     }
 
-    /** ✅ Optional: failure */
+    /**  Optional: failure */
     public static <T> ApiResponse<T> failure(String message) {
         ApiResponse<T> response = new ApiResponse<>();
         response.success = false;

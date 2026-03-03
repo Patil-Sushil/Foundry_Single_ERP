@@ -63,11 +63,11 @@ public class QuotationPdfService {
                     .setTextAlignment(TextAlignment.CENTER));
 
             document.add(new Paragraph(
-                    "Plot No: A-12, MIDC Industrial Area, Kolhapur - 416234")
+                    "Plot No: A-12, MIDC Industrial Area, sangli - 416436")
                     .setTextAlignment(TextAlignment.CENTER));
 
             document.add(new Paragraph(
-                    "GST No: 27AACM1234P125 | Contact: 0214-2654321 | Email: info@mittalfoundry.com")
+                    "GST No: 27AACM1234P125 | Contact: 0214-2654321 | Email: info@kalibytefoundry.com")
                     .setTextAlignment(TextAlignment.CENTER));
 
             addSeparator(document);
