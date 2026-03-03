@@ -11,5 +11,6 @@ public enum ItemSubCategory {
     MECHANICAL,
     ABRASIVE,
     REFRACTORY,
-    GENERAL
+    GENERAL,
+    CORE
 }

@@ -1,6 +1,5 @@
 package com.kalibyte.foundry.inventory.issue.service;
 
-import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.inventory.common.IssueNumberGenerator;
 import com.kalibyte.foundry.inventory.department.entity.Department;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -81,14 +79,20 @@ public class MaterialIssueService {
         return toResponse(issue);
     }
 
+
     @Transactional(readOnly = true)
     public Page<MaterialIssueSummary> getAll(Long departmentId, LocalDate from, LocalDate to, Pageable pageable) {
+        departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + departmentId));
         return materialIssueRepository.findAllFiltered(departmentId, from, to, pageable)
                 .map(this::toSummary);
     }
 
     @Transactional(readOnly = true)
     public DepartmentConsumptionReport getConsumptionReport(Long departmentId, LocalDate from, LocalDate to) {
+        departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + departmentId));
+
         List<MaterialIssue> issues = materialIssueRepository.findByDepartmentAndDateRange(departmentId, from, to);
 
         Map<Long, ConsumptionDetail> map = new HashMap<>();

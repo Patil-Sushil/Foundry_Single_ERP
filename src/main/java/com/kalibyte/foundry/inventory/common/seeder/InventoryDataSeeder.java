@@ -152,6 +152,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         items.add(createItem("Grinding Wheels 4\"", "CON-001", ItemCategory.CONSUMABLE, ItemSubCategory.ABRASIVE, production, ItemUnit.PCS, 100, 50));
         items.add(createItem("Industrial Oxygen", "CON-002", ItemCategory.CONSUMABLE, ItemSubCategory.GENERAL, production, ItemUnit.LITRE, 200, 100));
         items.add(createItem("Hydraulic Oil VG 68", "CON-003", ItemCategory.CONSUMABLE, ItemSubCategory.GENERAL, maint, ItemUnit.LITRE, 50, 20));
+        items.add(createItem("CORES", "CORE-001", ItemCategory.RAW_MATERIAL, ItemSubCategory.CORE, production, ItemUnit.PCS, 30, 10));
 
         // Spare Parts
         items.add(createItem("Ball Bearing 6205", "SP-001", ItemCategory.SPARE_PART, ItemSubCategory.MECHANICAL, maint, ItemUnit.PCS, 20, 10));

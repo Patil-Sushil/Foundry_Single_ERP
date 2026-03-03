@@ -32,8 +32,7 @@ public class MaterialIssueController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<MaterialIssueResponse> recordIssue(
             @Valid @RequestBody RecordIssueRequest request) {
-        return ApiResponse.success("Material Issue recorded successfully", 
-                materialIssueService.recordIssue(request));
+        return ApiResponse.success("Material Issue recorded successfully", materialIssueService.recordIssue(request));
     }
 
     @GetMapping("/{id}")
