@@ -1,24 +1,16 @@
-package com.kalibyte.foundry.pattern.dto.response;
+package com.kalibyte.foundry.pattern.dto.request;
 
 import com.kalibyte.foundry.pattern.entity.ENUMS.PatternMaterial;
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternStatus;
 import com.kalibyte.foundry.pattern.entity.ENUMS.PatternType;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.UUID;
-
-@Builder
 @Getter
 @Setter
-public class PatternResponse {
+public class PatternUpdateRequest {
 
-    private UUID id;
-    private String patternNumber;
     private String name;
     private PatternType type;
     private PatternMaterial material;
-    private PatternStatus status;
     private String rackNumber;
 }

@@ -1,42 +1,74 @@
 -- EXTENSION (required for UUID generation)
+-- ==========================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+
+-- ==========================================
+-- PATTERN NUMBER SEQUENCE
+-- ==========================================
+
+CREATE SEQUENCE IF NOT EXISTS pattern_number_seq
+    START WITH 1
+    INCREMENT BY 1;
+
+
+-- ==========================================
 -- PATTERN MASTER
+-- ==========================================
 
 CREATE TABLE patterns (
                           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
+                          pattern_number VARCHAR(50) NOT NULL UNIQUE,
+
                           name VARCHAR(150) NOT NULL,
                           type VARCHAR(50) NOT NULL,
                           material VARCHAR(50) NOT NULL,
+
+                          status VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE',
+                          rack_number VARCHAR(100),
 
                           tenant_id UUID,
 
                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                           updated_at TIMESTAMP,
                           created_by VARCHAR(255),
-                          updated_by VARCHAR(255)
+                          updated_by VARCHAR(255),
+
+                          CONSTRAINT chk_pattern_status
+                              CHECK (status IN ('AVAILABLE','IN_USE','UNDER_MAINTENANCE','SCRAPPED'))
 );
 
 CREATE INDEX idx_patterns_name ON patterns(name);
+CREATE INDEX idx_patterns_status ON patterns(status);
+CREATE INDEX idx_patterns_rack ON patterns(rack_number);
 
+
+-- ==========================================
 -- PATTERN RECEIPT (Customer provided patterns)
+-- ==========================================
 
 CREATE TABLE pattern_receipt (
                                  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
                                  inward_date DATE,
                                  outward_date DATE,
+
                                  name VARCHAR(255) NOT NULL,
                                  type VARCHAR(50) NOT NULL,
                                  material VARCHAR(50) NOT NULL,
+
                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                  updated_at TIMESTAMP,
                                  created_by VARCHAR(255),
                                  updated_by VARCHAR(255)
 );
 
--- ENQUIRY--
+
+-- ==========================================
+-- ENQUIRY
+-- ==========================================
 
 CREATE TABLE enquiry (
                          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -69,7 +101,10 @@ CREATE INDEX idx_enquiry_customer ON enquiry(customer_id);
 CREATE INDEX idx_enquiry_status ON enquiry(status);
 CREATE INDEX idx_enquiry_date ON enquiry(enquiry_date);
 
--- ENQUIRY ITEM (ENUM BASED)
+
+-- ==========================================
+-- ENQUIRY ITEM
+-- ==========================================
 
 CREATE TABLE enquiry_item (
                               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -78,7 +113,6 @@ CREATE TABLE enquiry_item (
 
                               part_name VARCHAR(150) NOT NULL,
 
-                             -- ENUM stored as STRING
                               metal_category VARCHAR(50) NOT NULL,
                               metal_type VARCHAR(50) NOT NULL,
 
@@ -114,12 +148,11 @@ CREATE TABLE enquiry_item (
 
                               CONSTRAINT chk_pattern_logic
                                   CHECK (
-                                      (pattern_provided_by_customer = TRUE AND pattern_receipt_id IS NOT NULL)
+                                      (pattern_provided_by_customer = TRUE AND pattern_receipt_id IS NOT NULL AND pattern_id IS NULL)
                                           OR
-                                      (pattern_provided_by_customer = FALSE AND pattern_id IS NOT NULL)
+                                      (pattern_provided_by_customer = FALSE AND pattern_id IS NOT NULL AND pattern_receipt_id IS NULL)
                                       ),
 
-                              -- Optional: Enforce valid categories
                               CONSTRAINT chk_metal_category
                                   CHECK (metal_category IN ('FERROUS','NON_FERROUS'))
 );

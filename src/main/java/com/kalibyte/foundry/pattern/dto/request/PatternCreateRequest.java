@@ -11,12 +11,8 @@ import lombok.Setter;
 @Setter
 public class PatternCreateRequest {
 
-    @NotBlank
     private String name;
-
-    @NotNull
     private PatternType type;
-
-    @NotNull
     private PatternMaterial material;
+    private String rackNumber;
 }
