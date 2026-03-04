@@ -20,8 +20,11 @@ public interface QuotationRepository extends JpaRepository<Quotation, UUID> {
     @EntityGraph(attributePaths = {
             "customer",
             "items",
+            "items.lineTotal",
     })
     Optional<Quotation> findById(UUID id);
 
     Page<Quotation> findByStatus(QuotationStatus status, Pageable pageable);
+
+    boolean existsByEnquiryId(UUID enquiryId);
 }

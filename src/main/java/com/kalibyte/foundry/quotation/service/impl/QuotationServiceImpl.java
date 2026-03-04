@@ -17,6 +17,7 @@ import com.kalibyte.foundry.quotation.mapper.QuotationMapper;
 import com.kalibyte.foundry.quotation.repository.QuotationRepository;
 import com.kalibyte.foundry.quotation.service.QuotationEmailService;
 import com.kalibyte.foundry.quotation.service.QuotationService;
+
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -39,10 +40,19 @@ public class QuotationServiceImpl implements QuotationService {
     private final QuotationMapper quotationMapper;
     private final QuotationEmailService quotationEmailService;
 
-    // ========================= CREATE =========================
+    // ================= CREATE =================
 
     @Override
     public Quotation create(QuotationCreateRequest request) {
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new IllegalArgumentException("Quotation must contain at least one item");
+        }
+
+        if (request.getEnquiryId() != null &&
+                quotationRepository.existsByEnquiryId(request.getEnquiryId())) {
+            throw new IllegalStateException("Quotation already exists for this enquiry");
+        }
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
@@ -58,16 +68,17 @@ public class QuotationServiceImpl implements QuotationService {
         quotation.setCreatedBy(SecurityUtils.getCurrentUsername());
         quotation.setStatus(QuotationStatus.DRAFT);
 
+        // Link enquiry if present
         if (request.getEnquiryId() != null) {
-            quotation.setEnquiry(
-                    enquiryRepository.findById(request.getEnquiryId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"))
-            );
+            Enquiry enquiry = enquiryRepository.findById(request.getEnquiryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+            quotation.setEnquiry(enquiry);
         }
 
+        // Add items
         request.getItems().forEach(itemReq -> {
+
             QuotationItem item = new QuotationItem();
-            item.setQuotation(quotation);
             item.setPartName(itemReq.getPartName());
             item.setDrawingNumber(itemReq.getDrawingNumber());
             item.setMaterialGrade(itemReq.getMaterialGrade());
@@ -77,27 +88,21 @@ public class QuotationServiceImpl implements QuotationService {
             item.setQuantity(itemReq.getQuantity());
             item.setUnitPrice(itemReq.getUnitPrice());
 
-            BigDecimal lineTotal =
-                    itemReq.getNetWeightKg()
-                            .multiply(itemReq.getUnitPrice())
-                            .multiply(itemReq.getQuantity());
+            item.calculateLineTotal();
 
-            item.setLineTotal(lineTotal);
-
-            item.setLineTotal(lineTotal);
-            quotation.getItems().add(item);
+            quotation.addItem(item);
         });
 
         recalculateTotals(quotation);
 
-        Enquiry enquiry = quotation.getEnquiry();
-        enquiry.setStatus(EnquiryStatus.QUOTED);
+        if (quotation.getEnquiry() != null) {
+            quotation.getEnquiry().setStatus(EnquiryStatus.QUOTED);
+        }
 
         return quotationRepository.save(quotation);
-
     }
 
-    // ========================= GET =========================
+    // ================= GET =================
 
     @Override
     public Quotation get(UUID id) {
@@ -106,7 +111,7 @@ public class QuotationServiceImpl implements QuotationService {
                         new ResourceNotFoundException("Quotation not found with id: " + id));
     }
 
-    // ========================= LIST =========================
+    // ================= LIST =================
 
     @Override
     public PageResponse<QuotationResponse> list(Pageable pageable) {
@@ -116,20 +121,17 @@ public class QuotationServiceImpl implements QuotationService {
         return PageResponse.from(page, quotationMapper::toResponse);
     }
 
-    // ========================= UPDATE =========================
+    // ================= UPDATE =================
 
     @Override
     public Quotation update(UUID id, QuotationCreateRequest request) {
 
         Quotation quotation = get(id);
 
-        // Block modification if approved
         if (quotation.getStatus() == QuotationStatus.APPROVED) {
             throw new IllegalStateException("Approved quotation cannot be modified");
         }
 
-
-        // If already sent, reset to draft (new revision)
         if (quotation.getStatus() == QuotationStatus.SENT) {
             quotation.setStatus(QuotationStatus.DRAFT);
             quotation.setSentAt(null);
@@ -145,14 +147,11 @@ public class QuotationServiceImpl implements QuotationService {
         quotation.setDeliveryLocation(request.getDeliveryLocation());
         quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
-        // Remove old items
-        quotation.getItems().clear();
+        quotation.clearItems();
 
-
-        // Add new items
         request.getItems().forEach(itemReq -> {
+
             QuotationItem item = new QuotationItem();
-            item.setQuotation(quotation);
             item.setPartName(itemReq.getPartName());
             item.setDrawingNumber(itemReq.getDrawingNumber());
             item.setMaterialGrade(itemReq.getMaterialGrade());
@@ -162,27 +161,19 @@ public class QuotationServiceImpl implements QuotationService {
             item.setQuantity(itemReq.getQuantity());
             item.setUnitPrice(itemReq.getUnitPrice());
 
-            BigDecimal lineTotal =
-                    itemReq.getNetWeightKg()
-                            .multiply(itemReq.getUnitPrice())
-                            .multiply(itemReq.getQuantity());
+            item.calculateLineTotal();
 
-            item.setLineTotal(lineTotal);
-
-            item.setLineTotal(lineTotal);
-            quotation.getItems().add(item);
+            quotation.addItem(item);
         });
 
-        // Increase revision number
         quotation.setRevisionNo(quotation.getRevisionNo() + 1);
 
-        // Recalculate totals
         recalculateTotals(quotation);
 
         return quotationRepository.save(quotation);
     }
 
-    // ========================= STATUS =========================
+    // ================= STATUS =================
 
     @Override
     public Quotation updateStatus(UUID id, QuotationStatus newStatus) {
@@ -204,21 +195,47 @@ public class QuotationServiceImpl implements QuotationService {
         return quotationRepository.save(quotation);
     }
 
-    private void validateStatusTransition(QuotationStatus current, QuotationStatus next){
-        if (current == QuotationStatus.APPROVED){
-            throw new  IllegalStateException("Approved quotation cannot be modified");
+    private void validateStatusTransition(QuotationStatus current, QuotationStatus next) {
+
+        if (current == QuotationStatus.APPROVED) {
+            throw new IllegalStateException("Approved quotation cannot be modified");
         }
 
-        if (current == QuotationStatus.DRAFT && next == QuotationStatus.APPROVED){
+        if (current == QuotationStatus.DRAFT && next == QuotationStatus.APPROVED) {
             throw new IllegalStateException("Draft quotation must be sent before approval");
         }
+
         if (current == QuotationStatus.SENT &&
                 !(next == QuotationStatus.APPROVED || next == QuotationStatus.REJECTED)) {
             throw new IllegalStateException("Sent quotation can only be Approved or Rejected");
         }
     }
 
-    // ========================= HELPER =========================
+    // ================= EMAIL =================
+
+    @Override
+    public Quotation sendByEmail(UUID id) {
+
+        Quotation quotation = get(id);
+
+        if (quotation.getStatus() != QuotationStatus.DRAFT) {
+            throw new IllegalStateException("Only DRAFT quotation can be sent");
+        }
+
+        if (quotation.getCustomer().getEmail() == null) {
+            throw new IllegalStateException("Customer email not available");
+        }
+
+        quotationEmailService.sendQuotationEmail(quotation);
+
+        quotation.setStatus(QuotationStatus.SENT);
+        quotation.setSentAt(LocalDateTime.now());
+        quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
+
+        return quotationRepository.save(quotation);
+    }
+
+    // ================= HELPER =================
 
     private void recalculateTotals(Quotation quotation) {
 
@@ -248,28 +265,5 @@ public class QuotationServiceImpl implements QuotationService {
         }
 
         return String.format("%s%05d", prefix, nextSequence);
-    }
-
-    // ========================= EMAIL =========================
-
-    public Quotation sendByEmail(UUID id) {
-
-        Quotation quotation = get(id);
-
-        if (quotation.getStatus() != QuotationStatus.DRAFT) {
-            throw new IllegalStateException("Only DRAFT quotation can be sent");
-        }
-
-        if (quotation.getCustomer().getEmail() == null) {
-            throw new IllegalStateException("Customer email not available");
-        }
-
-        quotationEmailService.sendQuotationEmail(quotation);
-
-        quotation.setStatus(QuotationStatus.SENT);
-        quotation.setSentAt(java.time.LocalDateTime.now());
-        quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
-
-        return quotationRepository.save(quotation);
     }
 }

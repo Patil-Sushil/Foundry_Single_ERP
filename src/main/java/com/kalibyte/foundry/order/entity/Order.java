@@ -33,7 +33,7 @@ public class Order extends BaseEntity {
     private OrderType orderType;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quotation_id", nullable = false, unique = true)
+    @JoinColumn(name = "quotation_id", nullable = true, unique = true)
     private Quotation quotation;
 
     private LocalDate orderDate;
