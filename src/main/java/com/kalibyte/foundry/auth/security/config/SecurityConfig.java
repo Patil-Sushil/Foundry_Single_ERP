@@ -46,13 +46,15 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
                 // Public
-                .requestMatchers(
-                        "/api/auth/**",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/error"
-                ).permitAll()
+                    .requestMatchers(
+                            "/api/auth/**",
+                            "/v3/api-docs/**",
+                            "/swagger-ui/**",
+                            "/swagger-ui.html",
+                            "/swagger-ui/index.html",
+                            "/webjars/**",
+                            "/error"
+                    ).permitAll()
 
                 // Admin
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

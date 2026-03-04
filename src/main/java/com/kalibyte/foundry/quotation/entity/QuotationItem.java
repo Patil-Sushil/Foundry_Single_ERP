@@ -20,6 +20,8 @@ public class QuotationItem extends BaseEntity {
     @JoinColumn(name = "quotation_id", nullable = false)
     private Quotation quotation;
 
+    // ================= PART INFO =================
+
     @Column(name = "part_name", length = 255)
     private String partName;
 
@@ -29,17 +31,23 @@ public class QuotationItem extends BaseEntity {
     @Column(name = "material_grade", length = 100)
     private String materialGrade;
 
+    // ================= WEIGHT =================
+
     @Column(name = "net_weight_kg", precision = 10, scale = 3)
     private BigDecimal netWeightKg;
 
     @Column(name = "gross_weight_kg", precision = 10, scale = 3)
     private BigDecimal grossWeightKg;
 
+    // ================= PATTERN =================
+
     @Enumerated(EnumType.STRING)
     @Column(name = "pattern_status", length = 20)
     private PatternStatus patternStatus;
 
-    @Column(name = "quantity", precision = 10, scale = 2)
+    // ================= PRICING =================
+
+    @Column(name = "quantity", precision = 15, scale = 3)
     private BigDecimal quantity;
 
     @Column(name = "unit_price", precision = 19, scale = 2)
@@ -48,13 +56,16 @@ public class QuotationItem extends BaseEntity {
     @Column(name = "line_total", precision = 19, scale = 2)
     private BigDecimal lineTotal;
 
-    // Business method
+    // ================= BUSINESS METHOD =================
+
     public void calculateLineTotal() {
-        if (quantity != null && unitPrice != null) {
-            this.lineTotal = quantity.multiply(unitPrice);
+
+        if (netWeightKg != null && unitPrice != null && quantity != null) {
+
+            this.lineTotal =
+                    netWeightKg
+                            .multiply(unitPrice)
+                            .multiply(quantity);
         }
     }
-
-
-
 }

@@ -1,4 +1,5 @@
 package com.kalibyte.foundry.quotation.entity;
+
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.enquiry.entity.Enquiry;
@@ -31,6 +32,8 @@ public class Quotation extends BaseEntity {
     @Column(name = "revision_no")
     private Integer revisionNo = 0;
 
+    // ================= RELATIONS =================
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
@@ -39,21 +42,27 @@ public class Quotation extends BaseEntity {
     @JoinColumn(name = "enquiry_id")
     private Enquiry enquiry;
 
+    // ================= STATUS =================
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private QuotationStatus status = QuotationStatus.DRAFT;
 
+    // ================= AMOUNTS =================
+
     @Column(name = "sub_total", precision = 19, scale = 2)
-    private BigDecimal subTotal;
+    private BigDecimal subTotal = BigDecimal.ZERO;
 
     @Column(precision = 19, scale = 2)
-    private BigDecimal discount;
+    private BigDecimal discount = BigDecimal.ZERO;
 
     @Column(precision = 19, scale = 2)
-    private BigDecimal tax;
+    private BigDecimal tax = BigDecimal.ZERO;
 
     @Column(name = "total_amount", precision = 19, scale = 2)
-    private BigDecimal totalAmount;
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+
+    // ================= TERMS =================
 
     @Column(name = "payment_terms", length = 500)
     private String paymentTerms;
@@ -63,6 +72,14 @@ public class Quotation extends BaseEntity {
 
     @Column(name = "delivery_location", length = 255)
     private String deliveryLocation;
+
+    @Column(name = "currency", length = 10)
+    private String currency = "INR";
+
+    @Column(name = "notes", length = 1000)
+    private String notes;
+
+    // ================= TRACKING =================
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
@@ -79,6 +96,8 @@ public class Quotation extends BaseEntity {
     @Column(name = "viewed_at")
     private LocalDateTime viewedAt;
 
+    // ================= ITEMS =================
+
     @OneToMany(
             mappedBy = "quotation",
             cascade = CascadeType.ALL,
@@ -87,7 +106,8 @@ public class Quotation extends BaseEntity {
     )
     private List<QuotationItem> items = new ArrayList<>();
 
-    // Helper methods
+    // ================= HELPER METHODS =================
+
     public void addItem(QuotationItem item) {
         items.add(item);
         item.setQuotation(this);
@@ -96,5 +116,10 @@ public class Quotation extends BaseEntity {
     public void removeItem(QuotationItem item) {
         items.remove(item);
         item.setQuotation(null);
+    }
+
+    public void clearItems() {
+        items.forEach(item -> item.setQuotation(null));
+        items.clear();
     }
 }
