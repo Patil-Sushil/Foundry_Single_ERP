@@ -30,7 +30,7 @@ public class Quotation extends BaseEntity {
     private LocalDate validUntil;
 
     @Column(name = "revision_no")
-    private Integer revisionNo = 0;
+    private Integer revisionNo = 0; // Start with 0 for original quotation, increment for each revision
 
     // ================= RELATIONS =================
 

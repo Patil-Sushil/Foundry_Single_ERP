@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.order.service.impl;
 
+import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
@@ -19,8 +20,10 @@ import com.kalibyte.foundry.order.validation.OrderStatusTransitionValidator;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import com.kalibyte.foundry.quotation.entity.enums.QuotationStatus;
 import com.kalibyte.foundry.quotation.repository.QuotationRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -44,10 +47,12 @@ public class OrderServiceImpl implements OrderService {
     private final QuotationRepository quotationRepository;
     private final CustomerRepository customerRepository;
     private final OrderMapper orderMapper;
+    private final EmailService emailService;
 
-    // =====================================================
-    // CREATE ORDER (Quotation-based OR Direct)
-    // =====================================================
+    //-----------------------------------------------------
+    // CREATE ORDER
+    //-----------------------------------------------------
+
     @Override
     public OrderResponse createOrder(OrderCreateRequest request) {
 
@@ -67,14 +72,14 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    // =====================================================
-    // CREATE FROM QUOTATION
-    // =====================================================
+    //-----------------------------------------------------
+    // CREATE ORDER FROM QUOTATION
+    //-----------------------------------------------------
+
     private OrderResponse createFromQuotation(OrderCreateRequest request) {
 
         Quotation quotation = quotationRepository.findById(request.getQuotationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Quotation not found"));
-
 
         if (!QuotationStatus.APPROVED.equals(quotation.getStatus())) {
             throw new ResponseStatusException(
@@ -117,14 +122,19 @@ public class OrderServiceImpl implements OrderService {
 
         Order saved = orderRepository.save(order);
 
-        log.info("Order created from quotation successfully. Order ID: {}", saved.getId());
+        //-------------------------------------------------
+        // SEND ORDER EMAIL
+        //-------------------------------------------------
+
+        sendOrderConfirmationEmail(saved);
 
         return orderMapper.toResponse(saved);
     }
 
-    // =====================================================
+    //-----------------------------------------------------
     // CREATE DIRECT ORDER
-    // =====================================================
+    //-----------------------------------------------------
+
     private OrderResponse createDirectOrder(OrderCreateRequest request) {
 
         Customer customer = customerRepository.findById(request.getCustomerId())
@@ -148,7 +158,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> items = request.getItems()
                 .stream()
-                .map(item -> buildOrderItem(order,item))
+                .map(item -> buildOrderItem(order, item))
                 .toList();
 
         order.setOrderItems(items);
@@ -161,15 +171,19 @@ public class OrderServiceImpl implements OrderService {
 
         Order saved = orderRepository.save(order);
 
-        log.info("Direct order created successfully. Order ID: {}", saved.getId());
+        //-------------------------------------------------
+        // SEND ORDER EMAIL
+        //-------------------------------------------------
+
+        sendOrderConfirmationEmail(saved);
 
         return orderMapper.toResponse(saved);
     }
 
+    //-----------------------------------------------------
+    // GET ORDER BY ID
+    //-----------------------------------------------------
 
-    // =====================================================
-    // GET BY ID (Full Details)
-    // =====================================================
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getById(UUID id) {
@@ -180,9 +194,10 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(order);
     }
 
-    // =====================================================
-    // GET ALL WITH FILTERING
-    // =====================================================
+    //-----------------------------------------------------
+    // GET ALL ORDERS
+    //-----------------------------------------------------
+
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getAll(
@@ -200,9 +215,10 @@ public class OrderServiceImpl implements OrderService {
         return PageResponse.of(page.map(orderMapper::toResponse));
     }
 
-    // =====================================================
-    // UPDATE STATUS
-    // =====================================================
+    //-----------------------------------------------------
+    // UPDATE ORDER STATUS
+    //-----------------------------------------------------
+
     @Override
     public void updateStatus(UUID id, OrderStatus newStatus) {
 
@@ -211,18 +227,38 @@ public class OrderServiceImpl implements OrderService {
 
         OrderStatusTransitionValidator.validate(order.getStatus(), newStatus);
 
-        log.info("Updating order {} status from {} to {}",
-                order.getId(), order.getStatus(), newStatus);
-
         order.setStatus(newStatus);
     }
 
-    // =====================================================
-    // PRIVATE HELPERS
-    // =====================================================
+    //-----------------------------------------------------
+    // SEND ORDER CONFIRMATION EMAIL
+    //-----------------------------------------------------
+
+    private void sendOrderConfirmationEmail(Order order) {
+
+        Customer customer = order.getCustomer();
+
+        String subject = "Order Confirmation - " + order.getOrderNumber();
+
+        String body = "Dear " + customer.getName() + ",\n\n"
+                + "Your order has been created successfully.\n\n"
+                + "Order Number: " + order.getOrderNumber() + "\n"
+                + "Order Date: " + order.getOrderDate() + "\n"
+                + "Total Amount: " + order.getTotalAmount() + "\n\n"
+                + "Thank you for doing business with us.\n"
+                + "Kalibyte Foundry ERP";
+
+        emailService.sendEmail(customer.getEmail(), subject, body);
+    }
+
+    //-----------------------------------------------------
+    // HELPER METHODS
+    //-----------------------------------------------------
+
     private OrderItem buildOrderItem(Order order, OrderItemRequest item) {
 
-        BigDecimal total = item.getUnitPrice().multiply(item.getQuantity());
+        BigDecimal total = item.getUnitPrice()
+                .multiply(BigDecimal.valueOf(item.getQuantity()));
 
         return OrderItem.builder()
                 .order(order)
@@ -235,8 +271,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String generateOrderNumber() {
+
         int year = LocalDate.now().getYear();
+
         long count = orderRepository.count() + 1;
+
         return String.format("ORD-%d-%05d", year, count);
     }
 }

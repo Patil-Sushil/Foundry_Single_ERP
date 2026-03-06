@@ -23,6 +23,7 @@ public class QuotationResponse {
 
     // Enquiry info
     private UUID enquiryId;
+    private String enquiryNumber;
 
     // Amounts
     private BigDecimal subTotal;

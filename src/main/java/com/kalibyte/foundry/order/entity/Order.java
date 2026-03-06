@@ -4,9 +4,11 @@ import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
 import com.kalibyte.foundry.order.entity.ENUM.OrderType;
+import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -33,10 +35,11 @@ public class Order extends BaseEntity {
     private OrderType orderType;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quotation_id", nullable = true, unique = true)
+    @JoinColumn(name = "quotation_id", unique = true)
     private Quotation quotation;
 
     private LocalDate orderDate;
+
     private LocalDate deliveryDate;
 
     @Enumerated(EnumType.STRING)
@@ -45,8 +48,31 @@ public class Order extends BaseEntity {
     @Column(precision = 19, scale = 2)
     private BigDecimal totalAmount;
 
-    @OneToMany(mappedBy = "order",
+    @OneToMany(
+            mappedBy = "order",
             cascade = CascadeType.ALL,
-            orphanRemoval = true)
+            orphanRemoval = true
+    )
     private List<OrderItem> orderItems = new ArrayList<>();
+
+    //------------------------------------------------
+    // HELPER METHODS
+    //------------------------------------------------
+
+    public Pattern getPattern() {
+        if (!orderItems.isEmpty()) {
+            return orderItems.get(0).getPattern();
+        }
+        return null;
+    }
+
+    public int getTotalQuantity() {
+        return orderItems.stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+    }
+
+    public List<OrderItem> getItems() {
+        return orderItems;
+    }
 }

@@ -118,7 +118,7 @@ public class QuotationPdfService {
                 BigDecimal total =
                         item.getNetWeightKg()
                                 .multiply(item.getUnitPrice())
-                                .multiply(item.getQuantity());
+                                .multiply(BigDecimal.valueOf(item.getQuantity()));
 
                 subTotal = subTotal.add(total);
 
@@ -127,7 +127,7 @@ public class QuotationPdfService {
                 table.addCell(createCell(item.getMaterialGrade()));
                 table.addCell(createCell(item.getNetWeightKg().toString()));
                 table.addCell(createCell(formatINR(item.getUnitPrice())));
-                table.addCell(createCell(item.getQuantity().toString()));
+                table.addCell(createCell(String.valueOf(item.getQuantity())));
                 table.addCell(createCell(formatINR(total)));
             }
 

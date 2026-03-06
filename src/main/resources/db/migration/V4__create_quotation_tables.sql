@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS quotation_items (
 
     pattern_status VARCHAR(20),
 
-    quantity DECIMAL(15,3),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(19,2),
     line_total DECIMAL(19,2),
 

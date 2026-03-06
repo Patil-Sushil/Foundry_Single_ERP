@@ -3,6 +3,7 @@ package com.kalibyte.foundry.quotation.entity;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.quotation.entity.enums.PatternStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -47,8 +48,9 @@ public class QuotationItem extends BaseEntity {
 
     // ================= PRICING =================
 
-    @Column(name = "quantity", precision = 15, scale = 3)
-    private BigDecimal quantity;
+    @Min(1)
+    @Column(name = "quantity")
+    private int quantity;
 
     @Column(name = "unit_price", precision = 19, scale = 2)
     private BigDecimal unitPrice;
@@ -59,13 +61,11 @@ public class QuotationItem extends BaseEntity {
     // ================= BUSINESS METHOD =================
 
     public void calculateLineTotal() {
-
-        if (netWeightKg != null && unitPrice != null && quantity != null) {
-
-            this.lineTotal =
-                    netWeightKg
-                            .multiply(unitPrice)
-                            .multiply(quantity);
+        // quantity is primitive, so we check > 0 instead of != null
+        if (netWeightKg != null && unitPrice != null && quantity > 0) {
+            this.lineTotal = netWeightKg
+                    .multiply(unitPrice)
+                    .multiply(BigDecimal.valueOf(quantity));
         }
     }
 }

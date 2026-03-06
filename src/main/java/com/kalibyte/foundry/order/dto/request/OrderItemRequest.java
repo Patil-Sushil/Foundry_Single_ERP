@@ -18,7 +18,7 @@ public class OrderItemRequest {
     private String metalType;
 
     @NotNull
-    private BigDecimal quantity;
+    private int quantity;
 
     @NotNull
     private BigDecimal unitPrice;

@@ -15,7 +15,7 @@ public class OrderItemResponse {
     private UUID id;
     private String productName;
     private String metalType;
-    private BigDecimal quantity;
+    private int quantity;
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
 }

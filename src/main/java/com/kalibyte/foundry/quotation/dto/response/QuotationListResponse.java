@@ -13,6 +13,7 @@ import java.util.UUID;
 public class QuotationListResponse {
     private UUID id;
     private String quotationNumber;
+    private String enquiryNumber;
     private String customerName;
     private LocalDate quotationDate;
     private QuotationStatus status;
