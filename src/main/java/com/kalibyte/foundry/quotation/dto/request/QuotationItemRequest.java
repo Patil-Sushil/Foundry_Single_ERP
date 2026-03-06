@@ -16,6 +16,6 @@ public class QuotationItemRequest {
     private BigDecimal netWeightKg;
     private BigDecimal grossWeightKg;
     private PatternStatus patternStatus;
-    private BigDecimal quantity;
+    private int quantity;
     private BigDecimal unitPrice;
 }

@@ -68,14 +68,16 @@ public class QuotationServiceImpl implements QuotationService {
         quotation.setCreatedBy(SecurityUtils.getCurrentUsername());
         quotation.setStatus(QuotationStatus.DRAFT);
 
-        // Link enquiry if present
+        // Link enquiry if provided
         if (request.getEnquiryId() != null) {
+
             Enquiry enquiry = enquiryRepository.findById(request.getEnquiryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+
             quotation.setEnquiry(enquiry);
         }
 
-        // Add items
+        // Add quotation items
         request.getItems().forEach(itemReq -> {
 
             QuotationItem item = new QuotationItem();
@@ -95,11 +97,20 @@ public class QuotationServiceImpl implements QuotationService {
 
         recalculateTotals(quotation);
 
-        if (quotation.getEnquiry() != null) {
-            quotation.getEnquiry().setStatus(EnquiryStatus.QUOTED);
+        // Save quotation first
+        Quotation savedQuotation = quotationRepository.save(quotation);
+
+        // Update enquiry status if quotation created from enquiry
+        if (savedQuotation.getEnquiry() != null) {
+
+            Enquiry enquiry = savedQuotation.getEnquiry();
+
+            if (enquiry.getStatus() != EnquiryStatus.QUOTED) {
+                enquiry.setStatus(EnquiryStatus.QUOTED);
+            }
         }
 
-        return quotationRepository.save(quotation);
+        return savedQuotation;
     }
 
     // ================= GET =================
@@ -147,7 +158,8 @@ public class QuotationServiceImpl implements QuotationService {
         quotation.setDeliveryLocation(request.getDeliveryLocation());
         quotation.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
-        quotation.clearItems();
+        // Clear existing items
+        quotation.getItems().clear();
 
         request.getItems().forEach(itemReq -> {
 
@@ -188,8 +200,7 @@ public class QuotationServiceImpl implements QuotationService {
         switch (newStatus) {
             case SENT -> quotation.setSentAt(LocalDateTime.now());
             case APPROVED -> quotation.setApprovedAt(LocalDateTime.now());
-            case REJECTED -> quotation.setRejectedAt(LocalDateTime.now());
-            default -> {}
+            case CANCELLED -> quotation.setRejectedAt(LocalDateTime.now());
         }
 
         return quotationRepository.save(quotation);
@@ -206,7 +217,7 @@ public class QuotationServiceImpl implements QuotationService {
         }
 
         if (current == QuotationStatus.SENT &&
-                !(next == QuotationStatus.APPROVED || next == QuotationStatus.REJECTED)) {
+                !(next == QuotationStatus.APPROVED || next == QuotationStatus.CANCELLED)) {
             throw new IllegalStateException("Sent quotation can only be Approved or Rejected");
         }
     }

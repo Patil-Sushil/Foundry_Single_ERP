@@ -25,7 +25,7 @@ import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrderItem;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.enums.POStatus;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRepository;
-import com.kalibyte.foundry.inventory.purchaseorder.repository.OrderItemRepository;
+import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderItemRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
@@ -52,7 +52,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
     private final VendorRepository vendorRepository;
     private final ItemRepository itemRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final PurchaseOrderItemRepository orderItemRepository;
     private final MaterialInwardRepository materialInwardRepository;
     private final ReceivedItemRepository receivedItemRepository;
     private final MaterialIssueRepository materialIssueRepository;

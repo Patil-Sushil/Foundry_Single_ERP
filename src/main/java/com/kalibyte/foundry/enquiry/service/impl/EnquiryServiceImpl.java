@@ -282,6 +282,7 @@ public class EnquiryServiceImpl implements EnquiryService {
                 .id(enquiry.getId())
                 .enquiryNo(enquiry.getEnquiryNo())
                 .enquiryDate(enquiry.getEnquiryDate())
+                .customerId(enquiry.getCustomer().getId())
                 .customerName(enquiry.getCustomer().getName())
                 .totalWeightKg(enquiry.getTotalWeightKg())
                 .status(enquiry.getStatus())

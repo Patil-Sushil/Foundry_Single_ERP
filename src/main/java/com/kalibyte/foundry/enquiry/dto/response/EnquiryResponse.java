@@ -18,6 +18,7 @@ public class EnquiryResponse {
     private UUID id;
     private String enquiryNo;
     private LocalDate enquiryDate;
+    private UUID customerId;
     private String customerName;
     private BigDecimal totalWeightKg;
     private EnquiryStatus status;

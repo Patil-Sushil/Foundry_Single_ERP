@@ -14,7 +14,7 @@ public class QuotationItemResponse {
     private BigDecimal netWeightKg;
     private BigDecimal grossWeightKg;
     private String patternStatus;
-    private BigDecimal quantity;
+    private int quantity;
     private BigDecimal unitPrice;
     private BigDecimal lineTotal;
 }

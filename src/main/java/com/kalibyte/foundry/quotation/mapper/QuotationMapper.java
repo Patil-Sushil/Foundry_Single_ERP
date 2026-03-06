@@ -30,6 +30,7 @@ public class QuotationMapper {
         // Enquiry
         if (quotation.getEnquiry() != null) {
             response.setEnquiryId(quotation.getEnquiry().getId());
+            response.setEnquiryNumber(quotation.getEnquiry().getEnquiryNo());
         }
 
         // Amounts
