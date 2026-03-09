@@ -13,7 +13,10 @@ import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.*;
 
-import com.kalibyte.foundry.billing.entity.*;
+import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallan;
+import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallanItem;
+import com.kalibyte.foundry.billing.invoice.entity.Invoice;
+import com.kalibyte.foundry.billing.invoice.entity.InvoiceItem;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.OrderItem;
 
