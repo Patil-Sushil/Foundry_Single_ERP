@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.billing.util;
 
-import com.kalibyte.foundry.billing.entity.DeliveryChallan;
-import com.kalibyte.foundry.billing.repository.DeliveryChallanRepository;
+import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallan;
+import com.kalibyte.foundry.billing.deliveryChallan.repository.DeliveryChallanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
