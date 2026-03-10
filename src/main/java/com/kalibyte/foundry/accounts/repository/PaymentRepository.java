@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -23,4 +24,11 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
            WHERE p.invoice.id = :invoiceId
            """)
     BigDecimal getTotalPaid(UUID invoiceId);
+
+    @Query("""
+            SELECT e.paymentNumber
+            FROM Payment e
+            ORDER BY e.createdAt DESC
+           """)
+    Optional<String> findLastPaymentNumber();
 }
