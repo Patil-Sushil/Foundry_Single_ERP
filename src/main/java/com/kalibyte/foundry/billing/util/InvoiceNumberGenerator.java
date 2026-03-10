@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.billing.util;
 
-import com.kalibyte.foundry.billing.entity.Invoice;
-import com.kalibyte.foundry.billing.repository.InvoiceRepository;
+import com.kalibyte.foundry.billing.invoice.entity.Invoice;
+import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
