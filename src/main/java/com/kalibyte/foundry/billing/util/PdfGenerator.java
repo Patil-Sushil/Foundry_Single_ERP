@@ -355,6 +355,7 @@ public class PdfGenerator {
             // ── Title ──
             doc.add(new Paragraph("TAX INVOICE")
                     .setBold()
+                    .setFontColor(THEME_BLUE)
                     .setFontSize(18)
                     .setFontColor(THEME_BLUE)
                     .setTextAlignment(TextAlignment.CENTER)
@@ -663,6 +664,10 @@ public class PdfGenerator {
                 .add(new Paragraph(text)
                         .setFontColor(THEME_BLUE).setBold().setFontSize(10));
     }
+
+    //------------------------------------------------
+    // SIGNATURE
+    //------------------------------------------------
 
     private Cell totalValue(String text) {
         return new Cell()

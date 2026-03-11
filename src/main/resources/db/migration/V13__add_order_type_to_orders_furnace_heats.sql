@@ -25,6 +25,39 @@ ALTER TABLE orders
 -- Furnace Heat Materials and Upgrades
 -- =============================================
 
+ALTER TABLE furnace_heats
+    ADD COLUMN IF NOT EXISTS pouring_start_time TIME;
+
+ALTER TABLE furnace_heats
+    ADD COLUMN IF NOT EXISTS pouring_end_time TIME;
+
+ALTER TABLE furnace_heats
+    ADD COLUMN IF NOT EXISTS order_id VARCHAR(50);
+
+COMMENT ON COLUMN furnace_heats.order_id
+IS 'TODO: Convert to foreign key when orders table is created';
+
+
+-- =============================================
+-- Heat Material Items Table
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS heat_material_items (
+                                                   id BIGSERIAL PRIMARY KEY,
+                                                   heat_id BIGINT NOT NULL,
+                                                   item_id BIGINT NOT NULL,
+                                                   item_name VARCHAR(255) NOT NULL,
+    material_type VARCHAR(20) NOT NULL DEFAULT 'RAW_MATERIAL',
+    quantity_used DOUBLE PRECISION NOT NULL,
+    unit_rate DOUBLE PRECISION,
+    total_cost DOUBLE PRECISION,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT fk_heat_material_heat
+    FOREIGN KEY (heat_id)
+    REFERENCES furnace_heats(id)
+    ON DELETE CASCADE
+    );
 -- =============================================
 -- Heat Material Items Table
 -- =============================================

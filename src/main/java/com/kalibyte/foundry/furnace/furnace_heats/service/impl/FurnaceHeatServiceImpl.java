@@ -21,6 +21,8 @@ import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
+import com.kalibyte.foundry.order.entity.Order;
+import com.kalibyte.foundry.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,6 +47,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
     private final MaterialIssueService materialIssueService;
     private final DepartmentRepository departmentRepository;
     private final ModelMapper modelMapper;
+    private final OrderRepository orderRepository;
     private final OrderRepository orderRepository;
 
     @Override
@@ -107,7 +111,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         //
 
         if (request.getOrderId() != null) {
-            Order order = orderRepository.findById(request.getOrderId())
+            Order order = orderRepository.findById(UUID.fromString(request.getOrderId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + request.getOrderId()));
 
             existingHeat.setOrder(order);
