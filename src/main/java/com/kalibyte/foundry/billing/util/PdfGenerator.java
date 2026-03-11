@@ -2,36 +2,33 @@ package com.kalibyte.foundry.billing.util;
 
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.events.*;
-import com.itextpdf.kernel.geom.Rectangle;
+import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.*;
-import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
 import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
-import com.itextpdf.layout.*;
+import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
-import com.itextpdf.layout.properties.*;
-
+import com.itextpdf.layout.properties.HorizontalAlignment;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.VerticalAlignment;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallan;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallanItem;
 import com.kalibyte.foundry.billing.invoice.entity.Invoice;
 import com.kalibyte.foundry.billing.invoice.entity.InvoiceItem;
-import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.order.entity.OrderItem;
 
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.text.NumberFormat;
+import java.text.DecimalFormat;
 import java.util.List;
-import java.util.Locale;
 
 @Component
 public class PdfGenerator {
+
+    private static final DeviceRgb THEME_BLUE = new DeviceRgb(17, 51, 102);
 
     //------------------------------------------------
     // DELIVERY CHALLAN PDF
@@ -43,44 +40,38 @@ public class PdfGenerator {
 
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
+            Document doc = new Document(pdf, PageSize.A4);
 
-            pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new PageNumberHandler());
+            doc.setMargins(20,30,20,30);
 
-            Document document = new Document(pdf);
+            addCompanyHeader(doc);
 
-            Customer customer = dc.getCustomer();
+            addDivider(doc);
 
-            addLogo(document);
-            addCompanyHeader(document);
-
-            document.add(new Paragraph("DELIVERY CHALLAN")
+            doc.add(new Paragraph("DELIVERY CHALLAN")
                     .setBold()
+                    .setFontColor(THEME_BLUE)
                     .setFontSize(18)
                     .setTextAlignment(TextAlignment.CENTER));
 
-            addSeparator(document);
+            addDcInfoSection(doc, dc);
 
-            addCustomerSection(document, customer);
+            addDcItemsTable(doc, items);
 
-            document.add(new Paragraph(
-                    "DC Number : " + dc.getDcNumber() +
-                            "\nDispatch Date : " + dc.getDispatchDate() +
-                            "\nVehicle : " + dc.getVehicleNumber()));
+            doc.add(new Paragraph("\nMaterial delivered in good condition.")
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER));
 
-            addSeparator(document);
+            addDivider(doc);
 
-            BigDecimal subtotal = addItemsTable(document, items);
+            addSignature(doc);
 
-            addTotals(document, customer, subtotal);
-
-            addSignature(document);
-
-            document.close();
+            doc.close();
 
             return out.toByteArray();
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to generate Delivery Challan PDF", e);
+            throw new RuntimeException("Error generating DC PDF", e);
         }
     }
 
@@ -94,319 +85,270 @@ public class PdfGenerator {
 
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
+            Document doc = new Document(pdf, PageSize.A4);
 
-            pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new PageNumberHandler());
+            doc.setMargins(20,30,20,30);
 
-            Document document = new Document(pdf);
+            addCompanyHeader(doc);
 
-            Customer customer = invoice.getCustomer();
+            addDivider(doc);
 
-            addLogo(document);
-            addCompanyHeader(document);
-
-            document.add(new Paragraph("TAX INVOICE")
+            doc.add(new Paragraph("INVOICE")
                     .setBold()
+                    .setFontColor(THEME_BLUE)
                     .setFontSize(18)
                     .setTextAlignment(TextAlignment.CENTER));
 
-            addSeparator(document);
+            addInvoiceInfoSection(doc, invoice);
 
-            addCustomerSection(document, customer);
+            addInvoiceItemsTable(doc, items);
 
-            document.add(new Paragraph(
-                    "Invoice Number : " + invoice.getInvoiceNumber() +
-                            "\nInvoice Date : " + invoice.getInvoiceDate() +
-                            "\nVehicle : " + invoice.getVehicleNumber()));
+            addInvoiceTotals(doc, invoice);
 
-            addSeparator(document);
+            addDivider(doc);
 
-            BigDecimal subtotal = addInvoiceItemsTable(document, items);
+            addSignature(doc);
 
-            addTotals(document, customer, subtotal);
-
-            addSignature(document);
-
-            document.close();
+            doc.close();
 
             return out.toByteArray();
 
         } catch (Exception e) {
-
-            throw new RuntimeException("Failed to generate Invoice PDF", e);
+            throw new RuntimeException("Error generating Invoice PDF", e);
         }
     }
 
     //------------------------------------------------
-    // INVOICE ITEM TABLE
+    // COMPANY HEADER
     //------------------------------------------------
 
-    private BigDecimal addInvoiceItemsTable(Document document, List<InvoiceItem> items) {
+    private void addCompanyHeader(Document doc){
 
-        float[] widths = {1,4,2,2,2,2};
-
-        Table table = new Table(UnitValue.createPercentArray(widths))
-                .useAllAvailableWidth();
-
-        addHeader(table,"Sr");
-        addHeader(table,"Description");
-        addHeader(table,"Qty");
-        addHeader(table,"Weight");
-        addHeader(table,"Rate/KG");
-        addHeader(table,"Amount");
-
-        int sr = 1;
-        BigDecimal subtotal = BigDecimal.ZERO;
-
-        for (InvoiceItem item : items) {
-
-            OrderItem oi = item.getOrderItem();
-
-            table.addCell(createCell(String.valueOf(sr++)));
-            table.addCell(createCell(oi.getProductName()));
-            table.addCell(createCell(item.getQuantity().toString()));
-            table.addCell(createCell(item.getWeight()+" KG"));
-            table.addCell(createCell(formatINR(item.getRate())));
-            table.addCell(createCell(formatINR(item.getAmount())));
-
-            subtotal = subtotal.add(item.getAmount());
-        }
-
-        document.add(table);
-
-        return subtotal;
-    }
-
-    //------------------------------------------------
-    // COMMON METHODS
-    //------------------------------------------------
-
-    private void addLogo(Document document) {
-
-        try {
-
-            Image logo = new Image(
-                    ImageDataFactory.create(
-                            new ClassPathResource("static/logo.png")
-                                    .getInputStream()
-                                    .readAllBytes()
-                    )
-            );
-
-            logo.setWidth(120);
-            logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
-
-            document.add(logo);
-
-        } catch (Exception ignored) {}
-    }
-
-    private void addCompanyHeader(Document document) {
-
-        document.add(new Paragraph("KALI-BYTE PRECISION STEEL FOUNDRY")
+        doc.add(new Paragraph("MITTAL PRECISION STEEL FOUNDRY")
                 .setBold()
-                .setFontSize(20)
-                .setFontColor(ColorConstants.BLUE)
+                .setFontSize(22)
+                .setFontColor(THEME_BLUE)
                 .setTextAlignment(TextAlignment.CENTER));
 
-        document.add(new Paragraph(
-                "Plot No A-12 MIDC Industrial Area Sangli - 416436")
+        doc.add(new Paragraph("Plot No: A-12 MIDC Industrial Area Kolhapur - 416234")
+                .setFontSize(9)
                 .setTextAlignment(TextAlignment.CENTER));
 
-        document.add(new Paragraph(
-                "GSTIN : 27AACM1234P125 | Phone : +91 9890649255 | Email : info@kalibytefoundry.com")
+        doc.add(new Paragraph("GST No: 27AACM1234P125 | Contact: 0214-2654321")
+                .setFontSize(9)
                 .setTextAlignment(TextAlignment.CENTER));
-
-        addSeparator(document);
     }
 
-    private void addCustomerSection(Document document, Customer customer) {
+    //------------------------------------------------
+    // DC INFO SECTION
+    //------------------------------------------------
 
-        document.add(new Paragraph("Bill To").setBold());
+    private void addDcInfoSection(Document doc, DeliveryChallan dc){
 
-        document.add(new Paragraph(customer.getName()));
-        document.add(new Paragraph(customer.getAddress()));
-        document.add(new Paragraph("GSTIN : " + customer.getGstNumber()));
-        document.add(new Paragraph("Phone : " + customer.getPhone()));
+        Table table = new Table(new float[]{1,1}).useAllAvailableWidth();
+
+        Cell left = new Cell().setBorder(Border.NO_BORDER);
+        left.add(new Paragraph("To").setBold());
+        left.add(new Paragraph(dc.getCustomer().getName()));
+        left.add(new Paragraph(dc.getCustomer().getAddress()));
+        left.add(new Paragraph("GST: " + dc.getCustomer().getGstNumber()));
+        left.add(new Paragraph("Mobile: " + dc.getCustomer().getPhone()));
+
+        Cell right = new Cell().setBorder(Border.NO_BORDER);
+        right.add(new Paragraph("DC No: " + dc.getDcNumber()));
+        right.add(new Paragraph("Date: " + dc.getDispatchDate()));
+        right.add(new Paragraph("Vehicle: " + dc.getVehicleNumber()));
+        right.add(new Paragraph("Transporter: " + dc.getTransportName()));
+        right.add(new Paragraph("Place of Supply: " + dc.getOrder().getPlaceOfSupply()));
+        right.add(new Paragraph("PO Ref: " + dc.getOrder().getPoReference()));
+
+        table.addCell(left);
+        table.addCell(right);
+
+        doc.add(table);
     }
 
-    private BigDecimal addItemsTable(Document document, List<DeliveryChallanItem> items) {
+    //------------------------------------------------
+    // DC ITEMS TABLE
+    //------------------------------------------------
 
-        float[] widths = {1,4,2,2,2,2};
+    private void addDcItemsTable(Document doc, List<DeliveryChallanItem> items){
 
-        Table table = new Table(UnitValue.createPercentArray(widths))
-                .useAllAvailableWidth();
+        float[] cols = {1,4,2,2,1};
+        Table table = new Table(cols).useAllAvailableWidth();
 
-        addHeader(table,"Sr");
-        addHeader(table,"Description");
-        addHeader(table,"Qty");
-        addHeader(table,"Weight");
-        addHeader(table,"Rate/KG");
-        addHeader(table,"Amount");
+        String[] headers = {"Sr","Description","Grade","Weight(Kg)","Qty"};
 
-        int sr = 1;
-        BigDecimal subtotal = BigDecimal.ZERO;
-
-        for (DeliveryChallanItem item : items) {
-
-            OrderItem oi = item.getOrderItem();
-
-            table.addCell(createCell(String.valueOf(sr++)));
-            table.addCell(createCell(oi.getProductName()));
-            table.addCell(createCell(item.getQuantity().toString()));
-            table.addCell(createCell(item.getWeight()+" KG"));
-            table.addCell(createCell(formatINR(item.getRate())));
-            table.addCell(createCell(formatINR(item.getAmount())));
-
-            subtotal = subtotal.add(item.getAmount());
+        for(String h : headers){
+            table.addHeaderCell(new Cell()
+                    .add(new Paragraph(h).setBold())
+                    .setBackgroundColor(THEME_BLUE)
+                    .setFontColor(ColorConstants.WHITE)
+                    .setTextAlignment(TextAlignment.CENTER));
         }
 
-        document.add(table);
+        int sr=1;
+        BigDecimal totalWeight = BigDecimal.ZERO;
+        int totalQty = 0;
 
-        return subtotal;
-    }
+        for(DeliveryChallanItem item: items){
 
-    private void addTotals(Document document, Customer customer, BigDecimal subtotal) {
+            table.addCell(createBodyCell(String.valueOf(sr++),TextAlignment.CENTER));
+            table.addCell(createBodyCell(item.getOrderItem().getProductName(),TextAlignment.LEFT));
+            table.addCell(createBodyCell("FG 260",TextAlignment.CENTER));
+            table.addCell(createBodyCell(formatWeight(item.getWeight()),TextAlignment.RIGHT));
+            table.addCell(createBodyCell(String.valueOf(item.getQuantity()),TextAlignment.CENTER));
 
-        boolean intraState = customer.getState()!=null &&
-                customer.getState().equalsIgnoreCase("Maharashtra");
-
-        BigDecimal cgst = BigDecimal.ZERO;
-        BigDecimal sgst = BigDecimal.ZERO;
-        BigDecimal igst = BigDecimal.ZERO;
-
-        if(intraState){
-
-            cgst = subtotal.multiply(new BigDecimal("0.09"));
-            sgst = subtotal.multiply(new BigDecimal("0.09"));
-
-        }else{
-
-            igst = subtotal.multiply(new BigDecimal("0.18"));
+            totalWeight = totalWeight.add(item.getWeight());
+            totalQty += item.getQuantity();
         }
 
-        BigDecimal total = subtotal.add(cgst).add(sgst).add(igst);
+        doc.add(table);
 
-        Table totals = new Table(UnitValue.createPercentArray(new float[]{60,40}))
-                .setWidth(260)
-                .setHorizontalAlignment(HorizontalAlignment.RIGHT);
+        Table summary = new Table(new float[]{1,1}).useAllAvailableWidth();
 
-        totals.addCell(label("Subtotal"));
-        totals.addCell(value(formatINR(subtotal)));
-
-        totals.addCell(label("CGST (9%)"));
-        totals.addCell(value(formatINR(cgst)));
-
-        totals.addCell(label("SGST (9%)"));
-        totals.addCell(value(formatINR(sgst)));
-
-        totals.addCell(label("IGST (18%)"));
-        totals.addCell(value(formatINR(igst)));
-
-        totals.addCell(label("Grand Total"));
-        totals.addCell(value(formatINR(total)));
-
-        document.add(totals);
-
-        addSeparator(document);
-    }
-
-    private void addSignature(Document document){
-
-        Table sign = new Table(UnitValue.createPercentArray(new float[]{50,50}))
-                .useAllAvailableWidth();
-
-        sign.addCell(new Cell()
-                .add(new Paragraph("For Kali-Byte Precision Steel Foundry"))
+        summary.addCell(new Cell().add(new Paragraph("Total Quantity: "+totalQty).setBold())
                 .setBorder(Border.NO_BORDER));
 
-        Cell right = new Cell()
+        summary.addCell(new Cell().add(new Paragraph("Total Weight: "+formatWeight(totalWeight)+" Kg").setBold())
                 .setBorder(Border.NO_BORDER)
-                .setTextAlignment(TextAlignment.RIGHT);
+                .setTextAlignment(TextAlignment.RIGHT));
 
-        right.add(new Paragraph("Authorized Signatory"));
-
-        sign.addCell(right);
-
-        document.add(sign);
-    }
-
-    private void addHeader(Table table,String text){
-
-        table.addHeaderCell(new Cell()
-                .add(new Paragraph(text).setBold())
-                .setBackgroundColor(ColorConstants.BLUE)
-                .setFontColor(ColorConstants.WHITE)
-                .setTextAlignment(TextAlignment.CENTER));
-    }
-
-    private Cell createCell(String text){
-
-        return new Cell()
-                .add(new Paragraph(text))
-                .setTextAlignment(TextAlignment.CENTER)
-                .setBorder(new SolidBorder(1));
-    }
-
-    private Cell label(String text){
-
-        return new Cell().add(new Paragraph(text).setBold());
-    }
-
-    private Cell value(String text){
-
-        return new Cell()
-                .add(new Paragraph(text))
-                .setTextAlignment(TextAlignment.RIGHT);
-    }
-
-    private void addSeparator(Document document){
-
-        LineSeparator line = new LineSeparator(new SolidLine());
-        line.setMarginTop(10);
-        line.setMarginBottom(10);
-
-        document.add(line);
-    }
-
-    private String formatINR(BigDecimal amount){
-
-        if(amount==null) return "₹ 0";
-
-        NumberFormat formatter =
-                NumberFormat.getCurrencyInstance(new Locale("en","IN"));
-
-        return formatter.format(amount);
+        doc.add(summary);
     }
 
     //------------------------------------------------
-    // PAGE NUMBER HANDLER
+    // INVOICE INFO
     //------------------------------------------------
 
-    class PageNumberHandler implements IEventHandler {
+    private void addInvoiceInfoSection(Document doc, Invoice invoice){
 
-        public void handleEvent(Event event){
+        Table table = new Table(new float[]{1,1}).useAllAvailableWidth();
 
-            PdfDocumentEvent docEvent = (PdfDocumentEvent) event;
-            PdfDocument pdf = docEvent.getDocument();
-            PdfPage page = docEvent.getPage();
+        Cell left = new Cell().setBorder(Border.NO_BORDER);
+        left.add(new Paragraph("To").setBold());
+        left.add(new Paragraph(invoice.getCustomer().getName()));
+        left.add(new Paragraph(invoice.getCustomer().getAddress()));
+        left.add(new Paragraph("GST: "+invoice.getCustomer().getGstNumber()));
 
-            int pageNumber = pdf.getPageNumber(page);
+        Cell right = new Cell().setBorder(Border.NO_BORDER);
+        right.add(new Paragraph("Invoice No: "+invoice.getInvoiceNumber()));
+        right.add(new Paragraph("Date: "+invoice.getInvoiceDate()));
+        right.add(new Paragraph("Vehicle: "+invoice.getVehicleNumber()));
 
-            Rectangle pageSize = page.getPageSize();
+        table.addCell(left);
+        table.addCell(right);
 
-            PdfCanvas canvas = new PdfCanvas(page);
+        doc.add(table);
+    }
 
-            try {
+    //------------------------------------------------
+    // INVOICE ITEMS
+    //------------------------------------------------
 
-                canvas.beginText()
-                        .setFontAndSize(com.itextpdf.kernel.font.PdfFontFactory.createFont(),10)
-                        .moveText(pageSize.getWidth()/2-20,20)
-                        .showText("Page "+pageNumber)
-                        .endText();
+    private void addInvoiceItemsTable(Document doc, List<InvoiceItem> items){
 
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        float[] cols = {1,4,2,2,2,1,2};
+        Table table = new Table(cols).useAllAvailableWidth();
+
+        String[] headers = {"Sr","Description","Grade","Weight","Rate","Qty","Amount"};
+
+        for(String h:headers){
+            table.addHeaderCell(new Cell()
+                    .add(new Paragraph(h).setBold())
+                    .setBackgroundColor(THEME_BLUE)
+                    .setFontColor(ColorConstants.WHITE)
+                    .setTextAlignment(TextAlignment.CENTER));
         }
+
+        int sr=1;
+
+        for(InvoiceItem item: items){
+
+            table.addCell(createBodyCell(String.valueOf(sr++),TextAlignment.CENTER));
+            table.addCell(createBodyCell(item.getOrderItem().getProductName(),TextAlignment.LEFT));
+            table.addCell(createBodyCell("SG 500/7",TextAlignment.CENTER));
+            table.addCell(createBodyCell(formatWeight(item.getWeight()),TextAlignment.RIGHT));
+            table.addCell(createBodyCell(formatCurrency(item.getRate()),TextAlignment.RIGHT));
+            table.addCell(createBodyCell(String.valueOf(item.getQuantity()),TextAlignment.CENTER));
+            table.addCell(createBodyCell(formatCurrency(item.getAmount()),TextAlignment.RIGHT));
+        }
+
+        doc.add(table);
+    }
+
+    //------------------------------------------------
+    // INVOICE TOTALS
+    //------------------------------------------------
+
+    private void addInvoiceTotals(Document doc, Invoice invoice){
+
+        Table table = new Table(new float[]{3,1}).useAllAvailableWidth();
+
+        table.addCell(new Cell().add(new Paragraph("Total Amount")).setBorder(Border.NO_BORDER));
+        table.addCell(new Cell().add(new Paragraph(formatCurrency(invoice.getSubtotal())))
+                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
+
+        table.addCell(new Cell().add(new Paragraph("CGST @9%")).setBorder(Border.NO_BORDER));
+        table.addCell(new Cell().add(new Paragraph(formatCurrency(invoice.getCgst())))
+                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
+
+        table.addCell(new Cell().add(new Paragraph("SGST @9%")).setBorder(Border.NO_BORDER));
+        table.addCell(new Cell().add(new Paragraph(formatCurrency(invoice.getSgst())))
+                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
+
+        table.addCell(new Cell().add(new Paragraph("Grand Total").setBold()).setBorder(Border.NO_BORDER));
+        table.addCell(new Cell().add(new Paragraph(formatCurrency(invoice.getTotalAmount())).setBold())
+                .setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT));
+
+        doc.add(table);
+    }
+
+    //------------------------------------------------
+    // SIGNATURE
+    //------------------------------------------------
+
+    private void addSignature(Document doc){
+
+        Table table = new Table(new float[]{1,1}).useAllAvailableWidth().setMarginTop(30);
+
+        table.addCell(new Cell()
+                .add(new Paragraph("Prepared By: __________"))
+                .setBorder(Border.NO_BORDER));
+
+        Cell sign = new Cell().setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.RIGHT);
+
+        sign.add(new Paragraph("For Mittal Precision Steel Foundry").setBold());
+
+        table.addCell(sign);
+
+        doc.add(table);
+    }
+
+    //------------------------------------------------
+    // HELPERS
+    //------------------------------------------------
+
+    private Cell createBodyCell(String text, TextAlignment align){
+        return new Cell()
+                .add(new Paragraph(text).setFontSize(10))
+                .setTextAlignment(align)
+                .setBorder(new SolidBorder(ColorConstants.GRAY,0.5f));
+    }
+
+    private void addDivider(Document doc){
+        LineSeparator line = new LineSeparator(new SolidLine());
+        doc.add(line);
+    }
+
+    private String formatWeight(BigDecimal weight){
+        DecimalFormat df = new DecimalFormat("#,##,##0.00");
+        return df.format(weight);
+    }
+
+    private String formatCurrency(BigDecimal amount){
+        DecimalFormat df = new DecimalFormat("₹ #,##,##0.00");
+        return df.format(amount);
     }
 }

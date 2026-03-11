@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.furnace.furnace_heats.entity;
 
 import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
+import com.kalibyte.foundry.order.entity.Order;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -54,8 +55,9 @@ public class FurnaceHeats {
 
 	private LocalTime pouringEndTime;
 
-	// TODO: Replace with @ManyToOne to Order entity when Orders module is implemented
-	private String orderId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "order_id")
+	private Order order;
 
 	public void addMaterial(HeatMaterialItem material) {
 		if (materialsUsed == null) {
