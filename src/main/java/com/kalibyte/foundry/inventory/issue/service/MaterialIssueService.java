@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class MaterialIssueService {
 
     private final MaterialIssueRepository materialIssueRepository;
@@ -34,7 +33,14 @@ public class MaterialIssueService {
     private final ItemRepository itemRepository;
     private final IssueNumberGenerator issueNumberGenerator;
 
-    @Transactional
+	public MaterialIssueService(MaterialIssueRepository materialIssueRepository, DepartmentRepository departmentRepository, ItemRepository itemRepository, IssueNumberGenerator issueNumberGenerator) {
+		this.materialIssueRepository = materialIssueRepository;
+		this.departmentRepository = departmentRepository;
+		this.itemRepository = itemRepository;
+		this.issueNumberGenerator = issueNumberGenerator;
+	}
+
+	@Transactional
     public MaterialIssueResponse recordIssue(RecordIssueRequest request) {
         Department department = departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));

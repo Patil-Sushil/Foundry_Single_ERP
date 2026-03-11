@@ -5,6 +5,7 @@ import com.kalibyte.foundry.furnace.furnace_report.entity.Enum.Shift;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,7 @@ public class FurnaceRequestDTO {
 	@NotBlank
 	private String inchargeName;
 
+	@PastOrPresent
 	private LocalDate date;
 
 	@NotNull

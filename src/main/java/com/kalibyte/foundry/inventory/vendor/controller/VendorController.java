@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,12 +32,14 @@ public class VendorController {
 
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<VendorResponse> create(
             @Valid @RequestBody CreateVendorRequest request) {
         return ApiResponse.success("Vendor created successfully", vendorService.create(request));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','STORE')")
     public ApiResponse<Page<VendorResponse>> getAll(
             @RequestParam(required = false) Boolean isActive,
             Pageable pageable) {
@@ -44,11 +47,13 @@ public class VendorController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE')")
     public ApiResponse<VendorResponse> getById(@PathVariable Long id) {
         return ApiResponse.success("Vendor retrieved successfully", vendorService.getById(id));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE')")
     public ApiResponse<VendorResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateVendorRequest request) {
@@ -56,12 +61,14 @@ public class VendorController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deactivate(@PathVariable Long id) {
         vendorService.deactivate(id);
     }
 
     @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE')")
     public ApiResponse<List<VendorSummary>> search(@RequestParam String q) {
         return ApiResponse.success("Vendors searched successfully", vendorService.search(q));
     }

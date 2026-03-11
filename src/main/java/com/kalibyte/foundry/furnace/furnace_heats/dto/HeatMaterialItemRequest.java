@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.furnace.furnace_heats.dto;
 
-import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialType;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;

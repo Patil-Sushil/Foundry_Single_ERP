@@ -9,9 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -61,7 +60,7 @@ public class FurnaceHeats {
 
 	public void addMaterial(HeatMaterialItem material) {
 		if (materialsUsed == null) {
-			materialsUsed = new java.util.ArrayList<>();
+			materialsUsed = new ArrayList<>();
 		}
 		materialsUsed.add(material);
 		material.setHeat(this);

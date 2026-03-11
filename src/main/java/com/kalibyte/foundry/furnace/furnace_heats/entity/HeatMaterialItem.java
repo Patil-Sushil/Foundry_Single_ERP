@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.furnace.furnace_heats.entity;
 
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

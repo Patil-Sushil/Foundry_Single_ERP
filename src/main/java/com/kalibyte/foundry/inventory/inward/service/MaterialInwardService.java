@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +37,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class MaterialInwardService {
 
     private final MaterialInwardRepository materialInwardRepository;
@@ -48,7 +48,18 @@ public class MaterialInwardService {
     private final VendorLedgerService vendorLedgerService;
     private final InwardNumberGenerator inwardNumberGenerator;
 
-    @Transactional
+	public MaterialInwardService(MaterialInwardRepository materialInwardRepository, ReceivedItemRepository receivedItemRepository, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderService purchaseOrderService, ItemRepository itemRepository, ItemVendorRateRepository itemVendorRateRepository, VendorLedgerService vendorLedgerService, InwardNumberGenerator inwardNumberGenerator) {
+		this.materialInwardRepository = materialInwardRepository;
+		this.receivedItemRepository = receivedItemRepository;
+		this.purchaseOrderRepository = purchaseOrderRepository;
+		this.purchaseOrderService = purchaseOrderService;
+		this.itemRepository = itemRepository;
+		this.itemVendorRateRepository = itemVendorRateRepository;
+		this.vendorLedgerService = vendorLedgerService;
+		this.inwardNumberGenerator = inwardNumberGenerator;
+	}
+
+	@Transactional
     public InwardResponse startFromPO(Long poId, StartInwardRequest request) {
         PurchaseOrder po = purchaseOrderRepository.findWithDetails(poId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase Order not found with id: " + poId));
@@ -68,6 +79,7 @@ public class MaterialInwardService {
                 .inwardDate(LocalDate.now())
                 .status(InwardStatus.DRAFT)
                 .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
+                .confirmedAt(LocalDateTime.now())
                 .build();
 
         for (PurchaseOrderItem orderItem : po.getOrderItems()) {

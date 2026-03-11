@@ -25,19 +25,6 @@ ALTER TABLE orders
 -- Furnace Heat Materials and Upgrades
 -- =============================================
 
-ALTER TABLE furnace_heats
-    ADD COLUMN IF NOT EXISTS pouring_start_time TIME;
-
-ALTER TABLE furnace_heats
-    ADD COLUMN IF NOT EXISTS pouring_end_time TIME;
-
-ALTER TABLE furnace_heats
-    ADD COLUMN IF NOT EXISTS order_id VARCHAR(50);
-
-COMMENT ON COLUMN furnace_heats.order_id
-IS 'TODO: Convert to foreign key when orders table is created';
-
-
 -- =============================================
 -- Heat Material Items Table
 -- =============================================

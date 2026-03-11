@@ -10,25 +10,28 @@ import com.kalibyte.foundry.inventory.item.dto.response.ItemSummary;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class ItemService {
 
     private final ItemRepository itemRepository;
     private final DepartmentRepository departmentRepository;
 
-    @Transactional
+	public ItemService(ItemRepository itemRepository, DepartmentRepository departmentRepository) {
+		this.itemRepository = itemRepository;
+		this.departmentRepository = departmentRepository;
+	}
+
+	@Transactional
     public ItemResponse create(CreateItemRequest request) {
         Department department = null;
         if (request.departmentId() != null) {
@@ -158,4 +161,15 @@ public class ItemService {
                 item.getCreatedAt()
         );
     }
+
+    @Transactional
+    @Modifying
+	public ItemResponse toggleStatus(Long id) {
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + id));
+
+        item.setIsActive(!item.getIsActive());
+        itemRepository.save(item);
+        return toResponse(item);
+	}
 }

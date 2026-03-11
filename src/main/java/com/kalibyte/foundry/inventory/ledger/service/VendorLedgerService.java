@@ -17,15 +17,25 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class VendorLedgerService {
 
     private final VendorLedgerRepository vendorLedgerRepository;
     private final VendorRepository vendorRepository;
 
-    @Transactional(readOnly = true)
+	public VendorLedgerService(VendorLedgerRepository vendorLedgerRepository, VendorRepository vendorRepository) {
+		this.vendorLedgerRepository = vendorLedgerRepository;
+		this.vendorRepository = vendorRepository;
+	}
+
+	@Transactional(readOnly = true)
+    public List<VendorBalanceResponse> getAllVendorBalances() {
+        return vendorLedgerRepository.findAllVendorBalances();
+    }
+
+	@Transactional(readOnly = true)
     public Page<VendorLedgerResponse> getVendorLedger(Long vendorId, LocalDate from, LocalDate to, Pageable pageable) {
         return vendorLedgerRepository.findByVendorIdOrderByEntryDateDesc(vendorId, from, to, pageable)
                 .map(this::toResponse);

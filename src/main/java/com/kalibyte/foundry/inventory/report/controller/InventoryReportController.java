@@ -13,13 +13,16 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/inventory/reports")
-@RequiredArgsConstructor
 @Tag(name = "Inventory Reports", description = "Endpoints for inventory analytics and reports")
 public class InventoryReportController {
 
     private final InventoryReportService reportService;
 
-    @GetMapping("/inwards")
+	public InventoryReportController(InventoryReportService reportService) {
+		this.reportService = reportService;
+	}
+
+	@GetMapping("/inwards")
     @Operation(summary = "Material Inward Report")
     public ApiResponse<InwardReportResponse> getInwardReport(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

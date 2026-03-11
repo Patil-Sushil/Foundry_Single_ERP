@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.furnace.furnace_heats.repository;
 
 import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialItem;
-import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialType;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

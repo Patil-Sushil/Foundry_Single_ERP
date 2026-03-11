@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS furnace_reports (
 
 ALTER TABLE furnace_reports
     ADD CONSTRAINT chk_shift
-        CHECK (shift IN ('A','B','C'));
+        CHECK (shift IN ('DAY','NIGHT'));
 
 
 -- ============================================
@@ -175,3 +175,11 @@ CREATE INDEX IF NOT EXISTS idx_furnace_heats_furnace
 
 CREATE INDEX IF NOT EXISTS idx_furnace_heats_order
     ON furnace_heats(order_id);
+
+ALTER TABLE furnace_heats
+    ADD CONSTRAINT fk_furnace_heats_order
+        FOREIGN KEY (order_id)
+            REFERENCES orders(id)
+            ON DELETE SET NULL;
+
+CREATE INDEX idx_furnace_heats_order_id ON furnace_heats(order_id);

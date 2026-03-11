@@ -11,9 +11,22 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import com.kalibyte.foundry.inventory.ledger.dto.response.VendorBalanceResponse;
 
 @Repository
 public interface VendorLedgerRepository extends JpaRepository<VendorLedger, Long> {
+
+    @Query("SELECT new com.kalibyte.foundry.inventory.ledger.dto.response.VendorBalanceResponse(" +
+           "v.id, v.name, " +
+           "COALESCE(SUM(CASE WHEN vl.entryType = com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType.CREDIT THEN vl.amount ELSE 0 END), 0), " +
+           "COALESCE(SUM(CASE WHEN vl.entryType = com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType.DEBIT THEN vl.amount ELSE 0 END), 0), " +
+           "COALESCE(SUM(CASE WHEN vl.entryType = com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType.CREDIT THEN vl.amount ELSE 0 END), 0) - " +
+           "COALESCE(SUM(CASE WHEN vl.entryType = com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType.DEBIT THEN vl.amount ELSE 0 END), 0)) " +
+           "FROM Vendor v " +
+           "LEFT JOIN VendorLedger vl ON v.id = vl.vendor.id " +
+           "GROUP BY v.id, v.name")
+    List<VendorBalanceResponse> findAllVendorBalances();
 
     @Query("SELECT vl FROM VendorLedger vl WHERE vl.vendor.id = :vendorId " +
            "AND (CAST(:from AS date) IS NULL OR vl.entryDate >= :from) " +

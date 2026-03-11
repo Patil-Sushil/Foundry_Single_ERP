@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class PurchaseOrderService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -36,7 +35,15 @@ public class PurchaseOrderService {
     private final ItemVendorRateRepository itemVendorRateRepository;
     private final PONumberGenerator poNumberGenerator;
 
-    @Transactional
+	public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository, VendorRepository vendorRepository, ItemRepository itemRepository, ItemVendorRateRepository itemVendorRateRepository, PONumberGenerator poNumberGenerator) {
+		this.purchaseOrderRepository = purchaseOrderRepository;
+		this.vendorRepository = vendorRepository;
+		this.itemRepository = itemRepository;
+		this.itemVendorRateRepository = itemVendorRateRepository;
+		this.poNumberGenerator = poNumberGenerator;
+	}
+
+	@Transactional
     public PurchaseOrderResponse create(CreatePurchaseOrderRequest request) {
         Vendor vendor = vendorRepository.findById(request.vendorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + request.vendorId()));

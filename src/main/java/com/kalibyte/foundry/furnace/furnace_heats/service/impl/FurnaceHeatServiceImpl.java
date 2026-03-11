@@ -5,6 +5,7 @@ import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatMaterialItemRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatsByOrderResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialItem;
 import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsRepository;
@@ -74,9 +75,6 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         furnace.addHeat(heat); // Bidirectional maintenance
         calculateHeatFields(heat);
 
-        // ModelMapper might have automatically mapped materialsUsed, which leads to duplicates
-        // and potential mapping issues (detached entity errors). We clear it here and
-        // let processAndIssueMaterials handle the correct creation and association.
         if (heat.getMaterialsUsed() != null) {
             heat.getMaterialsUsed().clear();
         }
@@ -108,7 +106,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         //
 
         if (request.getOrderId() != null) {
-            Order order = orderRepository.findById(UUID.fromString(request.getOrderId()))
+            Order order = orderRepository.findById(request.getOrderId())
                     .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + request.getOrderId()));
 
             existingHeat.setOrder(order);
@@ -121,6 +119,37 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         FurnaceHeats updatedHeat = furnaceHeatsRepository.save(existingHeat);
         return modelMapper.map(updatedHeat, FurnaceHeatResponse.class);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HeatsByOrderResponse getHeatsByOrderId(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        List<FurnaceHeats> heats = furnaceHeatsRepository.findByOrderIdWithMaterials(orderId);
+
+        List<FurnaceHeatResponse> heatResponses = heats.stream()
+                .map(this::mapToResponse) // your existing mapper
+                .toList();
+
+        return new HeatsByOrderResponse(
+                order.getId(),
+                order.getOrderNumber(),
+                heatResponses
+        );
+
+    }
+
+    private FurnaceHeatResponse mapToResponse(FurnaceHeats heat) {
+        FurnaceHeatResponse response = modelMapper.map(heat, FurnaceHeatResponse.class);
+        if (heat.getOrder() != null) {
+            response.setOrderId(heat.getOrder().getId());
+        } else {
+            response.setOrderId(null);
+        }
+        return response;
+    }
+
 
     @Override
     @Transactional

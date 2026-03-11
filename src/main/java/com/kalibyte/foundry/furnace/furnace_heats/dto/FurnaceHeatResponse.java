@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -26,5 +27,5 @@ public class FurnaceHeatResponse {
     private List<HeatMaterialItemResponse> materialsUsed;
     private LocalTime pouringStartTime;
     private LocalTime pouringEndTime;
-    private String orderId;
+    private UUID orderId;
 }

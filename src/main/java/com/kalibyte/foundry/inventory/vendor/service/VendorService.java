@@ -19,12 +19,16 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
+
 public class VendorService {
 
     private final VendorRepository vendorRepository;
 
-    @Transactional
+	public VendorService(VendorRepository vendorRepository) {
+		this.vendorRepository = vendorRepository;
+	}
+
+	@Transactional
     public VendorResponse create(CreateVendorRequest request) {
         Vendor vendor1 = vendorRepository.findByPhone(request.phone());
         if(vendor1 != null){

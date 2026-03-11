@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.furnace.furnace_heats.dto;
 
-import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialType;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

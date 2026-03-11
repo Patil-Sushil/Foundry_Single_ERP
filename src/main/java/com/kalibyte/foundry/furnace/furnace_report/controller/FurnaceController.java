@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.furnace.furnace_report.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
-import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialType;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponseDTO;
 import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequestDTO;
 import com.kalibyte.foundry.furnace.furnace_report.service.FurnaceService;
@@ -17,12 +17,15 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/furnace/reports")
-@RequiredArgsConstructor
 public class FurnaceController {
 
     private final FurnaceService furnaceService;
 
-    @PostMapping
+	public FurnaceController(FurnaceService furnaceService) {
+		this.furnaceService = furnaceService;
+	}
+
+	@PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
     public ResponseEntity<ApiResponse<FurnaceResponseDTO>> createFurnace(@Valid @RequestBody FurnaceRequestDTO request) {
         FurnaceResponseDTO response = furnaceService.createFurnace(request);

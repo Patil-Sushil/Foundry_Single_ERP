@@ -3,7 +3,7 @@ package com.kalibyte.foundry.furnace.furnace_report.service;
 import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponseDTO;
 import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequestDTO;
 
-import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialType;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import java.util.List;
 import java.util.Map;
 

@@ -29,7 +29,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class InventoryReportService {
 
     private final MaterialInwardRepository inwardRepository;
@@ -39,7 +38,16 @@ public class InventoryReportService {
     private final PurchaseOrderRepository poRepository;
     private final VendorLedgerRepository ledgerRepository;
 
-    @Transactional(readOnly = true)
+	public InventoryReportService(MaterialInwardRepository inwardRepository, MaterialIssueRepository issueRepository, ItemRepository itemRepository, VendorRepository vendorRepository, PurchaseOrderRepository poRepository, VendorLedgerRepository ledgerRepository) {
+		this.inwardRepository = inwardRepository;
+		this.issueRepository = issueRepository;
+		this.itemRepository = itemRepository;
+		this.vendorRepository = vendorRepository;
+		this.poRepository = poRepository;
+		this.ledgerRepository = ledgerRepository;
+	}
+
+	@Transactional(readOnly = true)
     public InwardReportResponse getInwardReport(LocalDate start, LocalDate end, Long vendorId, Long itemId, Long poId) {
         List<MaterialInward> inwards = inwardRepository.findAllFiltered(InwardStatus.CONFIRMED, vendorId, start, end, org.springframework.data.domain.Pageable.unpaged()).getContent();
 
@@ -101,7 +109,7 @@ public class InventoryReportService {
         if (itemId != null) {
             issues = issues.stream()
                     .filter(is -> is.getIssuedItems().stream().anyMatch(ii -> ii.getItem().getId().equals(itemId)))
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
         BigDecimal totalQty = BigDecimal.ZERO;
@@ -230,31 +238,9 @@ public class InventoryReportService {
 
     @Transactional(readOnly = true)
     public DailyMovementReport getDailyMovementReport(LocalDate date, String category) {
-        List<Item> items;
-        if (category != null) {
-            items = itemRepository.findAll().stream()
-                    .filter(i -> i.getCategory().name().equalsIgnoreCase(category))
-                    .collect(Collectors.toList());
-        } else {
-            items = itemRepository.findAll();
-        }
 
         List<DailyMovementReport.DailyMovementItem> records = new ArrayList<>();
-        
-        for (Item item : items) {
-            // This is a bit expensive, but following the logic for now
-            // In a real app, we'd use a more optimized query
-            BigDecimal inQty = BigDecimal.ZERO;
-            BigDecimal inVal = BigDecimal.ZERO;
-            BigDecimal outQty = BigDecimal.ZERO;
-            BigDecimal outVal = BigDecimal.ZERO;
 
-            // Find movements on this date
-            // Better to fetch all movements for the date once and then group by item
-            // But let's keep it simple first
-            
-            // ... (rest of implementation)
-        }
         
         // Re-implementing more efficiently
         List<MaterialInward> inwards = inwardRepository.findAllFiltered(InwardStatus.CONFIRMED, null, date, date, org.springframework.data.domain.Pageable.unpaged()).getContent();
@@ -324,7 +310,6 @@ public class InventoryReportService {
                 .filter(ii -> ii.getItem().getId().equals(itemId))
                 .map(IssuedItem::getIssuedQuantity)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         return totalIn.subtract(totalOut);
     }
 

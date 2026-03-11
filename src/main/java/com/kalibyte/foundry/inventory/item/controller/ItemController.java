@@ -1,7 +1,6 @@
 package com.kalibyte.foundry.inventory.item.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
-import com.kalibyte.foundry.common.security.UserPrincipal;
 import com.kalibyte.foundry.inventory.item.dto.request.CreateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.request.UpdateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemResponse;
@@ -10,7 +9,6 @@ import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
 import com.kalibyte.foundry.inventory.item.service.ItemService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -56,6 +54,11 @@ public class ItemController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateItemRequest request) {
         return ApiResponse.success("Item updated successfully", itemService.update(id, request));
+    }
+
+    @PatchMapping("/toggle-status/{id}")
+    public ApiResponse<ItemResponse> toggleItem(@PathVariable Long id){
+        return ApiResponse.success("Updated Status ",itemService.toggleStatus(id));
     }
 
     @GetMapping("/search")

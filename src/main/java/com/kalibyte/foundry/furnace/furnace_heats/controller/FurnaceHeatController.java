@@ -3,6 +3,7 @@ package com.kalibyte.foundry.furnace.furnace_heats.controller;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatsByOrderResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.service.FurnaceHeatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,13 +13,26 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/furnace")
-@RequiredArgsConstructor
+
 public class FurnaceHeatController {
 
     private final FurnaceHeatService furnaceHeatService;
+
+	public FurnaceHeatController(FurnaceHeatService furnaceHeatService) {
+		this.furnaceHeatService = furnaceHeatService;
+	}
+
+	@GetMapping("/heats/by-order/{orderId}")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<HeatsByOrderResponse>> getHeatsByOrder(
+            @PathVariable UUID orderId) {
+        HeatsByOrderResponse responses= furnaceHeatService.getHeatsByOrderId(orderId);
+        return ResponseEntity.ok(new ApiResponse<>(true,"heats fetched by orders",responses));
+    }
 
     @GetMapping("/reports/{reportId}/heats")
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
