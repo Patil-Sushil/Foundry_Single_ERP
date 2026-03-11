@@ -106,6 +106,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         existingHeat.setPouringStartTime(request.getPouringStartTime());
         existingHeat.setPouringEndTime(request.getPouringEndTime());
         //
+
         if (request.getOrderId() != null) {
             Order order = orderRepository.findById(UUID.fromString(request.getOrderId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + request.getOrderId()));
