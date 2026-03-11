@@ -104,6 +104,8 @@ public class OrderServiceImpl implements OrderService {
                 .deliveryDate(request.getDeliveryDate())
                 .status(OrderStatus.CREATED)
                 .totalAmount(quotation.getTotalAmount())
+                .placeOfSupply(request.getPlaceOfSupply())
+                .poReference(request.getPoReference())
                 .build();
 
         List<OrderItem> items = quotation.getItems()
@@ -153,6 +155,8 @@ public class OrderServiceImpl implements OrderService {
                 .orderType(OrderType.DIRECT)
                 .orderDate(LocalDate.now())
                 .deliveryDate(request.getDeliveryDate())
+                .placeOfSupply(request.getPlaceOfSupply())
+                .poReference(request.getPoReference())
                 .status(OrderStatus.CREATED)
                 .build();
 

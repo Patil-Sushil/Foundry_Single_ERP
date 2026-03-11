@@ -8,7 +8,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -19,15 +18,23 @@ import java.util.UUID;
 public class OrderResponse {
 
     private UUID id;
+
     private String orderNumber;
+
     private OrderStatus status;
 
     private OrderType orderType;
 
     private LocalDate orderDate;
+
     private LocalDate deliveryDate;
 
+    private String placeOfSupply;
+
+    private String poReference;
+
     private CustomerSummary customer;
+
     private QuotationSummary quotation;
 
     private List<OrderItemResponse> items;
@@ -35,5 +42,6 @@ public class OrderResponse {
     private BigDecimal totalAmount;
 
     private LocalDateTime createdAt;
+
     private String createdBy;
 }

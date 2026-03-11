@@ -7,6 +7,7 @@ import com.kalibyte.foundry.order.entity.ENUM.OrderType;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -24,21 +25,44 @@ import java.util.List;
 public class Order extends BaseEntity {
 
     @Column(nullable = false, unique = true)
+    @NotBlank
     private String orderNumber;
+
+    //------------------------------------------------
+    // CUSTOMER
+    //------------------------------------------------
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    //------------------------------------------------
+    // ORDER TYPE
+    //------------------------------------------------
+
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)
     private OrderType orderType;
+
+    //------------------------------------------------
+    // QUOTATION
+    //------------------------------------------------
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quotation_id", unique = true)
     private Quotation quotation;
 
+    //------------------------------------------------
+    // ORDER DATA
+    //------------------------------------------------
+
     private LocalDate orderDate;
+
+    @Column(length = 150)
+    private String placeOfSupply;
+
+    @Column(length = 150)
+    private String poReference;
 
     private LocalDate deliveryDate;
 
@@ -47,6 +71,10 @@ public class Order extends BaseEntity {
 
     @Column(precision = 19, scale = 2)
     private BigDecimal totalAmount;
+
+    //------------------------------------------------
+    // ITEMS
+    //------------------------------------------------
 
     @OneToMany(
             mappedBy = "order",

@@ -6,78 +6,54 @@ import com.kalibyte.foundry.order.dto.response.OrderResponse;
 import com.kalibyte.foundry.order.dto.response.QuotationSummary;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
-import org.springframework.stereotype.Component;
+import com.kalibyte.foundry.customer.entity.Customer;
+import com.kalibyte.foundry.quotation.entity.Quotation;
 
-import java.util.Collections;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
 import java.util.List;
 
-@Component
-public class OrderMapper {
+@Mapper(componentModel = "spring")
+public interface OrderMapper {
 
-    public OrderResponse toResponse(Order order) {
+    //------------------------------------------------
+    // ORDER → RESPONSE
+    //------------------------------------------------
 
-        if (order == null) {
-            return null;
-        }
+    @Mapping(source = "orderItems", target = "items")
+    @Mapping(source = "customer", target = "customer")
+    @Mapping(source = "quotation", target = "quotation")
+    @Mapping(source = "placeOfSupply", target = "placeOfSupply")
+    @Mapping(source = "poReference", target = "poReference")
+    OrderResponse toResponse(Order order);
 
-        List<OrderItemResponse> items = order.getOrderItems() == null
-                ? Collections.emptyList()
-                : order.getOrderItems()
-                .stream()
-                .map(this::toItemResponse)
-                .toList();
+    //------------------------------------------------
+    // ORDER ITEM → RESPONSE
+    //------------------------------------------------
 
-        return OrderResponse.builder()
-                .id(order.getId())
-                .orderNumber(order.getOrderNumber())
-                .status(order.getStatus())
-                .orderType(order.getOrderType())
-                .orderDate(order.getOrderDate())
-                .deliveryDate(order.getDeliveryDate())
+    OrderItemResponse toItemResponse(OrderItem item);
 
-                .customer(
-                        order.getCustomer() != null
-                                ? CustomerSummary.builder()
-                                .id(order.getCustomer().getId())
-                                .name(order.getCustomer().getName())
-                                .email(order.getCustomer().getEmail())
-                                .phone(order.getCustomer().getPhone())
-                                .address(order.getCustomer().getAddress())
-                                .build()
-                                : null
-                )
+    List<OrderItemResponse> toItemResponses(List<OrderItem> items);
 
-                .quotation(
-                        order.getQuotation() != null
-                                ? QuotationSummary.builder()
-                                .id(order.getQuotation().getId())
-                                .quotationNumber(order.getQuotation().getQuotationNumber())
-                                .quotationDate(order.getQuotation().getQuotationDate())
-                                .totalAmount(order.getQuotation().getTotalAmount())
-                                .build()
-                                : null
-                )
+    //------------------------------------------------
+    // CUSTOMER → SUMMARY
+    //------------------------------------------------
 
-                .items(items)
-                .totalAmount(order.getTotalAmount())
-                .createdAt(order.getCreatedAt())
-                .createdBy(order.getCreatedBy())
-                .build();
-    }
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "name", target = "name")
+    @Mapping(source = "email", target = "email")
+    @Mapping(source = "phone", target = "phone")
+    @Mapping(source = "address", target = "address")
+    CustomerSummary toCustomerSummary(Customer customer);
 
-    private OrderItemResponse toItemResponse(OrderItem item) {
+    //------------------------------------------------
+    // QUOTATION → SUMMARY
+    //------------------------------------------------
 
-        if (item == null) {
-            return null;
-        }
-
-        return OrderItemResponse.builder()
-                .id(item.getId())
-                .productName(item.getProductName())
-                .metalType(item.getMetalType())
-                .quantity(item.getQuantity())
-                .unitPrice(item.getUnitPrice())
-                .totalPrice(item.getTotalPrice())
-                .build();
-    }
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "quotationNumber", target = "quotationNumber")
+    @Mapping(source = "quotationDate", target = "quotationDate")
+    @Mapping(source = "totalAmount", target = "totalAmount")
+    QuotationSummary toQuotationSummary(Quotation quotation);
 }

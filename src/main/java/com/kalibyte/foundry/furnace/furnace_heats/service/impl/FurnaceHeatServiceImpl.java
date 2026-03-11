@@ -18,6 +18,8 @@ import com.kalibyte.foundry.inventory.issue.dto.request.RecordIssueRequest;
 import com.kalibyte.foundry.inventory.issue.service.MaterialIssueService;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
+import com.kalibyte.foundry.order.entity.Order;
+import com.kalibyte.foundry.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +43,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
     private final MaterialIssueService materialIssueService;
     private final DepartmentRepository departmentRepository;
     private final ModelMapper modelMapper;
+    private final OrderRepository orderRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -101,7 +105,13 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         existingHeat.setPouringTemp(request.getPouringTemp());
         existingHeat.setPouringStartTime(request.getPouringStartTime());
         existingHeat.setPouringEndTime(request.getPouringEndTime());
-        existingHeat.setOrderId(request.getOrderId());
+        //
+        if (request.getOrderId() != null) {
+            Order order = orderRepository.findById(UUID.fromString(request.getOrderId()))
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + request.getOrderId()));
+
+            existingHeat.setOrder(order);
+        }
         
         calculateHeatFields(existingHeat);
 
