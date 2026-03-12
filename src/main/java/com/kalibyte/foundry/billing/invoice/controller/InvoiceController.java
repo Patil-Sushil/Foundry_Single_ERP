@@ -4,8 +4,12 @@ import com.kalibyte.foundry.billing.invoice.dto.request.InvoiceRequest;
 import com.kalibyte.foundry.billing.invoice.dto.response.InvoiceResponse;
 import com.kalibyte.foundry.billing.invoice.service.InvoiceService;
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -63,5 +67,29 @@ public class InvoiceController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=invoice-" + id + ".pdf")
                 .body(pdf);
+    }
+
+    //------------------------------------------------
+    // Get All Invoice
+    //------------------------------------------------
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<InvoiceResponse>>> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        invoiceService.getAllInvoices(pageable)
+                )
+        );
     }
 }
