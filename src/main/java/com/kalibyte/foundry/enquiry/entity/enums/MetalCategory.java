@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.enquiry.entity.ENUM;
+package com.kalibyte.foundry.enquiry.entity.enums;
 
 import java.util.Arrays;
 import java.util.List;

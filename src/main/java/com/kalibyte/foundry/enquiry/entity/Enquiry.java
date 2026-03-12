@@ -2,7 +2,7 @@ package com.kalibyte.foundry.enquiry.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
+import com.kalibyte.foundry.enquiry.entity.enums.EnquiryStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
