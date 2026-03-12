@@ -26,9 +26,10 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     BigDecimal getTotalPaid(UUID invoiceId);
 
     @Query("""
-            SELECT e.paymentNumber
-            FROM Payment e
-            ORDER BY e.createdAt DESC
-           """)
+        SELECT p.paymentNumber
+        FROM Payment p
+        ORDER BY p.createdAt DESC
+        LIMIT 1
+       """)
     Optional<String> findLastPaymentNumber();
 }
