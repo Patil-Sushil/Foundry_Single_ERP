@@ -6,13 +6,15 @@ spring:
     name: FoundryApplication
 
   datasource:
-#     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:9090/Foundry_Single_ERP?useSSL=false}
-#     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-#     password: ${SPRING_DATASOURCE_PASSWORD:1422}
-      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.11.41:5432/foundry_dev_db?useSSL=false}
-      username: ${SPRING_DATASOURCE_USERNAME:devuser}
-      password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
-      driver-class-name: org.postgresql.Driver
+     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:9090/Foundry_Single_ERP?useSSL=false}
+     username: ${SPRING_DATASOURCE_USERNAME:postgres}
+     password: ${SPRING_DATASOURCE_PASSWORD:1422}
+     driver-class-name: org.postgresql.Driver
+
+  #      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.11.41:5432/foundry_dev_db?useSSL=false}
+#      username: ${SPRING_DATASOURCE_USERNAME:devuser}
+#      password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+#      driver-class-name: org.postgresql.Driver
 
   jpa:
     open-in-view: false

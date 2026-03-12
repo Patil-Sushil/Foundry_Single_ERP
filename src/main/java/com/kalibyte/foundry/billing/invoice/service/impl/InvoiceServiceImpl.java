@@ -12,12 +12,14 @@ import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.billing.invoice.service.InvoiceService;
 import com.kalibyte.foundry.billing.util.PdfGenerator;
 import com.kalibyte.foundry.common.email.EmailService;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -246,5 +248,25 @@ public class InvoiceServiceImpl implements InvoiceService {
                 invoiceItemRepository.findByInvoice(invoice);
 
         return pdfGenerator.generateInvoicePdf(invoice, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<InvoiceResponse> getAllInvoices(Pageable pageable) {
+
+        var page = invoiceRepository.findAll(pageable);
+
+        List<InvoiceResponse> content = page.getContent()
+                .stream()
+                .map(InvoiceMapper::toResponse)
+                .toList();
+
+        return PageResponse.<InvoiceResponse>builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .build();
     }
 }
