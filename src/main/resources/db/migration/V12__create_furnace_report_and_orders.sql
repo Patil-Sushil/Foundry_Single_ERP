@@ -183,3 +183,4 @@ ALTER TABLE furnace_heats
             ON DELETE SET NULL;
 
 CREATE INDEX idx_furnace_heats_order_id ON furnace_heats(order_id);
+CREATE INDEX idx_furnace_report_furnace_ref_no on furnace_reports(furnace_ref_no);

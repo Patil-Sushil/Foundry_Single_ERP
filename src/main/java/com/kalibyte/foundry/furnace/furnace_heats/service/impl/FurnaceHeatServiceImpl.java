@@ -72,6 +72,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + reportId));
 
         FurnaceHeats heat = modelMapper.map(request, FurnaceHeats.class);
+        heat.setId(null); // Ensure it's treated as a new entity even if an ID was passed in the request
         furnace.addHeat(heat); // Bidirectional maintenance
         calculateHeatFields(heat);
 

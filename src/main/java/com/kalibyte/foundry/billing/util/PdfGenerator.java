@@ -35,6 +35,24 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * PDF Generator (iText 7)
+ *
+ * هدف: DC + Invoice same-to-same look as your provided images:
+ * - Top company name + two-column header info (left company info, right document meta)
+ * - Center title with divider lines
+ * - To / Document info section
+ * - Dark-blue table headers
+ * - Totals row with left/right alignment
+ * - DC: print items table AGAIN after totals (for cutting / customer receipt)
+ * - Invoice: totals block + bank details + terms & conditions + signature block
+ *
+ * NOTE:
+ * - Heat No. column is added in DC table. If you don't have heat no in your entity,
+ *   it prints "-" by default (see resolveHeatNo()).
+ * - Currency symbol "₹" needs a font that supports it. If your PDF shows a square box,
+ *   replace formatCurrency() to use "Rs." OR embed a Unicode TTF font.
+ */
 @Component
 public class PdfGenerator {
 
