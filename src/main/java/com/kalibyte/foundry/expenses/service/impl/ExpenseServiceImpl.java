@@ -14,6 +14,7 @@ import com.kalibyte.foundry.expenses.service.ExpenseService;
 import com.kalibyte.foundry.expenses.util.ExpenseNumberGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -29,56 +30,33 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final ExpenseNumberGenerator expenseNumberGenerator;
 
     @Override
+    @Transactional
     public ExpenseResponse createExpense(ExpenseCreateRequest request) {
 
         ExpenseHead head;
 
-        /*
-         * CASE 1: Expense head selected from dropdown
-         */
         if (request.getExpenseHeadId() != null) {
-
             head = expenseHeadRepository.findById(request.getExpenseHeadId())
-                    .orElseThrow(() ->
-                            new ResourceNotFoundException("Expense head not found"));
-        }
-
-        /*
-         * CASE 2: Manual expense head entered
-         */
-        else if (StringUtils.hasText(request.getExpenseHeadName())) {
+                    .orElseThrow(() -> new ResourceNotFoundException("Expense head not found"));
+        } else if (StringUtils.hasText(request.getExpenseHeadName())) {
 
             String normalizedName = request.getExpenseHeadName().trim();
-
-            ExpenseCategory category =
-                    request.getCategory() != null
-                            ? request.getCategory()
-                            : ExpenseCategory.OTHER;
+            ExpenseCategory category = request.getCategory() != null ? request.getCategory() : ExpenseCategory.OTHER;
 
             head = expenseHeadRepository
                     .findByNameIgnoreCaseAndCategory(normalizedName, category)
-                    .orElseGet(() -> {
+                    .orElseGet(() -> expenseHeadRepository.save(
+                            ExpenseHead.builder()
+                                    .name(normalizedName)
+                                    .category(category)
+                                    .description(request.getDescription())
+                                    .build()
+                    ));
 
-                        ExpenseHead newHead = ExpenseHead.builder()
-                                .name(normalizedName)
-                                .category(category)
-                                .description(request.getDescription())
-                                .build();
-
-                        return expenseHeadRepository.save(newHead);
-                    });
-        }
-
-        /*
-         * CASE 3: No head provided
-         */
-        else {
+        } else {
             throw new BusinessException("Expense head is required");
         }
 
-        /*
-         * Create Expense
-         */
         Expense expense = Expense.builder()
                 .expenseNumber(expenseNumberGenerator.generate())
                 .expenseHead(head)
@@ -89,25 +67,22 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .remarks(request.getRemarks())
                 .build();
 
-        expenseRepository.save(expense);
-
-        return expenseMapper.toResponse(expense);
+        Expense saved = expenseRepository.save(expense);
+        return expenseMapper.toResponse(saved);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ExpenseResponse getExpense(UUID id) {
-
-        Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Expense not found"));
-
+        Expense expense = expenseRepository.findByIdWithExpenseHead(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
         return expenseMapper.toResponse(expense);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenseResponse> getAllExpenses() {
-
-        return expenseRepository.findAll()
+        return expenseRepository.findAllWithExpenseHead()
                 .stream()
                 .map(expenseMapper::toResponse)
                 .toList();
