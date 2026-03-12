@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.enquiry.dto.request;
 
-import com.kalibyte.foundry.enquiry.entity.ENUM.MetalType;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
 import jakarta.validation.constraints.*;
 import lombok.*;

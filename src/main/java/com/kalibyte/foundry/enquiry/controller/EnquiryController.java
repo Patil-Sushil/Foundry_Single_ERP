@@ -5,7 +5,6 @@ import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.enquiry.dto.request.EnquiryCreateRequest;
 import com.kalibyte.foundry.enquiry.dto.request.UpdateEnquiryStatusRequest;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
-import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
