@@ -2,18 +2,24 @@ package com.kalibyte.foundry.billing.util;
 
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.events.Event;
+import com.itextpdf.kernel.events.IEventHandler;
+import com.itextpdf.kernel.events.PdfDocumentEvent;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
+import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
 import com.itextpdf.kernel.pdf.canvas.draw.DashedLine;
 import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
+import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.element.LineSeparator;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallan;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallanItem;
@@ -50,90 +56,72 @@ import java.util.List;
 @Component
 public class PdfGenerator {
 
-    // Theme colors (match screenshots)
+    // ─── Theme Colors ───
     private static final DeviceRgb THEME_BLUE = new DeviceRgb(18, 53, 102);
     private static final DeviceRgb LIGHT_LINE = new DeviceRgb(200, 210, 225);
     private static final DeviceRgb ROW_BORDER = new DeviceRgb(160, 175, 195);
+    private static final DeviceRgb LIGHT_BG = new DeviceRgb(245, 248, 252);
 
-    // Company constants (as in images) - change as needed
-    private static final String COMPANY_NAME = "MITTAL PRECISION STEEL FOUNDRY";
-    private static final String COMPANY_PLOT = "Plot No: A-12, MIDC Industrial Area, Kolhapur - 416234";
+    // ─── Company Constants ───
+    private static final String COMPANY_NAME = "KALI-BYTE PRECISION STEEL FOUNDRY";
+    private static final String COMPANY_PLOT = "Plot No: A-12, MIDC Industrial Area, Sangli - 416234";
     private static final String COMPANY_GST = "GST No: 27AACM1234P125";
     private static final String COMPANY_CONTACT = "Contact No: 0214-2654321";
-    private static final String COMPANY_EMAIL = "Email: info@mittalfoundry.com";
+    private static final String COMPANY_EMAIL = "Email: info@kalibytefoundry.com";
 
-    // Invoice static blocks (because your Invoice entity fields are not shown for these in code)
-    // Replace with your DB values if available.
-    private static final String BANK_ACCOUNT_NAME = "Mittal Precision Steel Foundry";
+    // ─── Bank Details ───
+    private static final String BANK_ACCOUNT_NAME = "Kalibyte Precision Steel Foundry";
     private static final String BANK_NAME = "HDFC Bank";
-    private static final String BANK_BRANCH = "Shiroli (Kolhapur)";
+    private static final String BANK_BRANCH = "Vishrambag (Sangli)";
     private static final String BANK_ACCOUNT_NO = "5010012345678";
     private static final String BANK_IFSC = "HDFC0000123";
 
+    // ─── Terms ───
     private static final String TERMS_PAYMENT = "50% Advance, 50% Before Dispatch";
     private static final String TERMS_DELIVERY = "Mumbai";
 
-    // ----------------------------
-    // DELIVERY CHALLAN PDF
-    // ----------------------------
-    public byte[] generateDeliveryChallanPdf(DeliveryChallan dc, List<DeliveryChallanItem> items) {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+    // ─── Page Layout Constants ───
+    private static final float PAGE_HEIGHT = PageSize.A4.getHeight();
+    private static final float TOP_MARGIN = 18;
+    private static final float BOTTOM_MARGIN = 18;
+    private static final float LEFT_MARGIN = 28;
+    private static final float RIGHT_MARGIN = 28;
+    private static final float USABLE_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN;
 
+    // Estimated heights for layout calculation
+    private static final float TABLE_ROW_HEIGHT = 30f;
+    private static final float TABLE_HEADER_HEIGHT = 35f;
+
+    // ════════════════════════════════════════════════════════════
+    //  DELIVERY CHALLAN PDF
+    // ════════════════════════════════════════════════════════════
+    public byte[] generateDeliveryChallanPdf(DeliveryChallan dc,
+                                             List<DeliveryChallanItem> items) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
             Document doc = new Document(pdf, PageSize.A4);
+            doc.setMargins(TOP_MARGIN, RIGHT_MARGIN, BOTTOM_MARGIN, LEFT_MARGIN);
 
-            // Margins similar to your sample
-            doc.setMargins(18, 28, 18, 28);
+            // Add page border handler
+            pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderHandler());
 
-            // Top thin line
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── ORIGINAL COPY (top half or full pages) ──
+            addDcSection(doc, dc, items, "ORIGINAL COPY");
 
-            // Company title
-            doc.add(new Paragraph(COMPANY_NAME)
-                    .setBold()
-                    .setFontSize(22)
-                    .setFontColor(THEME_BLUE)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(8));
+            // ── Calculate if cut copy fits on same page ──
+            float cutCopyHeight = calculateDcCutCopyHeight(items);
+            float currentY = estimateCurrentY(doc, pdf);
 
-            // Header block (Left: company info, Right: DC meta)
-            addTopHeaderBlockForDc(doc, dc);
+            if (currentY - cutCopyHeight < BOTTOM_MARGIN + 20) {
+                doc.add(new AreaBreak());
+            }
 
-            // Line under header
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── CUT LINE ──
+            addCutHereLine(doc);
 
-            // Center title with lines (as in screenshot)
-            addCenteredTitleWithRules(doc, "DELIVERY CHALLAN");
-
-            // To + DC details section
-            addDcInfoSectionLikeSample(doc, dc);
-
-            // Items table
-            addRule(doc, 1f, LIGHT_LINE);
-            addDcItemsTableLikeSample(doc, items);
-
-            // Totals row (Total Qty / Total Weight)
-            addDcTotalsRow(doc, items);
-
-            // Divider + (CUT COPY) second table (same as requested)
-            addRule(doc, 1f, LIGHT_LINE);
-            addCutHereHint(doc);                 // optional (subtle dashed line)
-            addDcItemsTableLikeSample(doc, items);
-
-            // Footer note
-            addRule(doc, 1f, LIGHT_LINE);
-            doc.add(new Paragraph("Material delivered in good condition.")
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginTop(12)
-                    .setMarginBottom(12));
-
-            // Signature
-            addRule(doc, 1f, LIGHT_LINE);
-            addDcSignatureLikeSample(doc);
-
-            // Bottom line (like the sample has multiple lines; keeping one clean line)
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── CUSTOMER COPY (bottom half or new page) ──
+            addDcSection(doc, dc, items, "CUSTOMER COPY");
 
             doc.close();
             return out.toByteArray();
@@ -143,71 +131,264 @@ public class PdfGenerator {
         }
     }
 
-    // ----------------------------
-    // INVOICE PDF
-    // ----------------------------
+    private void addDcSection(Document doc, DeliveryChallan dc,
+                              List<DeliveryChallanItem> items, String copyLabel) {
+
+        doc.add(new Paragraph(copyLabel)
+                .setFontSize(8)
+                .setFontColor(THEME_BLUE)
+                .setTextAlignment(TextAlignment.RIGHT)
+                .setMarginBottom(2));
+
+        addCompactDcHeader(doc, dc);
+
+        doc.add(new Paragraph("DELIVERY CHALLAN")
+                .setBold()
+                .setFontSize(14)
+                .setFontColor(THEME_BLUE)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginTop(4)
+                .setMarginBottom(4));
+
+        addThinRule(doc);
+        addCompactDcInfo(doc, dc);
+        addThinRule(doc);
+        addDcItemsTable(doc, items);
+        addDcTotalsRow(doc, items);
+        addCompactDcSignature(doc);
+    }
+
+    private void addCompactDcHeader(Document doc, DeliveryChallan dc) {
+        Table header = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
+        header.setMarginBottom(4);
+
+        Cell left = noBorderCell();
+        left.add(new Paragraph(COMPANY_NAME)
+                .setBold().setFontSize(12)
+                .setFontColor(THEME_BLUE).setMarginBottom(2));
+        left.add(miniLine(COMPANY_PLOT));
+        left.add(miniLine(COMPANY_GST));
+        left.add(miniLine(COMPANY_CONTACT + " | " + COMPANY_EMAIL));
+
+        Cell right = noBorderCell();
+        right.add(miniKv("DC No: ",
+                safe(dc != null ? dc.getDcNumber() : null)));
+        right.add(miniKv("Date: ",
+                formatDate(dc != null ? dc.getDispatchDate() : null)));
+        right.add(miniKv("Vehicle No: ",
+                safe(dc != null ? dc.getVehicleNumber() : null)));
+        right.add(miniKv("Transporter: ",
+                safe(dc != null ? dc.getTransportName() : null)));
+
+        header.addCell(left);
+        header.addCell(right);
+        doc.add(header);
+    }
+
+    private void addCompactDcInfo(Document doc, DeliveryChallan dc) {
+        Table table = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
+        table.setMarginTop(4).setMarginBottom(4);
+
+        Cell left = noBorderCell();
+        left.add(new Paragraph("To,")
+                .setBold().setFontColor(THEME_BLUE)
+                .setFontSize(9).setMarginBottom(2));
+
+        String custName = safe(dc != null && dc.getCustomer() != null
+                ? dc.getCustomer().getName() : null);
+        String custAddr = safe(dc != null && dc.getCustomer() != null
+                ? dc.getCustomer().getAddress() : null);
+        String custGst = safe(dc != null && dc.getCustomer() != null
+                ? dc.getCustomer().getGstNumber() : null);
+        String custPhone = safe(dc != null && dc.getCustomer() != null
+                ? dc.getCustomer().getPhone() : null);
+
+        left.add(new Paragraph(custName)
+                .setBold().setFontSize(9).setMarginBottom(1));
+        left.add(miniLine(custAddr));
+        left.add(miniKv("GST: ", custGst));
+        left.add(miniKv("Mobile: ", custPhone));
+
+        Cell right = noBorderCell();
+        String pos = (dc != null && dc.getOrder() != null)
+                ? safe(dc.getOrder().getPlaceOfSupply()) : "-";
+        right.add(miniKv("Place of Supply: ", pos));
+
+        table.addCell(left);
+        table.addCell(right);
+        doc.add(table);
+    }
+
+    private void addDcItemsTable(Document doc, List<DeliveryChallanItem> items) {
+        float[] cols = {1.0f, 5.5f, 1.8f, 2.0f, 1.5f};
+        String[] headers = {"Sr No", "Description", "Grade", "Weight (Kg)", "Qty"};
+
+        Table table = new Table(cols).useAllAvailableWidth();
+        table.setMarginTop(4);
+
+        for (String h : headers) {
+            table.addHeaderCell(headerCell(h));
+        }
+
+        int sr = 1;
+        if (items != null) {
+            for (DeliveryChallanItem item : items) {
+                boolean isEven = (sr % 2 == 0);
+                table.addCell(bodyCell(String.valueOf(sr++),
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        safe(item != null && item.getOrderItem() != null
+                                ? item.getOrderItem().getProductName() : null),
+                        TextAlignment.LEFT, isEven));
+                table.addCell(bodyCell("FG 260",
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        formatWeight(item != null ? item.getWeight() : null),
+                        TextAlignment.RIGHT, isEven));
+                table.addCell(bodyCell(
+                        String.valueOf(item != null ? item.getQuantity() : 0),
+                        TextAlignment.CENTER, isEven));
+            }
+        }
+
+        table.setSkipFirstHeader(false);
+        table.setSkipLastFooter(false);
+        doc.add(table);
+    }
+
+    private void addDcTotalsRow(Document doc, List<DeliveryChallanItem> items) {
+        int totalQty = 0;
+        BigDecimal totalWeight = BigDecimal.ZERO;
+
+        if (items != null) {
+            for (DeliveryChallanItem it : items) {
+                if (it != null) {
+                    totalQty += it.getQuantity();
+                    if (it.getWeight() != null)
+                        totalWeight = totalWeight.add(it.getWeight());
+                }
+            }
+        }
+
+        Table totals = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
+        totals.setMarginTop(2).setMarginBottom(4);
+        totals.setBackgroundColor(LIGHT_BG);
+
+        Cell l = noBorderCell();
+        l.setPadding(6);
+        l.add(new Paragraph("Total Quantity: " + totalQty)
+                .setBold().setFontSize(9).setFontColor(THEME_BLUE));
+
+        Cell r = noBorderCell();
+        r.setPadding(6);
+        r.setTextAlignment(TextAlignment.RIGHT);
+        r.add(new Paragraph("Total Weight: " + formatWeight(totalWeight) + " Kg")
+                .setBold().setFontSize(9).setFontColor(THEME_BLUE));
+
+        totals.addCell(l);
+        totals.addCell(r);
+        doc.add(totals);
+    }
+
+    private void addCompactDcSignature(Document doc) {
+        Table t = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
+        t.setMarginTop(6).setMarginBottom(4);
+
+        Cell left = noBorderCell();
+        left.add(new Paragraph("Received By: ________________")
+                .setFontSize(8).setMarginTop(4));
+
+        Cell right = noBorderCell();
+        right.setTextAlignment(TextAlignment.RIGHT);
+        right.add(new Paragraph("For " + COMPANY_NAME)
+                .setBold().setFontSize(8)
+                .setFontColor(THEME_BLUE).setMarginBottom(14));
+        right.add(new Paragraph("Authorized Signatory")
+                .setFontSize(7).setMarginTop(4));
+
+        t.addCell(left);
+        t.addCell(right);
+        doc.add(t);
+    }
+
+    private void addCutHereLine(Document doc) {
+        doc.add(new Paragraph("\n").setFontSize(2));
+
+        DashedLine dashedLine = new DashedLine(0.8f);
+        dashedLine.setColor(THEME_BLUE);
+        LineSeparator sep = new LineSeparator(dashedLine);
+        sep.setMarginTop(4);
+        sep.setMarginBottom(4);
+        doc.add(sep);
+
+        doc.add(new Paragraph(
+                "- - - - - - - - - - - - - - CUT HERE - - - - - - - - - - - - - -")
+                .setFontSize(7)
+                .setFontColor(LIGHT_LINE)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(4));
+
+        LineSeparator sep2 = new LineSeparator(new DashedLine(0.8f));
+        sep2.setMarginTop(4);
+        sep2.setMarginBottom(4);
+        doc.add(sep2);
+
+        doc.add(new Paragraph("\n").setFontSize(2));
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  INVOICE PDF
+    // ════════════════════════════════════════════════════════════
     public byte[] generateInvoicePdf(Invoice invoice, List<InvoiceItem> items) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
             Document doc = new Document(pdf, PageSize.A4);
+            doc.setMargins(TOP_MARGIN, RIGHT_MARGIN, BOTTOM_MARGIN, LEFT_MARGIN);
 
-            doc.setMargins(18, 28, 18, 28);
+            pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderHandler());
 
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── Company Header ──
+            addInvoiceCompanyHeader(doc, invoice);
+            addThinRule(doc);
 
-            doc.add(new Paragraph(COMPANY_NAME)
-                    .setBold()
-                    .setFontSize(22)
-                    .setFontColor(THEME_BLUE)
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setMarginBottom(8));
-
-            // Header block (Left: company info, Right: Invoice meta)
-            addTopHeaderBlockForInvoice(doc, invoice);
-
-            addRule(doc, 1f, LIGHT_LINE);
-
-            // Title "Invoice" centered + underlined (as in image)
-            Paragraph t = new Paragraph("Invoice")
+            // ── Title ──
+            doc.add(new Paragraph("TAX INVOICE")
                     .setBold()
                     .setFontSize(18)
                     .setFontColor(THEME_BLUE)
                     .setTextAlignment(TextAlignment.CENTER)
-                    .setUnderline();
-            doc.add(t.setMarginTop(10).setMarginBottom(10));
+                    .setUnderline()
+                    .setMarginTop(6)
+                    .setMarginBottom(6));
 
-            // To block
-            addInvoiceToBlockLikeSample(doc, invoice);
+            addThinRule(doc);
 
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── To Block ──
+            addInvoiceToBlock(doc, invoice);
+            addThinRule(doc);
 
-            // Subject line
+            // ── Subject ──
             doc.add(new Paragraph()
-                    .add(kvBlue("Subject: ", "Invoice for SG Iron Castings"))
-                    .setMarginTop(10)
-                    .setMarginBottom(10));
+                    .add(kvInline("Subject: ", "Invoice for SG Iron Castings"))
+                    .setMarginTop(6).setMarginBottom(6));
 
-            addRule(doc, 1f, LIGHT_LINE);
+            addThinRule(doc);
 
-            // Items table
-            addInvoiceItemsTableLikeSample(doc, items);
+            // ── Items Table ──
+            addInvoiceItemsTable(doc, items);
 
-            // Totals block (styled like image)
-            addInvoiceTotalsBlockLikeSample(doc, invoice);
+            // ── Totals Block ──
+            addInvoiceTotalsBlock(doc, invoice);
+            addThinRule(doc);
 
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── Bank + Terms ──
+            addBankAndTermsBlock(doc);
+            addThinRule(doc);
 
-            // Bank details + Terms & Conditions
-            addBankAndTermsBlockLikeSample(doc);
-
-            addRule(doc, 1f, LIGHT_LINE);
-
-            // Signature block (right aligned)
-            addInvoiceSignatureLikeSample(doc);
-
-            addRule(doc, 1f, LIGHT_LINE);
+            // ── Signature ──
+            addInvoiceSignature(doc);
+            addThinRule(doc);
 
             doc.close();
             return out.toByteArray();
@@ -217,451 +398,377 @@ public class PdfGenerator {
         }
     }
 
-    // =========================================================
-    // DC: TOP HEADER (company info left, dc meta right)
-    // =========================================================
-    private void addTopHeaderBlockForDc(Document doc, DeliveryChallan dc) {
+    private void addInvoiceCompanyHeader(Document doc, Invoice invoice) {
+        doc.add(new Paragraph(COMPANY_NAME)
+                .setBold().setFontSize(20).setFontColor(THEME_BLUE)
+                .setTextAlignment(TextAlignment.CENTER).setMarginBottom(4));
+
         Table header = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
-        header.setMarginBottom(6);
+        header.setMarginBottom(4);
 
-        Cell left = new Cell().setBorder(Border.NO_BORDER);
-        left.add(companyLine(COMPANY_PLOT));
-        left.add(companyLine(COMPANY_GST));
-        left.add(companyLine(COMPANY_CONTACT));
-        left.add(companyLine(COMPANY_EMAIL));
+        Cell left = noBorderCell();
+        left.add(miniLine(COMPANY_PLOT));
+        left.add(miniLine(COMPANY_GST));
+        left.add(miniLine(COMPANY_CONTACT + " | " + COMPANY_EMAIL));
 
-        Cell right = new Cell().setBorder(Border.NO_BORDER);
-
-        right.add(kvLine("Delivery Challan No: ", safe(dc != null ? dc.getDcNumber() : null)));
-        right.add(kvLine("Date: ", formatDate(dc != null ? dc.getDispatchDate() : null)));
-        right.add(kvLine("Vehicle No: ", safe(dc != null ? dc.getVehicleNumber() : null)));
-        right.add(kvLine("Transporter Name: ", safe(dc != null ? dc.getTransportName() : null)));
+        Cell right = noBorderCell();
+        right.add(miniKv("Invoice No: ",
+                safe(invoice != null ? invoice.getInvoiceNumber() : null)));
+        right.add(miniKv("Date: ",
+                formatDate(invoice != null ? invoice.getInvoiceDate() : null)));
 
         header.addCell(left);
         header.addCell(right);
-
         doc.add(header);
     }
 
-    // =========================================================
-    // Invoice: TOP HEADER (company info left, invoice meta right)
-    // =========================================================
-    private void addTopHeaderBlockForInvoice(Document doc, Invoice invoice) {
-        Table header = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
-        header.setMarginBottom(6);
-
-        Cell left = new Cell().setBorder(Border.NO_BORDER);
-        left.add(companyLine(COMPANY_PLOT));
-        left.add(companyLine(COMPANY_GST));
-        left.add(companyLine(COMPANY_CONTACT));
-        left.add(companyLine(COMPANY_EMAIL));
-
-        Cell right = new Cell().setBorder(Border.NO_BORDER);
-        right.add(kvLine("Invoice No: ", safe(invoice != null ? invoice.getInvoiceNumber() : null)));
-        right.add(kvLine("Date: ", formatDate(invoice != null ? invoice.getInvoiceDate() : null)));
-
-        header.addCell(left);
-        header.addCell(right);
-
-        doc.add(header);
-    }
-
-    // =========================================================
-    // Center title with divider lines above & below (DC style)
-    // =========================================================
-    private void addCenteredTitleWithRules(Document doc, String title) {
-        addRule(doc, 1f, LIGHT_LINE);
-        doc.add(new Paragraph(title)
-                .setBold()
-                .setFontSize(18)
-                .setFontColor(THEME_BLUE)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginTop(8)
-                .setMarginBottom(8));
-        addRule(doc, 1f, LIGHT_LINE);
-    }
-
-    // =========================================================
-    // DC: To + Details section (two columns)
-    // =========================================================
-    private void addDcInfoSectionLikeSample(Document doc, DeliveryChallan dc) {
-        Table table = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
-        table.setMarginTop(10).setMarginBottom(10);
-
-        Cell left = new Cell().setBorder(Border.NO_BORDER);
-        left.add(new Paragraph("To,").setBold().setFontColor(THEME_BLUE).setMarginBottom(6));
-        left.add(new Paragraph(safe(dc != null && dc.getCustomer() != null ? dc.getCustomer().getName() : null))
-                .setBold()
-                .setMarginBottom(2));
-        left.add(new Paragraph(safe(dc != null && dc.getCustomer() != null ? dc.getCustomer().getAddress() : null))
-                .setMarginBottom(6));
-        left.add(new Paragraph().add(kvBlue("GST No: ", safe(dc != null && dc.getCustomer() != null ? dc.getCustomer().getGstNumber() : null)))
-                .setMarginBottom(4));
-        left.add(new Paragraph().add(kvBlue("Mobile: ", safe(dc != null && dc.getCustomer() != null ? dc.getCustomer().getPhone() : null))));
-
-        Cell right = new Cell().setBorder(Border.NO_BORDER);
-        right.add(kvLine("Delivery Challan No: ", safe(dc != null ? dc.getDcNumber() : null)));
-        right.add(kvLine("Vehicle No: ", safe(dc != null ? dc.getVehicleNumber() : null)));
-        right.add(kvLine("Transporter Name: ", safe(dc != null ? dc.getTransportName() : null)));
-        String pos = (dc != null && dc.getOrder() != null) ? safe(dc.getOrder().getPlaceOfSupply()) : "-";
-        right.add(kvLine("Place of Supply: ", pos));
-
-        table.addCell(left);
-        table.addCell(right);
-
-        doc.add(table);
-    }
-
-    // =========================================================
-    // Invoice: "To" block (as screenshot - single left block)
-    // =========================================================
-    private void addInvoiceToBlockLikeSample(Document doc, Invoice invoice) {
+    private void addInvoiceToBlock(Document doc, Invoice invoice) {
         Table t = new Table(new float[]{1f}).useAllAvailableWidth();
-        t.setMarginTop(10).setMarginBottom(10);
+        t.setMarginTop(6).setMarginBottom(6);
 
-        Cell c = new Cell().setBorder(Border.NO_BORDER);
-        c.add(new Paragraph("To,").setBold().setFontColor(THEME_BLUE).setMarginBottom(6));
-        c.add(new Paragraph(safe(invoice != null && invoice.getCustomer() != null ? invoice.getCustomer().getName() : null))
-                .setBold()
-                .setMarginBottom(2));
-        c.add(new Paragraph(safe(invoice != null && invoice.getCustomer() != null ? invoice.getCustomer().getAddress() : null))
-                .setMarginBottom(6));
-        c.add(new Paragraph().add(kvBlue("GST No: ", safe(invoice != null && invoice.getCustomer() != null ? invoice.getCustomer().getGstNumber() : null)))
-                .setMarginBottom(4));
-        // If you have contact person in entity, add it here. (Not used to avoid compilation errors.)
-        c.add(new Paragraph().add(kvBlue("Mobile: ", safe(invoice != null && invoice.getCustomer() != null ? invoice.getCustomer().getPhone() : null))));
+        Cell c = noBorderCell();
+        c.add(new Paragraph("To,")
+                .setBold().setFontColor(THEME_BLUE)
+                .setFontSize(10).setMarginBottom(3));
+
+        String name = safe(invoice != null && invoice.getCustomer() != null
+                ? invoice.getCustomer().getName() : null);
+        String addr = safe(invoice != null && invoice.getCustomer() != null
+                ? invoice.getCustomer().getAddress() : null);
+        String gst = safe(invoice != null && invoice.getCustomer() != null
+                ? invoice.getCustomer().getGstNumber() : null);
+        String phone = safe(invoice != null && invoice.getCustomer() != null
+                ? invoice.getCustomer().getPhone() : null);
+
+        c.add(new Paragraph(name)
+                .setBold().setFontSize(10).setMarginBottom(1));
+        c.add(miniLine(addr));
+        c.add(miniKv("GST No: ", gst));
+        c.add(miniKv("Mobile: ", phone));
 
         t.addCell(c);
         doc.add(t);
     }
 
-    // =========================================================
-    // DC: Items table (with Heat No column)
-    // =========================================================
-    private void addDcItemsTableLikeSample(Document doc, List<DeliveryChallanItem> items) {
-        float[] cols = {1.1f, 4.8f, 1.6f, 1.8f, 1.2f, 1.8f};
-        Table table = new Table(cols).useAllAvailableWidth();
-        table.setMarginTop(10);
+    private void addInvoiceItemsTable(Document doc, List<InvoiceItem> items) {
+        float[] cols = {0.8f, 4.0f, 1.5f, 1.6f, 1.5f, 0.8f, 2.0f};
+        String[] headers = {"Sr", "Description", "Grade",
+                "Weight(Kg)", "Rate", "Qty", "Amount"};
 
-        String[] headers = {"Sr No", "Description", "Grade", "Weight (Kg)", "Qty", "Heat No."};
+        Table table = new Table(cols).useAllAvailableWidth();
+        table.setMarginTop(6);
+
+        // Header row - repeats on every page
         for (String h : headers) {
             table.addHeaderCell(headerCell(h));
         }
 
-        int sr = 1;
-        if (items != null) {
-            for (DeliveryChallanItem item : items) {
-                table.addCell(bodyCell(String.valueOf(sr++), TextAlignment.CENTER));
-                table.addCell(bodyCell(safe(item != null && item.getOrderItem() != null ? item.getOrderItem().getProductName() : null), TextAlignment.LEFT));
-                table.addCell(bodyCell("FG 260", TextAlignment.CENTER));
-                table.addCell(bodyCell(formatWeight(item != null ? item.getWeight() : null), TextAlignment.RIGHT));
-                table.addCell(bodyCell(String.valueOf(item != null ? item.getQuantity() : 0), TextAlignment.CENTER));
-                table.addCell(bodyCell(resolveHeatNo(item), TextAlignment.CENTER));
-            }
-        }
-
-        doc.add(table);
-    }
-
-    // Totals row below DC table
-    private void addDcTotalsRow(Document doc, List<DeliveryChallanItem> items) {
-        int totalQty = 0;
-        BigDecimal totalWeight = BigDecimal.ZERO;
-
-        if (items != null) {
-            for (DeliveryChallanItem it : items) {
-                if (it != null) {
-                    totalQty += it.getQuantity();
-                    if (it.getWeight() != null) totalWeight = totalWeight.add(it.getWeight());
+        // Footer row (totals) - appears on last page only
+        if (items != null && !items.isEmpty()) {
+            BigDecimal totalAmt = BigDecimal.ZERO;
+            for (InvoiceItem item : items) {
+                if (item != null && item.getAmount() != null) {
+                    totalAmt = totalAmt.add(item.getAmount());
                 }
             }
+
+            table.addFooterCell(footerCell("", TextAlignment.CENTER));
+            table.addFooterCell(footerCell("", TextAlignment.LEFT));
+            table.addFooterCell(footerCell("", TextAlignment.CENTER));
+            table.addFooterCell(footerCell("", TextAlignment.RIGHT));
+            table.addFooterCell(footerCell("", TextAlignment.RIGHT));
+            table.addFooterCell(footerCell("Total", TextAlignment.CENTER));
+            table.addFooterCell(footerCell(
+                    formatCurrency(totalAmt), TextAlignment.RIGHT));
         }
 
-        Table totals = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
-        totals.setMarginTop(10).setMarginBottom(10);
-
-        Cell l = new Cell().setBorder(Border.NO_BORDER);
-        l.add(new Paragraph().add(new Paragraph("Total Quantity:").setBold().setFontColor(THEME_BLUE)));
-        l.add(new Paragraph(String.valueOf(totalQty)).setBold());
-
-        Cell r = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
-        r.add(new Paragraph().add(new Paragraph("Total Weight:").setBold().setFontColor(THEME_BLUE)));
-        r.add(new Paragraph(formatWeight(totalWeight) + " Kg").setBold());
-
-        totals.addCell(l);
-        totals.addCell(r);
-
-        doc.add(totals);
-    }
-
-    // Optional dashed "cut here" hint (subtle)
-    private void addCutHereHint(Document doc) {
-        LineSeparator dashed = new LineSeparator(new DashedLine(1f));
-        dashed.setMarginTop(8);
-        dashed.setMarginBottom(8);
-        dashed.setStrokeColor(LIGHT_LINE);
-        doc.add(dashed);
-    }
-
-    // =========================================================
-    // Invoice: Items table
-    // =========================================================
-    private void addInvoiceItemsTableLikeSample(Document doc, List<InvoiceItem> items) {
-        float[] cols = {1.0f, 4.5f, 1.7f, 1.8f, 1.5f, 1.0f, 2.0f};
-        Table table = new Table(cols).useAllAvailableWidth();
-        table.setMarginTop(10);
-
-        String[] headers = {"Sr No", "Description", "Grade", "Weight (Kg)", "Rate", "Qty", "Amount"};
-        for (String h : headers) {
-            table.addHeaderCell(headerCell(h));
-        }
-
+        // Body rows
         int sr = 1;
         if (items != null) {
             for (InvoiceItem item : items) {
-                table.addCell(bodyCell(String.valueOf(sr++), TextAlignment.CENTER));
-                table.addCell(bodyCell(safe(item != null && item.getOrderItem() != null ? item.getOrderItem().getProductName() : null), TextAlignment.LEFT));
-                table.addCell(bodyCell("SG 500/7", TextAlignment.CENTER));
-                table.addCell(bodyCell(formatWeight(item != null ? item.getWeight() : null), TextAlignment.RIGHT));
-                table.addCell(bodyCell(formatCurrency(item != null ? item.getRate() : null), TextAlignment.RIGHT));
-                table.addCell(bodyCell(String.valueOf(item != null ? item.getQuantity() : 0), TextAlignment.CENTER));
-                table.addCell(bodyCell(formatCurrency(item != null ? item.getAmount() : null), TextAlignment.RIGHT));
+                boolean isEven = (sr % 2 == 0);
+
+                table.addCell(bodyCell(String.valueOf(sr++),
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        safe(item != null && item.getOrderItem() != null
+                                ? item.getOrderItem().getProductName() : null),
+                        TextAlignment.LEFT, isEven));
+                table.addCell(bodyCell("SG 500/7",
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        formatWeight(item != null ? item.getWeight() : null),
+                        TextAlignment.RIGHT, isEven));
+                table.addCell(bodyCell(
+                        formatCurrency(item != null ? item.getRate() : null),
+                        TextAlignment.RIGHT, isEven));
+                table.addCell(bodyCell(
+                        String.valueOf(item != null ? item.getQuantity() : 0),
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        formatCurrency(item != null ? item.getAmount() : null),
+                        TextAlignment.RIGHT, isEven));
             }
         }
 
+        table.setSkipFirstHeader(false);
+        table.setSkipLastFooter(false);
         doc.add(table);
     }
 
-    // =========================================================
-    // Invoice: Totals block (as screenshot)
-    // =========================================================
-    private void addInvoiceTotalsBlockLikeSample(Document doc, Invoice invoice) {
-        Table t = new Table(new float[]{2f, 1f}).useAllAvailableWidth();
-        t.setMarginTop(12);
+    private void addInvoiceTotalsBlock(Document doc, Invoice invoice) {
+        Table t = new Table(new float[]{2.5f, 1f}).useAllAvailableWidth();
+        t.setMarginTop(8);
 
-        // Row style: bottom border line
-        t.addCell(totalLabelCell("Total Amount"));
-        t.addCell(totalValueCell(formatCurrency(invoice != null ? invoice.getSubtotal() : null)));
+        t.addCell(totalLabel("Subtotal"));
+        t.addCell(totalValue(formatCurrency(
+                invoice != null ? invoice.getSubtotal() : null)));
 
-        t.addCell(totalLabelCell("CGST @ 9%"));
-        t.addCell(totalValueCell(formatCurrency(invoice != null ? invoice.getCgst() : null)));
+        t.addCell(totalLabel("CGST @ 9%"));
+        t.addCell(totalValue(formatCurrency(
+                invoice != null ? invoice.getCgst() : null)));
 
-        t.addCell(totalLabelCell("SGST @ 9%"));
-        t.addCell(totalValueCell(formatCurrency(invoice != null ? invoice.getSgst() : null)));
+        t.addCell(totalLabel("SGST @ 9%"));
+        t.addCell(totalValue(formatCurrency(
+                invoice != null ? invoice.getSgst() : null)));
 
-        // Grand total emphasized on right side (like sample)
-        Cell grandL = new Cell().setBorder(Border.NO_BORDER);
-        grandL.setPaddingTop(10);
-        grandL.setPaddingBottom(10);
-        grandL.add(new Paragraph(" ").setFontSize(1)); // keeps spacing like the screenshot
+        // Grand Total highlighted bar
+        Cell grandL = noBorderCell();
+        grandL.setBackgroundColor(THEME_BLUE);
+        grandL.setPadding(10);
+        grandL.add(new Paragraph("GRAND TOTAL")
+                .setBold().setFontSize(12)
+                .setFontColor(ColorConstants.WHITE));
 
-        Cell grandR = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
-        grandR.setPaddingTop(10);
-        grandR.setPaddingBottom(10);
-        grandR.add(new Paragraph()
-                .add(new Paragraph("Grand Total: ").setBold().setFontColor(THEME_BLUE))
-                .add(new Paragraph(formatCurrency(invoice != null ? invoice.getTotalAmount() : null)).setBold())
-        );
+        Cell grandR = noBorderCell();
+        grandR.setBackgroundColor(THEME_BLUE);
+        grandR.setPadding(10);
+        grandR.setTextAlignment(TextAlignment.RIGHT);
+        grandR.add(new Paragraph(formatCurrency(
+                invoice != null ? invoice.getTotalAmount() : null))
+                .setBold().setFontSize(12)
+                .setFontColor(ColorConstants.WHITE));
 
         t.addCell(grandL);
         t.addCell(grandR);
-
         doc.add(t);
+
+        // Amount in words
+        if (invoice != null && invoice.getTotalAmount() != null) {
+            doc.add(new Paragraph()
+                    .add(kvInline("Amount in Words: ",
+                            convertToWords(invoice.getTotalAmount())))
+                    .setFontSize(9)
+                    .setMarginTop(4)
+                    .setMarginBottom(4));
+        }
     }
 
-    private Cell totalLabelCell(String text) {
-        return new Cell()
-                .setBorder(Border.NO_BORDER)
-                .setBorderBottom(new SolidBorder(LIGHT_LINE, 1f))
-                .setPaddingTop(12)
-                .setPaddingBottom(12)
-                .add(new Paragraph(text).setFontColor(THEME_BLUE).setBold());
-    }
-
-    private Cell totalValueCell(String text) {
-        return new Cell()
-                .setBorder(Border.NO_BORDER)
-                .setBorderBottom(new SolidBorder(LIGHT_LINE, 1f))
-                .setPaddingTop(12)
-                .setPaddingBottom(12)
-                .setTextAlignment(TextAlignment.RIGHT)
-                .add(new Paragraph(text).setBold());
-    }
-
-    // =========================================================
-    // Invoice: Bank + Terms block
-    // =========================================================
-    private void addBankAndTermsBlockLikeSample(Document doc) {
+    private void addBankAndTermsBlock(Document doc) {
         Table outer = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
-        outer.setMarginTop(14).setMarginBottom(14);
+        outer.setMarginTop(10).setMarginBottom(10);
 
-        // Left: Bank Details
-        Cell bank = new Cell().setBorder(Border.NO_BORDER);
-        bank.add(new Paragraph("Bank Details:").setBold().setFontColor(THEME_BLUE).setMarginBottom(8));
-        bank.add(infoLine("Account Name: ", BANK_ACCOUNT_NAME));
-        bank.add(infoLine("Bank Name: ", BANK_NAME));
-        bank.add(infoLine("Branch: ", BANK_BRANCH));
-        bank.add(infoLine("Account No: ", BANK_ACCOUNT_NO));
-        bank.add(infoLine("IFSC Code: ", BANK_IFSC));
+        Cell bank = noBorderCell();
+        bank.add(new Paragraph("Bank Details:")
+                .setBold().setFontColor(THEME_BLUE)
+                .setFontSize(10).setMarginBottom(4));
+        bank.add(miniKv("Account Name: ", BANK_ACCOUNT_NAME));
+        bank.add(miniKv("Bank: ", BANK_NAME));
+        bank.add(miniKv("Branch: ", BANK_BRANCH));
+        bank.add(miniKv("Account No: ", BANK_ACCOUNT_NO));
+        bank.add(miniKv("IFSC: ", BANK_IFSC));
 
-        // Right: Terms & Conditions
-        Cell terms = new Cell().setBorder(Border.NO_BORDER);
-        terms.add(new Paragraph("Terms & Conditions:").setBold().setFontColor(THEME_BLUE).setMarginBottom(8));
-        terms.add(infoLine("Payment Terms: ", TERMS_PAYMENT));
-        terms.add(infoLine("Delivery Terms: ", TERMS_DELIVERY));
+        Cell terms = noBorderCell();
+        terms.add(new Paragraph("Terms & Conditions:")
+                .setBold().setFontColor(THEME_BLUE)
+                .setFontSize(10).setMarginBottom(4));
+        terms.add(miniKv("Payment: ", TERMS_PAYMENT));
+        terms.add(miniKv("Delivery: ", TERMS_DELIVERY));
+        terms.add(new Paragraph("* Goods once sold will not be taken back.")
+                .setFontSize(8).setMarginTop(4));
+        terms.add(new Paragraph("* Subject to Kolhapur jurisdiction.")
+                .setFontSize(8));
 
         outer.addCell(bank);
         outer.addCell(terms);
-
         doc.add(outer);
     }
 
-    private Paragraph infoLine(String k, String v) {
-        return new Paragraph()
-                .setMargin(0)
-                .setMarginBottom(6)
-                .add(new Paragraph(k).setBold().setFontColor(THEME_BLUE))
-                .add(new Paragraph(safe(v)));
-    }
-
-    // =========================================================
-    // Signatures
-    // =========================================================
-    private void addDcSignatureLikeSample(Document doc) {
+    private void addInvoiceSignature(Document doc) {
         Table t = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
-        t.setMarginTop(18).setMarginBottom(10);
+        t.setMarginTop(10).setMarginBottom(6);
 
-        Cell left = new Cell().setBorder(Border.NO_BORDER);
-        left.add(new Paragraph("Prepared By:  ____________________")
-                .setMarginTop(10));
+        Cell left = noBorderCell();
+        left.add(new Paragraph("Customer Seal & Signature")
+                .setFontSize(8).setFontColor(THEME_BLUE).setMarginTop(30));
 
-        Cell right = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
-        right.add(new Paragraph("For Mittal Precision Steel Foundry")
-                .setBold()
-                .setFontColor(THEME_BLUE)
-                .setMarginBottom(22));
+        Cell right = noBorderCell();
+        right.setTextAlignment(TextAlignment.RIGHT);
+        right.add(new Paragraph("For " + COMPANY_NAME)
+                .setBold().setFontSize(9)
+                .setFontColor(THEME_BLUE).setMarginBottom(25));
         right.add(new Paragraph("______________________________")
-                .setMarginTop(6));
+                .setFontSize(8));
+        right.add(new Paragraph("Authorized Signatory")
+                .setFontSize(7).setMarginTop(2));
 
         t.addCell(left);
         t.addCell(right);
-
         doc.add(t);
     }
 
-    private void addInvoiceSignatureLikeSample(Document doc) {
-        Table t = new Table(new float[]{1f}).useAllAvailableWidth();
-        t.setMarginTop(14).setMarginBottom(8);
+    // ════════════════════════════════════════════════════════════
+    //  CELL STYLES
+    // ════════════════════════════════════════════════════════════
 
-        Cell c = new Cell().setBorder(Border.NO_BORDER).setTextAlignment(TextAlignment.RIGHT);
-        c.add(new Paragraph("For Mittal Precision Steel Foundry")
-                .setBold()
-                .setFontColor(THEME_BLUE)
-                .setMarginBottom(22));
-        c.add(new Paragraph("______________________________"));
-
-        t.addCell(c);
-        doc.add(t);
-    }
-
-    // =========================================================
-    // Table cell styles (match screenshot)
-    // =========================================================
     private Cell headerCell(String text) {
         return new Cell()
                 .setBackgroundColor(THEME_BLUE)
                 .setFontColor(ColorConstants.WHITE)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setBold()
-                .setPaddingTop(8)
-                .setPaddingBottom(8)
-                .setBorder(new SolidBorder(ROW_BORDER, 0.8f))
-                .add(new Paragraph(text).setFontSize(10));
+                .setPadding(6)
+                .setBorder(new SolidBorder(ColorConstants.WHITE, 0.5f))
+                .add(new Paragraph(text).setFontSize(9));
     }
 
-    private Cell bodyCell(String text, TextAlignment align) {
-        return new Cell()
+    private Cell bodyCell(String text, TextAlignment align, boolean shaded) {
+        Cell cell = new Cell()
                 .setTextAlignment(align)
-                .setPaddingTop(8)
-                .setPaddingBottom(8)
-                .setPaddingLeft(8)
-                .setPaddingRight(8)
-                .setBorder(new SolidBorder(ROW_BORDER, 0.8f))
-                .add(new Paragraph(safe(text)).setFontSize(10));
+                .setPadding(5)
+                .setBorder(new SolidBorder(ROW_BORDER, 0.5f))
+                .add(new Paragraph(safe(text)).setFontSize(9));
+        if (shaded) {
+            cell.setBackgroundColor(LIGHT_BG);
+        }
+        return cell;
     }
 
-    // =========================================================
-    // Small helper paragraphs
-    // =========================================================
-    private Paragraph companyLine(String text) {
-        // Blue label-like lines were visible in the image; we keep normal black text here for readability.
-        return new Paragraph(safe(text)).setFontSize(10).setMargin(0).setMarginBottom(6);
+    private Cell footerCell(String text, TextAlignment align) {
+        return new Cell()
+                .setBackgroundColor(LIGHT_BG)
+                .setTextAlignment(align)
+                .setBold()
+                .setPadding(6)
+                .setBorder(new SolidBorder(THEME_BLUE, 0.8f))
+                .add(new Paragraph(text).setFontSize(9)
+                        .setFontColor(THEME_BLUE));
     }
 
-    private Paragraph kvLine(String key, String value) {
-        return new Paragraph()
-                .setFontSize(10)
-                .setMargin(0)
-                .setMarginBottom(6)
-                .add(kvBlue(key, value));
+    private Cell totalLabel(String text) {
+        return new Cell()
+                .setBorder(Border.NO_BORDER)
+                .setBorderBottom(new SolidBorder(LIGHT_LINE, 0.5f))
+                .setPadding(8)
+                .add(new Paragraph(text)
+                        .setFontColor(THEME_BLUE).setBold().setFontSize(10));
     }
 
-    /**
-     * Creates a "Key in blue bold" + "Value in normal" inline look.
-     */
-    private Paragraph kvBlue(String key, String value) {
-        Paragraph p = new Paragraph().setMargin(0);
-        p.add(new Paragraph(key).setBold().setFontColor(THEME_BLUE));
-        p.add(new Paragraph(safe(value)));
+    private Cell totalValue(String text) {
+        return new Cell()
+                .setBorder(Border.NO_BORDER)
+                .setBorderBottom(new SolidBorder(LIGHT_LINE, 0.5f))
+                .setPadding(8)
+                .setTextAlignment(TextAlignment.RIGHT)
+                .add(new Paragraph(text).setBold().setFontSize(10));
+    }
+
+    private Cell noBorderCell() {
+        return new Cell().setBorder(Border.NO_BORDER);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  HELPER PARAGRAPHS
+    // ════════════════════════════════════════════════════════════
+
+    private Paragraph miniLine(String text) {
+        return new Paragraph(safe(text))
+                .setFontSize(8).setMargin(0).setMarginBottom(2);
+    }
+
+    private Paragraph miniKv(String key, String value) {
+        Paragraph p = new Paragraph()
+                .setFontSize(8).setMargin(0).setMarginBottom(2);
+        p.add(new Text(key).setBold().setFontColor(THEME_BLUE));
+        p.add(new Text(safe(value)));
         return p;
     }
 
-    // =========================================================
-    // Rules / Dividers
-    // =========================================================
-    private void addRule(Document doc, float thickness, DeviceRgb color) {
-        SolidLine solid = new SolidLine(thickness);
-        solid.setColor(color);
+    private Paragraph kvInline(String key, String value) {
+        Paragraph p = new Paragraph().setMargin(0);
+        p.add(new Text(key).setBold().setFontColor(THEME_BLUE));
+        p.add(new Text(safe(value)));
+        return p;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  RULES / DIVIDERS
+    // ════════════════════════════════════════════════════════════
+
+    private void addThinRule(Document doc) {
+        SolidLine solid = new SolidLine(0.5f);
+        solid.setColor(LIGHT_LINE);
         LineSeparator line = new LineSeparator(solid);
-        line.setMarginTop(6);
-        line.setMarginBottom(6);
+        line.setMarginTop(3);
+        line.setMarginBottom(3);
         doc.add(line);
     }
 
-    // =========================================================
-    // Data formatting
-    // =========================================================
+    // ════════════════════════════════════════════════════════════
+    //  LAYOUT CALCULATION
+    // ════════════════════════════════════════════════════════════
+
+    private float estimateCurrentY(Document doc, PdfDocument pdf) {
+        return USABLE_HEIGHT / 2;
+    }
+
+    private float calculateDcCutCopyHeight(List<DeliveryChallanItem> items) {
+        float height = 0;
+        height += 20;   // copy label
+        height += 80;   // header
+        height += 30;   // title
+        height += 80;   // to block
+        height += TABLE_HEADER_HEIGHT;
+        height += (items != null ? items.size() : 0) * TABLE_ROW_HEIGHT;
+        height += 60;   // totals
+        height += 80;   // signature
+        height += 40;   // margins/rules
+        return height;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  DATA FORMATTING  *** FIX IS HERE ***
+    // ════════════════════════════════════════════════════════════
+
     private String formatWeight(BigDecimal weight) {
-        DecimalFormat df = new DecimalFormat("#,##,##0.00");
+        DecimalFormat df = new DecimalFormat("#,##0.00");
         return df.format(weight != null ? weight : BigDecimal.ZERO);
     }
 
     /**
-     * NOTE: If "₹" is not rendered, embed a Unicode TTF font OR replace with "Rs. ".
+     * FIX: "Rs." contains a dot which DecimalFormat treats as
+     * a second decimal separator.
+     * Solution: Format the number first, then prepend "Rs. "
      */
     private String formatCurrency(BigDecimal amount) {
-        DecimalFormat df = new DecimalFormat("₹ #,##,##0.00");
-        return df.format(amount != null ? amount : BigDecimal.ZERO);
+        DecimalFormat df = new DecimalFormat("#,##0.00");
+        return "Rs. " + df.format(amount != null ? amount : BigDecimal.ZERO);
     }
 
     private String safe(String s) {
         return (s == null || s.trim().isEmpty()) ? "-" : s.trim();
     }
 
-    /**
-     * Supports LocalDate / java.util.Date / fallback to toString().
-     * You can replace it with your own date formatting as per your entity type.
-     */
     private String formatDate(Object date) {
         if (date == null) return "-";
         try {
             if (date instanceof LocalDate ld) {
-                return ld.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                return ld.format(
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             }
             if (date instanceof Date d) {
-                // Basic Date -> dd/MM/yyyy (no timezone complexities here)
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
-                return sdf.format(d);
+                return new java.text.SimpleDateFormat("dd/MM/yyyy")
+                        .format(d);
             }
         } catch (Exception ignored) {
         }
@@ -669,13 +776,105 @@ public class PdfGenerator {
     }
 
     /**
-     * Heat No. resolution:
-     * - If your entity has heatNo field, change this method to return it.
-     * - Currently returns "-" to avoid compilation issues.
+     * Number-to-words converter for Indian currency
      */
-    private String resolveHeatNo(DeliveryChallanItem item) {
-        // Example if you add field later:
-        // return safe(item != null ? item.getHeatNo() : null);
-        return "-";
+    private String convertToWords(BigDecimal amount) {
+        if (amount == null) return "-";
+
+        long rupees = amount.longValue();
+        int paise = amount.subtract(BigDecimal.valueOf(rupees))
+                .multiply(BigDecimal.valueOf(100)).intValue();
+
+        String[] ones = {"", "One", "Two", "Three", "Four", "Five",
+                "Six", "Seven", "Eight", "Nine", "Ten",
+                "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
+                "Sixteen", "Seventeen", "Eighteen", "Nineteen"};
+        String[] tens = {"", "", "Twenty", "Thirty", "Forty", "Fifty",
+                "Sixty", "Seventy", "Eighty", "Ninety"};
+
+        if (rupees == 0) return "Zero Rupees Only";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(numberToWords(rupees, ones, tens));
+        sb.append(" Rupees");
+
+        if (paise > 0) {
+            sb.append(" and ");
+            sb.append(numberToWords(paise, ones, tens));
+            sb.append(" Paise");
+        }
+
+        sb.append(" Only");
+        return sb.toString().trim().replaceAll("\\s+", " ");
+    }
+
+    private String numberToWords(long num, String[] ones, String[] tens) {
+        if (num == 0) return "";
+        if (num < 20) return ones[(int) num];
+        if (num < 100)
+            return tens[(int) (num / 10)] + " " + ones[(int) (num % 10)];
+        if (num < 1000)
+            return ones[(int) (num / 100)] + " Hundred "
+                    + numberToWords(num % 100, ones, tens);
+        if (num < 100000)
+            return numberToWords(num / 1000, ones, tens) + " Thousand "
+                    + numberToWords(num % 1000, ones, tens);
+        if (num < 10000000)
+            return numberToWords(num / 100000, ones, tens) + " Lakh "
+                    + numberToWords(num % 100000, ones, tens);
+        return numberToWords(num / 10000000, ones, tens) + " Crore "
+                + numberToWords(num % 10000000, ones, tens);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  PAGE BORDER + PAGE NUMBER HANDLER  *** FIX IS HERE ***
+    // ════════════════════════════════════════════════════════════
+
+    /**
+     * FIX: Original code used PdfFontFactory.createRegisteredFont()
+     * which throws IOException. Using try-catch and standard font.
+     */
+    private static class PageBorderHandler implements IEventHandler {
+        @Override
+        public void handleEvent(Event event) {
+            PdfDocumentEvent docEvent = (PdfDocumentEvent) event;
+            PdfDocument pdfDoc = docEvent.getDocument();
+            PdfPage page = docEvent.getPage();
+            Rectangle pageSize = page.getPageSize();
+
+            PdfCanvas canvas = new PdfCanvas(
+                    page.newContentStreamBefore(),
+                    page.getResources(), pdfDoc);
+
+            // Draw thin border around page
+            canvas.setStrokeColor(LIGHT_LINE)
+                    .setLineWidth(0.8f)
+                    .rectangle(
+                            pageSize.getLeft() + 14,
+                            pageSize.getBottom() + 10,
+                            pageSize.getWidth() - 28,
+                            pageSize.getHeight() - 20)
+                    .stroke();
+
+            // Page number at bottom center
+            try {
+                PdfFont font = PdfFontFactory.createFont(
+                        StandardFonts.HELVETICA);
+                int pageNum = pdfDoc.getPageNumber(page);
+                int totalPages = pdfDoc.getNumberOfPages();
+
+                canvas.beginText()
+                        .setFontAndSize(font, 7)
+                        .moveText(
+                                pageSize.getWidth() / 2 - 20,
+                                pageSize.getBottom() + 14)
+                        .showText("Page " + pageNum + " of " + totalPages)
+                        .endText();
+            } catch (Exception e) {
+                // Silently skip page number if font fails
+            }
+
+            canvas.release();
+        }
     }
 }
