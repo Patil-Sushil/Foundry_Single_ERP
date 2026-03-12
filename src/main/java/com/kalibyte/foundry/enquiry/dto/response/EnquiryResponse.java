@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.enquiry.dto.response;
 
-import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
+import com.kalibyte.foundry.enquiry.entity.enums.EnquiryStatus;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

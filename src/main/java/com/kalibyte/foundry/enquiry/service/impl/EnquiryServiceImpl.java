@@ -10,9 +10,10 @@ import com.kalibyte.foundry.enquiry.dto.request.EnquiryItemCreateRequest;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryItemResponse;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.entity.*;
-import com.kalibyte.foundry.enquiry.entity.ENUM.EnquiryStatus;
-import com.kalibyte.foundry.enquiry.entity.ENUM.MetalCategory;
-import com.kalibyte.foundry.enquiry.entity.ENUM.MetalType;
+import com.kalibyte.foundry.enquiry.entity.enums.EnquiryStatus;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
+import com.kalibyte.foundry.enquiry.mapper.EnquiryMapper;
 import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
@@ -36,6 +37,7 @@ public class EnquiryServiceImpl implements EnquiryService {
     private final EnquiryRepository enquiryRepository;
     private final CustomerRepository customerRepository;
     private final PatternRepository patternRepository;
+    private final EnquiryMapper enquiryMapper;
 
     @Override
     public EnquiryResponse create(EnquiryCreateRequest request) {
@@ -136,7 +138,7 @@ public class EnquiryServiceImpl implements EnquiryService {
 
         enquiryRepository.save(enquiry);
 
-        return toResponse(enquiry);
+        return enquiryMapper.toResponse(enquiry);
     }
 
     private String generateEnquiryNumber() {
@@ -165,8 +167,7 @@ public class EnquiryServiceImpl implements EnquiryService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("enquiryDate").descending());
         Page<Enquiry> enquiryPage = enquiryRepository.findAll(pageable);
 
-        return PageResponse.from(enquiryPage, this::toResponse);
-    }
+        return PageResponse.from(enquiryPage, enquiryMapper::toResponse);    }
 
     @Override
     public EnquiryResponse getById(UUID enquiryId) {
@@ -174,7 +175,7 @@ public class EnquiryServiceImpl implements EnquiryService {
         Enquiry enquiry = enquiryRepository.findById(enquiryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
 
-        return toResponse(enquiry);
+        return enquiryMapper.toResponse(enquiry);
     }
 
     @Override
@@ -189,8 +190,7 @@ public class EnquiryServiceImpl implements EnquiryService {
 
         Page<Enquiry>enquiryPage = enquiryRepository.findByCustomerId(customerId, pageable);
 
-        return PageResponse.from(enquiryPage, this::toResponse);
-    }
+        return PageResponse.from(enquiryPage, enquiryMapper::toResponse);    }
 
     @Override
     public EnquiryResponse updateStatus(UUID enquiryId, EnquiryStatus newStatus) {
@@ -203,7 +203,7 @@ public class EnquiryServiceImpl implements EnquiryService {
         enquiry.setStatus(newStatus);
         enquiry.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
-        return toResponse(enquiry);
+        return enquiryMapper.toResponse(enquiry);
 
 
     }
@@ -224,69 +224,5 @@ public class EnquiryServiceImpl implements EnquiryService {
         }
     }
 
-    private EnquiryResponse toResponse(Enquiry enquiry) {
 
-        List<EnquiryItemResponse> itemResponses = enquiry.getEnquiryItems()
-                .stream()
-                .map(item -> {
-
-                    String patternName = null;
-                    String patternType = null;
-                    String patternMaterial = null;
-                    LocalDate inwardDate = null;
-                    LocalDate outwardDate = null;
-
-                    if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-
-                        PatternReceipt pr = item.getPatternReceipt();
-
-                        if (pr != null) {
-                            patternName = pr.getName();
-                            patternType = pr.getType().name();
-                            patternMaterial = pr.getMaterial().name();
-                            inwardDate = pr.getInwardDate();
-                            outwardDate = pr.getOutwardDate();
-                        }
-
-                    } else {
-
-                        Pattern pattern = item.getPattern();
-
-                        if (pattern != null) {
-                            patternName = pattern.getName();
-                            patternType = pattern.getType().name();
-                            patternMaterial = pattern.getMaterial().name();
-                        }
-                    }
-
-                    return EnquiryItemResponse.builder()
-                            .partName(item.getPartName())
-                            .metalCategory(item.getMetalCategory().getDisplayName())
-                            .metalType(item.getMetalType().getDisplayName())
-                            .requiredQuantity(item.getRequiredQuantity())
-                            .approxPieceWeightKg(item.getApproxPieceWeightKg())
-                            .totalWeightKg(item.getTotalWeightKg())
-                            .castingProcess(item.getCastingProcess())
-                            .machineRequired(item.getMachineRequired())
-                            .patternProvidedByCustomer(item.getPatternProvidedByCustomer())
-                            .patternName(patternName)
-                            .patternType(patternType)
-                            .patternMaterial(patternMaterial)
-                            .inwardDate(inwardDate)
-                            .outwardDate(outwardDate)
-                            .build();
-                })
-                .toList();
-
-        return EnquiryResponse.builder()
-                .id(enquiry.getId())
-                .enquiryNo(enquiry.getEnquiryNo())
-                .enquiryDate(enquiry.getEnquiryDate())
-                .customerId(enquiry.getCustomer().getId())
-                .customerName(enquiry.getCustomer().getName())
-                .totalWeightKg(enquiry.getTotalWeightKg())
-                .status(enquiry.getStatus())
-                .items(itemResponses)
-                .build();
-    }
 }

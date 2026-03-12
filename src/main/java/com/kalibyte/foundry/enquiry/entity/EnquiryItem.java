@@ -1,8 +1,8 @@
 package com.kalibyte.foundry.enquiry.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
-import com.kalibyte.foundry.enquiry.entity.ENUM.MetalCategory;
-import com.kalibyte.foundry.enquiry.entity.ENUM.MetalType;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.PatternReceipt;
 import jakarta.persistence.*;
