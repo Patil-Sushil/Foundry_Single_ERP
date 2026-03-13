@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.2</version>
+		<version>4.0.3</version>
 		<relativePath/>
 	</parent>
 
@@ -63,13 +63,6 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- H2 (Test) -->
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>test</scope>
-		</dependency>
-
 		<!-- Flyway -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
@@ -87,9 +80,12 @@
 			<artifactId>jackson-annotations</artifactId>
 		</dependency>
 
+		<!-- Source: https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
+			<version>2.21.1</version>
+			<scope>compile</scope>
 		</dependency>
 
 		<dependency>

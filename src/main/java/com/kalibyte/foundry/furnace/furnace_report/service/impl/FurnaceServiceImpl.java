@@ -10,8 +10,9 @@ import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponseD
 import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
 import com.kalibyte.foundry.furnace.furnace_report.repository.FurnaceRepository;
 import com.kalibyte.foundry.furnace.furnace_report.service.FurnaceService;
+import com.kalibyte.foundry.furnace.furnace_report.mapper.FurnaceMapper;
 import jakarta.validation.Valid;
-import org.modelmapper.ModelMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,79 +23,67 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class FurnaceServiceImpl implements FurnaceService {
 
-	private final FurnaceRepository furnaceRepository;
-	private final ModelMapper modelMapper;
-	private final FurnaceRefNoGenerator furnaceRefNoGenerator;
-	private final FurnaceHeatService furnaceHeatService;
+    private final FurnaceRepository furnaceRepository;
+    private final FurnaceMapper furnaceMapper;
+    private final FurnaceRefNoGenerator furnaceRefNoGenerator;
+    private final FurnaceHeatService furnaceHeatService;
 
-	public FurnaceServiceImpl(FurnaceRepository furnaceRepository, ModelMapper modelMapper, FurnaceRefNoGenerator furnaceRefNoGenerator, FurnaceHeatService furnaceHeatService) {
-		this.furnaceRepository = furnaceRepository;
-		this.modelMapper = modelMapper;
-		this.furnaceRefNoGenerator = furnaceRefNoGenerator;
-		this.furnaceHeatService = furnaceHeatService;
-	}
+    @Override
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    @Transactional(readOnly = true)
+    public FurnaceResponseDTO findById(long id) {
+        return furnaceRepository.findById(id)
+                .map(furnaceMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + id));
+    }
 
-	@Override
-	@PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-	@Transactional(readOnly = true)
-	public FurnaceResponseDTO findById(long id) {
-		return furnaceRepository.findById(id)
-				.map(furnace -> modelMapper.map(furnace, FurnaceResponseDTO.class))
-				.orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + id));
-	}
+    @Override
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    @Transactional
+    public FurnaceResponseDTO createFurnace(@Valid FurnaceRequestDTO request) {
+        Furnace furnace = furnaceMapper.toEntity(request);
+        if (furnace.getDate() == null) {
+            furnace.setDate(LocalDate.now());
+        }
+        furnace.setFurnaceRefNo(furnaceRefNoGenerator.generate());
 
-	@Override
-	@PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-	@Transactional
-	public FurnaceResponseDTO createFurnace(@Valid FurnaceRequestDTO request) {
-		Furnace furnace = new Furnace();
-		furnace.setOperatorName(request.getOperatorName());
-		furnace.setShift(request.getShift());
-		furnace.setInchargeName(request.getInchargeName());
-		furnace.setDate(request.getDate() != null ? request.getDate() : LocalDate.now());
-		furnace.setFurnaceRefNo(furnaceRefNoGenerator.generate());
+        Furnace savedFurnace = furnaceRepository.save(furnace);
 
-		Furnace savedFurnace = furnaceRepository.save(furnace);
+        // Create heats through FurnaceHeatService to ensure proper material issuance
+        if (request.getHeats() != null) {
+            for (FurnaceHeatRequest heatRequest : request.getHeats()) {
+                furnaceHeatService.createHeat(savedFurnace.getId(), heatRequest);
+            }
+        }
 
-		// Create heats through FurnaceHeatService to ensure proper material issuance
-		if (request.getHeats() != null) {
-			for (FurnaceHeatRequest heatRequest : request.getHeats()) {
-				furnaceHeatService.createHeat(savedFurnace.getId(), heatRequest);
-			}
-		}
+        return furnaceMapper.toResponse(furnaceRepository.findById(savedFurnace.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found after creation")));
+    }
 
-		return modelMapper.map(furnaceRepository.findById(savedFurnace.getId()).get(), FurnaceResponseDTO.class);
-	}
+    @Override
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    @Transactional
+    public FurnaceResponseDTO updateFurnace(Long id, FurnaceRequestDTO request) {
+        Furnace existingFurnace = furnaceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + id));
 
-	@Override
-	@PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-	@Transactional
-	public FurnaceResponseDTO updateFurnace(Long id, FurnaceRequestDTO request) {
-		Furnace existingFurnace = furnaceRepository.findById(id)
-				.orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + id));
+        furnaceMapper.updateEntity(request, existingFurnace);
 
-		// Update basic fields
-		existingFurnace.setOperatorName(request.getOperatorName());
-		existingFurnace.setShift(request.getShift());
-		existingFurnace.setInchargeName(request.getInchargeName());
-		existingFurnace.setDate(request.getDate());
+        // Update heats - Delegate to FurnaceHeatService
+        furnaceHeatService.deleteAllHeatsByReportId(id);
 
-		// Update heats - Delegate to FurnaceHeatService
-		// For a full report update, we could delete existing and re-add or use delta logic.
-		// Given updateFurnace in this service was already reversing all and re-adding, we'll follow that pattern.
-		furnaceHeatService.deleteAllHeatsByReportId(id);
-		
-		if (request.getHeats() != null) {
-			for (FurnaceHeatRequest heatRequest : request.getHeats()) {
-				furnaceHeatService.createHeat(id, heatRequest);
-			}
-		}
+        if (request.getHeats() != null) {
+            for (FurnaceHeatRequest heatRequest : request.getHeats()) {
+                furnaceHeatService.createHeat(id, heatRequest);
+            }
+        }
 
-		Furnace savedFurnace = furnaceRepository.save(existingFurnace);
-		return modelMapper.map(savedFurnace, FurnaceResponseDTO.class);
-	}
+        Furnace savedFurnace = furnaceRepository.save(existingFurnace);
+        return furnaceMapper.toResponse(savedFurnace);
+    }
 
 	@Override
 	@PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
@@ -150,20 +139,21 @@ public class FurnaceServiceImpl implements FurnaceService {
 		return new java.util.ArrayList<>(summaryMap.values());
 	}
 
-	@Override
-	@PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-	@Transactional(readOnly = true)
-	public FurnaceResponseDTO findByFurnaceRefNo(String refNo) {
-		return furnaceRepository.findByFurnaceRefNo(refNo)
-				.map(furnace -> modelMapper.map(furnace, FurnaceResponseDTO.class))
-				.orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with refNo: " + refNo));
-	}
+    @Override
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    @Transactional(readOnly = true)
+    public FurnaceResponseDTO findByFurnaceRefNo(String refNo) {
+        return furnaceRepository.findByFurnaceRefNo(refNo)
+                .map(furnaceMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with refNo: " + refNo));
+    }
 
-	@Override
-	@PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-	@Transactional(readOnly = true)
-	public List<FurnaceResponseDTO> findAll() {
-		return furnaceRepository.findAllWithHeats().stream()
-				.map(furnace -> modelMapper.map(furnace, FurnaceResponseDTO.class)).collect(Collectors.toList());
-	}
+    @Override
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    @Transactional(readOnly = true)
+    public List<FurnaceResponseDTO> findAll() {
+        return furnaceRepository.findAllWithHeats().stream()
+                .map(furnaceMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 }
