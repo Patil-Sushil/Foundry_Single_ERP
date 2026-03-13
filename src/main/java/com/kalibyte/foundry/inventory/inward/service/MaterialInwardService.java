@@ -87,7 +87,6 @@ public class MaterialInwardService {
                 .inwardDate(LocalDate.now())
                 .status(InwardStatus.DRAFT)
                 .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
-                .confirmedAt(LocalDateTime.now())
                 .build();
 
         for (PurchaseOrderItem orderItem : po.getOrderItems()) {

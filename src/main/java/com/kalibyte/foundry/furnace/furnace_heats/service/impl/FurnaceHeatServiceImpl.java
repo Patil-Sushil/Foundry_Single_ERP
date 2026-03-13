@@ -21,8 +21,8 @@ import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
+import com.kalibyte.foundry.furnace.furnace_heats.mapper.FurnaceHeatMapper;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +43,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
     private final ItemRepository itemRepository;
     private final MaterialIssueService materialIssueService;
     private final DepartmentRepository departmentRepository;
-    private final ModelMapper modelMapper;
+    private final FurnaceHeatMapper furnaceHeatMapper;
     private final OrderRepository orderRepository;
 
     @Override
@@ -53,7 +53,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
             throw new ResourceNotFoundException("Furnace report not found with id: " + reportId);
         }
         return furnaceHeatsRepository.findByFurnaceId(reportId).stream()
-                .map(heat -> modelMapper.map(heat, FurnaceHeatResponse.class))
+                .map(furnaceHeatMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -62,7 +62,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
     public FurnaceHeatResponse getHeatById(Long heatId) {
         FurnaceHeats heat = furnaceHeatsRepository.findById(heatId)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace heat not found with id: " + heatId));
-        return modelMapper.map(heat, FurnaceHeatResponse.class);
+        return furnaceHeatMapper.toResponse(heat);
     }
 
     @Override
@@ -71,10 +71,16 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         Furnace furnace = furnaceRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + reportId));
 
-        FurnaceHeats heat = modelMapper.map(request, FurnaceHeats.class);
-        heat.setId(null); // Ensure it's treated as a new entity even if an ID was passed in the request
+        FurnaceHeats heat = furnaceHeatMapper.toEntity(request);
         furnace.addHeat(heat); // Bidirectional maintenance
         calculateHeatFields(heat);
+
+        // Fetch the order if orderId is provided to ensure full entity is set
+        if (request.getOrderId() != null) {
+            Order order = orderRepository.findById(request.getOrderId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + request.getOrderId()));
+            heat.setOrder(order);
+        }
 
         if (heat.getMaterialsUsed() != null) {
             heat.getMaterialsUsed().clear();
@@ -85,7 +91,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         }
 
         FurnaceHeats savedHeat = furnaceHeatsRepository.save(heat);
-        return modelMapper.map(savedHeat, FurnaceHeatResponse.class);
+        return furnaceHeatMapper.toResponse(savedHeat);
     }
 
     @Override
@@ -94,17 +100,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         FurnaceHeats existingHeat = furnaceHeatsRepository.findById(heatId)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace heat not found with id: " + heatId));
 
-        // Update fields
-        existingHeat.setSipercentage(request.getSipercentage());
-        existingHeat.setCpcpercentage(request.getCpcpercentage());
-        existingHeat.setMgpercentage(request.getMgpercentage());
-        existingHeat.setStartReading(request.getStartReading());
-        existingHeat.setStopReading(request.getStopReading());
-        existingHeat.setTotalWeight(request.getTotalWeight());
-        existingHeat.setPouringTemp(request.getPouringTemp());
-        existingHeat.setPouringStartTime(request.getPouringStartTime());
-        existingHeat.setPouringEndTime(request.getPouringEndTime());
-        //
+        furnaceHeatMapper.updateEntity(request, existingHeat);
 
         if (request.getOrderId() != null) {
             Order order = orderRepository.findById(request.getOrderId())
@@ -118,7 +114,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         handleMaterialDelta(existingHeat, request.getMaterialsUsed(), existingHeat.getFurnace().getFurnaceRefNo());
 
         FurnaceHeats updatedHeat = furnaceHeatsRepository.save(existingHeat);
-        return modelMapper.map(updatedHeat, FurnaceHeatResponse.class);
+        return furnaceHeatMapper.toResponse(updatedHeat);
     }
 
     @Override
@@ -130,7 +126,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
         List<FurnaceHeats> heats = furnaceHeatsRepository.findByOrderIdWithMaterials(orderId);
 
         List<FurnaceHeatResponse> heatResponses = heats.stream()
-                .map(this::mapToResponse) // your existing mapper
+                .map(furnaceHeatMapper::toResponse)
                 .toList();
 
         return new HeatsByOrderResponse(
@@ -139,16 +135,6 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
                 heatResponses
         );
 
-    }
-
-    private FurnaceHeatResponse mapToResponse(FurnaceHeats heat) {
-        FurnaceHeatResponse response = modelMapper.map(heat, FurnaceHeatResponse.class);
-        if (heat.getOrder() != null) {
-            response.setOrderId(heat.getOrder().getId());
-        } else {
-            response.setOrderId(null);
-        }
-        return response;
     }
 
 

@@ -21,29 +21,29 @@ public class FurnaceHeatRequest {
 
     @Min(value = 0, message = "the si percentage too low it should be greater 0")
     @Max(value = 2, message = "the value is greater than 2 its unacceptable")
-    private double sipercentage;
+    private Double sipercentage;
 
     @Min(value = 0, message = "the cpc percentage too low it should be greater 0")
     @Max(value = 5, message = "the value is greater than 5 its unacceptable")
-    private double cpcpercentage;
+    private Double cpcpercentage;
 
 //    @Min(value = 0, message = "the mg percentaget too low it should be greater 0")
 //    @Max(value = 3, message = "the value is greater than 3 its unacceptable")
-    private double mgpercentage;
+    private Double mgpercentage;
 
     @Min(value = 0, message = "the electricity units too low it should be greater than 0 or greater")
-    private double startReading;
+    private Double startReading;
 
     @Min(1)
-    private double stopReading;
+    private Double stopReading;
 
-    private double differenceReading;
+    private Double differenceReading;
     @Min(1)
-    private double totalWeight;
+    private Double totalWeight;
 
-    private double powerToWeight;
+    private Double powerToWeight;
 
-    private double pouringTemp;
+    private Double pouringTemp;
 
     @Valid
     private List<HeatMaterialItemRequest> materialsUsed;
