@@ -9,7 +9,7 @@ import com.kalibyte.foundry.inventory.inward.dto.response.*;
 import com.kalibyte.foundry.inventory.inward.entity.MaterialInward;
 import com.kalibyte.foundry.inventory.inward.entity.ReceivedItem;
 import com.kalibyte.foundry.inventory.inward.entity.enums.InwardStatus;
-import com.kalibyte.foundry.inventory.inward.entity.enums.ReceiptStatus;
+import com.kalibyte.foundry.inventory.inward.mapper.InwardMapper;
 import com.kalibyte.foundry.inventory.inward.repository.MaterialInwardRepository;
 import com.kalibyte.foundry.inventory.inward.repository.ReceivedItemRepository;
 import com.kalibyte.foundry.inventory.item.entity.Item;
@@ -21,13 +21,11 @@ import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseOrderService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,8 +45,17 @@ public class MaterialInwardService {
     private final ItemVendorRateRepository itemVendorRateRepository;
     private final VendorLedgerService vendorLedgerService;
     private final InwardNumberGenerator inwardNumberGenerator;
+    private final InwardMapper inwardMapper;
 
-	public MaterialInwardService(MaterialInwardRepository materialInwardRepository, ReceivedItemRepository receivedItemRepository, PurchaseOrderRepository purchaseOrderRepository, PurchaseOrderService purchaseOrderService, ItemRepository itemRepository, ItemVendorRateRepository itemVendorRateRepository, VendorLedgerService vendorLedgerService, InwardNumberGenerator inwardNumberGenerator) {
+	public MaterialInwardService(MaterialInwardRepository materialInwardRepository, 
+                                 ReceivedItemRepository receivedItemRepository, 
+                                 PurchaseOrderRepository purchaseOrderRepository, 
+                                 PurchaseOrderService purchaseOrderService, 
+                                 ItemRepository itemRepository, 
+                                 ItemVendorRateRepository itemVendorRateRepository, 
+                                 VendorLedgerService vendorLedgerService, 
+                                 InwardNumberGenerator inwardNumberGenerator,
+                                 InwardMapper inwardMapper) {
 		this.materialInwardRepository = materialInwardRepository;
 		this.receivedItemRepository = receivedItemRepository;
 		this.purchaseOrderRepository = purchaseOrderRepository;
@@ -57,6 +64,7 @@ public class MaterialInwardService {
 		this.itemVendorRateRepository = itemVendorRateRepository;
 		this.vendorLedgerService = vendorLedgerService;
 		this.inwardNumberGenerator = inwardNumberGenerator;
+        this.inwardMapper = inwardMapper;
 	}
 
 	@Transactional
@@ -93,7 +101,7 @@ public class MaterialInwardService {
             inward.addReceivedItem(receivedItem);
         }
 
-        return toResponse(materialInwardRepository.save(inward));
+        return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 
     @Transactional
@@ -118,7 +126,7 @@ public class MaterialInwardService {
             }
         }
 
-        return toResponse(materialInwardRepository.save(inward));
+        return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 
     @Transactional(readOnly = true)
@@ -126,37 +134,7 @@ public class MaterialInwardService {
         MaterialInward inward = materialInwardRepository.findWithFullDetails(inwardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + inwardId));
 
-        List<ReceivedItemComparison> comparisons = inward.getReceivedItems().stream()
-                .map(item -> new ReceivedItemComparison(
-                        item.getId(),
-                        item.getItem().getName(),
-                        item.getItem().getCode(),
-                        item.getItem().getUnit().name(),
-                        item.getPoQuantity() != null ? item.getPoQuantity() : BigDecimal.ZERO,
-                        item.getReceivedQuantity(),
-                        item.getQuantityDifference(),
-                        item.getReceiptStatus().name(),
-                        item.getUnitRate(),
-                        item.getAmount()
-                ))
-                .toList();
-
-        boolean hasShortage = comparisons.stream().anyMatch(c -> ReceiptStatus.SHORT.name().equals(c.receiptStatus()));
-        boolean hasExcess = comparisons.stream().anyMatch(c -> ReceiptStatus.EXCESS.name().equals(c.receiptStatus()));
-
-        return new InwardReviewResponse(
-                inward.getId(),
-                inward.getInwardNumber(),
-                inward.getPurchaseOrder() != null ? inward.getPurchaseOrder().getPoNumber() : null,
-                inward.getVendor().getName(),
-                inward.getVehicleNumber(),
-                inward.getVendorChallanNumber(),
-                inward.getInwardDate(),
-                comparisons,
-                inward.getTotalAmount(),
-                hasShortage,
-                hasExcess
-        );
+        return inwardMapper.toReviewResponse(inward);
     }
 
     @Transactional
@@ -201,65 +179,19 @@ public class MaterialInwardService {
             purchaseOrderService.updateStatusAfterInward(inward.getPurchaseOrder());
         }
 
-        return toResponse(materialInwardRepository.save(inward));
+        return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 
     @Transactional(readOnly = true)
     public InwardResponse getById(Long id) {
         MaterialInward inward = materialInwardRepository.findWithFullDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + id));
-        return toResponse(inward);
+        return inwardMapper.toResponse(inward);
     }
 
     @Transactional(readOnly = true)
     public Page<InwardSummary> getAll(InwardStatus status, Long vendorId, LocalDate from, LocalDate to, Pageable pageable) {
         return materialInwardRepository.findAllFiltered(status, vendorId, from, to, pageable)
-                .map(this::toSummary);
-    }
-
-    private InwardResponse toResponse(MaterialInward inward) {
-        List<ReceivedItemDetail> items = inward.getReceivedItems().stream()
-                .map(item -> new ReceivedItemDetail(
-                        item.getId(),
-                        item.getItem().getId(),
-                        item.getItem().getName(),
-                        item.getItem().getCode(),
-                        item.getItem().getUnit().name(),
-                        item.getPoQuantity(),
-                        item.getReceivedQuantity(),
-                        item.getUnitRate(),
-                        item.getAmount(),
-                        item.getNotes()
-                ))
-                .toList();
-
-        return new InwardResponse(
-                inward.getId(),
-                inward.getInwardNumber(),
-                inward.getStatus(),
-                inward.getPurchaseOrder() != null ? inward.getPurchaseOrder().getPoNumber() : null,
-                inward.getVendor().getName(),
-                inward.getVehicleNumber(),
-                inward.getDriverName(),
-                inward.getDriverPhone(),
-                inward.getVendorChallanNumber(),
-                inward.getInwardDate(),
-                items,
-                inward.getTotalAmount(),
-                inward.getConfirmedAt(),
-                inward.getCreatedAt()
-        );
-    }
-
-    private InwardSummary toSummary(MaterialInward inward) {
-        return new InwardSummary(
-                inward.getId(),
-                inward.getInwardNumber(),
-                inward.getVendor().getName(),
-                inward.getStatus(),
-                inward.getInwardDate(),
-                inward.getReceivedItems().size(),
-                inward.getTotalAmount()
-        );
+                .map(inwardMapper::toSummary);
     }
 }

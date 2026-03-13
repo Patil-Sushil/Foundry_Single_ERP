@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.furnace.furnace_report.service.impl;
 
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import com.kalibyte.foundry.furnace.furnace_heats.service.FurnaceHeatService;
 import com.kalibyte.foundry.furnace.furnace_report.common.FurnaceRefNoGenerator;
@@ -11,7 +11,6 @@ import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
 import com.kalibyte.foundry.furnace.furnace_report.repository.FurnaceRepository;
 import com.kalibyte.foundry.furnace.furnace_report.service.FurnaceService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;

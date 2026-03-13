@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.furnace.furnace_report.dto.response;
 
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
 import com.kalibyte.foundry.furnace.furnace_report.entity.Enum.Shift;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

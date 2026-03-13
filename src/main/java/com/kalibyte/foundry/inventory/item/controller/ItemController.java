@@ -1,12 +1,18 @@
 package com.kalibyte.foundry.inventory.item.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.security.UserPrincipal;
 import com.kalibyte.foundry.inventory.item.dto.request.CreateItemRequest;
+import com.kalibyte.foundry.inventory.item.dto.request.StockAdjustmentRequest;
 import com.kalibyte.foundry.inventory.item.dto.request.UpdateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemResponse;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemSummary;
 import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
 import com.kalibyte.foundry.inventory.item.service.ItemService;
+import com.kalibyte.foundry.inventory.item.service.StockAdjustmentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -23,10 +29,12 @@ import java.util.List;
 public class ItemController {
 
     private final ItemService itemService;
+    private final StockAdjustmentService stockAdjustmentService;
 
-	public ItemController(ItemService itemService) {
-		this.itemService = itemService;
-	}
+    public ItemController(ItemService itemService, StockAdjustmentService stockAdjustmentService) {
+        this.itemService = itemService;
+        this.stockAdjustmentService = stockAdjustmentService;
+    }
 
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -34,6 +42,22 @@ public class ItemController {
     public ApiResponse<ItemResponse> create(
             @Valid @RequestBody CreateItemRequest request) {
         return ApiResponse.success("Item created successfully", itemService.create(request));
+    }
+
+    @Operation(summary = "Adjust item stock", description = "Manually adjust item stock levels. Positive quantities act as inwards (requiring unit rate), negative as issues.")
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Stock adjusted successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid adjustment request"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Item not found")
+    })
+    @PostMapping("/{itemId}/adjust-stock")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STORE')")
+    public ApiResponse<ItemResponse> adjustStock(
+            @Parameter(description = "ID of the item to adjust") @PathVariable Long itemId,
+            @Valid @RequestBody StockAdjustmentRequest request,
+            UserPrincipal userPrincipal) {
+        return ApiResponse.success("Stock adjusted successfully", 
+                stockAdjustmentService.adjustStock(itemId, request, userPrincipal));
     }
 
     @GetMapping

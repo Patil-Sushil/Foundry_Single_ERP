@@ -113,6 +113,23 @@ public class Item extends BaseInventoryEntity {
         // avgRate does NOT change on issue
     }
 
+    /**
+     * Business logic for manual stock adjustment.
+     * @param quantity Positive for addition, negative for subtraction.
+     * @param rate Unit rate for adjustment (required for addition).
+     */
+    public void adjustStock(BigDecimal quantity, BigDecimal rate) {
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+
+        if (quantity.compareTo(BigDecimal.ZERO) > 0) {
+            this.receiveStock(quantity, rate);
+        } else {
+            this.issueStock(quantity.abs());
+        }
+    }
+
     public BigDecimal getStockValue() {
         return currentStock.multiply(avgRate).setScale(2, RoundingMode.HALF_UP);
     }

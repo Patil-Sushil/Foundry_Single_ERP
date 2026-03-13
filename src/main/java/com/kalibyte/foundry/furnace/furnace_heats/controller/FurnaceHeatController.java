@@ -1,12 +1,11 @@
 package com.kalibyte.foundry.furnace.furnace_heats.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatRequest;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatResponse;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatsByOrderResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatsByOrderResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.service.FurnaceHeatService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

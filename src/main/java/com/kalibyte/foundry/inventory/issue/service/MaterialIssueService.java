@@ -9,10 +9,10 @@ import com.kalibyte.foundry.inventory.issue.dto.request.RecordIssueRequest;
 import com.kalibyte.foundry.inventory.issue.dto.response.*;
 import com.kalibyte.foundry.inventory.issue.entity.IssuedItem;
 import com.kalibyte.foundry.inventory.issue.entity.MaterialIssue;
+import com.kalibyte.foundry.inventory.issue.mapper.MaterialIssueMapper;
 import com.kalibyte.foundry.inventory.issue.repository.MaterialIssueRepository;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,10 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class MaterialIssueService {
@@ -32,12 +29,18 @@ public class MaterialIssueService {
     private final DepartmentRepository departmentRepository;
     private final ItemRepository itemRepository;
     private final IssueNumberGenerator issueNumberGenerator;
+    private final MaterialIssueMapper materialIssueMapper;
 
-	public MaterialIssueService(MaterialIssueRepository materialIssueRepository, DepartmentRepository departmentRepository, ItemRepository itemRepository, IssueNumberGenerator issueNumberGenerator) {
+	public MaterialIssueService(MaterialIssueRepository materialIssueRepository, 
+                                DepartmentRepository departmentRepository, 
+                                ItemRepository itemRepository, 
+                                IssueNumberGenerator issueNumberGenerator,
+                                MaterialIssueMapper materialIssueMapper) {
 		this.materialIssueRepository = materialIssueRepository;
 		this.departmentRepository = departmentRepository;
 		this.itemRepository = itemRepository;
 		this.issueNumberGenerator = issueNumberGenerator;
+        this.materialIssueMapper = materialIssueMapper;
 	}
 
 	@Transactional
@@ -45,14 +48,10 @@ public class MaterialIssueService {
         Department department = departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
 
-        MaterialIssue issue = MaterialIssue.builder()
-                .issueNumber(issueNumberGenerator.generate())
-                .department(department)
-                .issuedByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
-                .issueDate(request.issueDate() != null ? request.issueDate() : LocalDate.now())
-                .purpose(request.purpose())
-                .notes(request.notes())
-                .build();
+        MaterialIssue issue = materialIssueMapper.toEntity(request);
+        issue.setIssueNumber(issueNumberGenerator.generate());
+        issue.setDepartment(department);
+        issue.setIssuedByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId());
 
         for (IssueItemRequest itemRequest : request.items()) {
             Item item = itemRepository.findById(itemRequest.itemId())
@@ -75,23 +74,25 @@ public class MaterialIssueService {
             itemRepository.save(item); // Update stock
         }
 
-        return toResponse(materialIssueRepository.save(issue));
+        return materialIssueMapper.toResponse(materialIssueRepository.save(issue));
     }
 
     @Transactional(readOnly = true)
     public MaterialIssueResponse getById(Long id) {
         MaterialIssue issue = materialIssueRepository.findWithItems(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Material Issue not found with id: " + id));
-        return toResponse(issue);
+        return materialIssueMapper.toResponse(issue);
     }
 
 
     @Transactional(readOnly = true)
     public Page<MaterialIssueSummary> getAll(Long departmentId, LocalDate from, LocalDate to, Pageable pageable) {
-        departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + departmentId));
+        if (departmentId != null) {
+            departmentRepository.findById(departmentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + departmentId));
+        }
         return materialIssueRepository.findAllFiltered(departmentId, from, to, pageable)
-                .map(this::toSummary);
+                .map(materialIssueMapper::toSummary);
     }
 
     @Transactional(readOnly = true)
@@ -101,75 +102,6 @@ public class MaterialIssueService {
 
         List<MaterialIssue> issues = materialIssueRepository.findByDepartmentAndDateRange(departmentId, from, to);
 
-        Map<Long, ConsumptionDetail> map = new HashMap<>();
-
-        for (MaterialIssue issue : issues) {
-            for (IssuedItem ii : issue.getIssuedItems()) {
-                Long itemId = ii.getItem().getId();
-                ConsumptionDetail detail = map.getOrDefault(itemId, new ConsumptionDetail(
-                        ii.getItem().getName(),
-                        ii.getItem().getCode(),
-                        ii.getItem().getUnit().name(),
-                        BigDecimal.ZERO,
-                        BigDecimal.ZERO
-                ));
-
-                BigDecimal newQty = detail.totalQuantity().add(ii.getIssuedQuantity());
-                BigDecimal newVal = detail.totalValue().add(ii.getAmount());
-
-                map.put(itemId, new ConsumptionDetail(
-                        detail.itemName(),
-                        detail.itemCode(),
-                        detail.unit(),
-                        newQty,
-                        newVal
-                ));
-            }
-        }
-
-        List<ConsumptionDetail> items = new ArrayList<>(map.values());
-        BigDecimal grandTotal = items.stream()
-                .map(ConsumptionDetail::totalValue)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return new DepartmentConsumptionReport(departmentId, from, to, items, grandTotal);
-    }
-
-    private MaterialIssueResponse toResponse(MaterialIssue issue) {
-        List<IssuedItemDetail> items = issue.getIssuedItems().stream()
-                .map(ii -> new IssuedItemDetail(
-                        ii.getId(),
-                        ii.getItem().getName(),
-                        ii.getItem().getCode(),
-                        ii.getItem().getUnit().name(),
-                        ii.getIssuedQuantity(),
-                        ii.getUnitRate(),
-                        ii.getAmount(),
-                        ii.getNotes()
-                ))
-                .toList();
-
-        return new MaterialIssueResponse(
-                issue.getId(),
-                issue.getIssueNumber(),
-                issue.getDepartment().getName(),
-                issue.getPurpose(),
-                issue.getIssueDate(),
-                items,
-                issue.getTotalValue(),
-                issue.getCreatedAt()
-        );
-    }
-
-    private MaterialIssueSummary toSummary(MaterialIssue issue) {
-        return new MaterialIssueSummary(
-                issue.getId(),
-                issue.getIssueNumber(),
-                issue.getDepartment().getName(),
-                issue.getPurpose(),
-                issue.getIssueDate(),
-                issue.getIssuedItems().size(),
-                issue.getTotalValue()
-        );
+        return materialIssueMapper.toConsumptionReport(departmentId, from, to, issues);
     }
 }

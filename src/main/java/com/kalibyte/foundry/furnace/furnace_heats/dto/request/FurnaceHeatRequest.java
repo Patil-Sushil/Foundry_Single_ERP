@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.furnace.furnace_heats.dto;
+package com.kalibyte.foundry.furnace.furnace_heats.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;

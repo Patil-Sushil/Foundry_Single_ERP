@@ -108,6 +108,12 @@ Tracks financial obligations to vendors.
 - **Stock Valuation**: Done using the `avgRate` (Weighted Average Cost).
 - **Vendor Balance**: Derived from `VendorLedger` entries. Every confirmed Inward creates a payable.
 
+### D. Furnace Integration (Automatic Issuance)
+- When a **Furnace Heat** is recorded, the system automatically triggers a material issuance.
+- **Flow**: Heat recorded → Validate stock availability → Create `MaterialIssue` for the `FURNACE` department.
+- This ensures that raw material consumption (Pig Iron, Scrap, Alloys) is automatically deducted from inventory without manual entry by store personnel.
+- For more details, refer to the [Furnace Module Documentation](furnaceDocument.md).
+
 ---
 
 ## 4. Technical Implementation Details
@@ -122,23 +128,74 @@ Tracks financial obligations to vendors.
 
 ## 5. Reporting & Analytics
 
-The system provides a suite of reports for operational and financial visibility.
+The system provides a suite of reports for operational and financial visibility via the `InventoryReportController` and `MaterialIssueController`.
 
 ### A. Operational Reports
-- **Material Inward Report**: Tracks receipts from vendors over a date range. Filterable by Vendor, Item, and PO.
-- **Material Issue Report**: Monitors internal consumption by departments. Filterable by Department and Item.
-- **Stock Summary Report**: Provides a snapshot of current stock levels across the inventory. Identifies **Low Stock** (below reorder level) and **Critical Stock** (below min level) items.
-- **Daily Movement Report**: A reconciliation tool showing opening balance, daily inflows/outflows, and closing balance for a specific date.
+
+#### 1. Material Inward Report
+- **Endpoint**: `GET /api/inventory/reports/inwards`
+- **Description**: Tracks material receipts from vendors.
+- **Parameters**:
+    - `startDate` (Optional, LocalDate): defaults to the first day of the current month.
+    - `endDate` (Optional, LocalDate): defaults to today.
+    - `vendorId` (Optional, Long): filter by a specific vendor.
+    - `itemId` (Optional, Long): filter by a specific item.
+    - `purchaseOrderId` (Optional, Long): filter by a specific PO.
+
+#### 2. Material Issue Report
+- **Endpoint**: `GET /api/inventory/reports/issues`
+- **Description**: Monitors internal material distribution to departments.
+- **Parameters**:
+    - `startDate` (Optional, LocalDate): defaults to the first day of the current month.
+    - `endDate` (Optional, LocalDate): defaults to today.
+    - `departmentId` (Optional, Long): filter by a specific department.
+    - `itemId` (Optional, Long): filter by a specific item.
+
+#### 3. Department Consumption Report
+- **Endpoint**: `GET /api/material-issues/consumption-report`
+- **Description**: Aggregates total quantity and value of items consumed by a department.
+- **Parameters**:
+    - `departmentId` (Required, Long)
+    - `from` (Required, LocalDate)
+    - `to` (Required, LocalDate)
+
+#### 4. Stock Summary Report
+- **Endpoint**: `GET /api/inventory/reports/stock-summary`
+- **Description**: Snapshot of current stock levels across the inventory.
+- **Parameters**:
+    - `category` (Optional, String): filter by item category (e.g., RAW_MATERIAL).
+    - `belowReorderLevel` (Optional, Boolean): filter for items needing replenishment.
+    - `departmentId` (Optional, Long): filter by primary department.
+
+#### 5. Daily Stock Movement Report
+- **Endpoint**: `GET /api/inventory/reports/daily-movement`
+- **Description**: Reconciliation tool showing opening balance, daily inflows/outflows, and closing balance.
+- **Parameters**:
+    - `date` (Optional, LocalDate): defaults to today.
+    - `category` (Optional, String): filter by item category.
 
 ### B. Financial & Analytical Reports
-- **Item Ledger Report**: A comprehensive historical log for a specific item. It calculates the **Opening Stock** at the start of a period and tracks every transaction (IN/OUT) to arrive at the **Closing Balance**, providing a clear audit trail.
-- **Vendor Summary Report**: Analyzes vendor performance and financial status. Tracks total PO value vs. actual inward value and provides the current **Outstanding Balance** from the vendor ledger.
+
+#### 1. Item Ledger Report
+- **Endpoint**: `GET /api/inventory/reports/items/{itemId}/ledger`
+- **Description**: Historical log for a specific item showing every IN/OUT transaction and running balance.
+- **Parameters**:
+    - `itemId` (Required, Path Variable)
+    - `startDate` (Optional, LocalDate): defaults to one month ago.
+    - `endDate` (Optional, LocalDate): defaults to today.
+
+#### 2. Vendor Summary Report
+- **Endpoint**: `GET /api/inventory/reports/vendor-summary`
+- **Description**: Analyzes vendor performance, total PO vs. Inward value, and outstanding balances.
+- **Parameters**:
+    - `startDate` (Optional, LocalDate): defaults to first day of current month.
+    - `endDate` (Optional, LocalDate): defaults to today.
+    - `vendorId` (Optional, Long): filter for a specific vendor.
 
 ### C. Technical Implementation of Reports
-- **Confirmed Document Basis**: All reports (Inward, Issue, Ledger) are generated by querying **Confirmed** documents. Drafts are excluded to ensure data integrity and accurate stock/financial representation.
-- **Date Range Filtering**: Reports use `LocalDate` for filtering. The `InventoryReportService` processes historical data within these ranges to provide snapshots and movement summaries.
-- **Opening Stock Calculation**: The Item Ledger and Daily Movement reports dynamically calculate opening stock by aggregating all confirmed inflows (Inwards) and outflows (Issues) prior to the requested start date.
-- **Real-time Aggregation**: Instead of pre-calculating report data, the system performs real-time stream-based aggregation of document items (ReceivedItems/IssuedItems) to ensure reports always reflect the most current state of the database.
+- **Confirmed Document Basis**: All reports are generated from **Confirmed** documents. Drafts are excluded.
+- **Opening Stock Calculation**: Dynamically calculated for Ledger and Movement reports by aggregating all transactions prior to the start date.
+- **Real-time Aggregation**: Reports perform stream-based aggregation of line items (ReceivedItems/IssuedItems) for real-time accuracy.
 
 ---
 
@@ -153,4 +210,114 @@ In the current implementation, you may notice that `ReceivedItemRepository` is d
 4. **Data Integrity**: By not exposing direct CRUD operations on `ReceivedItem` via its own repository, the system prevents "orphaned" items or modifications to line items that haven't been validated by the parent document's state (e.g., ensuring items can't be added to a 'CONFIRMED' inward).
 
 The repository exists primarily for future extensibility or specific low-level queries that might bypass the aggregate root for performance optimization in very large datasets, but the current business logic intentionally routes all interactions through `MaterialInwardRepository`.
+
+---
+
+## 7. Database Schema
+
+The following tables define the structure of the Inventory module and its financial tracking.
+
+### `vendors`
+Stores external supplier information.
+
+| Column     | Type         | Constraints  | Description       |
+|------------|--------------|--------------|-------------------|
+| id         | BIGSERIAL    | PRIMARY KEY  | Unique identifier |
+| name       | VARCHAR(255) | NOT NULL     |                   |
+| phone      | VARCHAR(20)  |              |                   |
+| gst_number | VARCHAR(20)  |              |                   |
+| address    | TEXT         |              |                   |
+| is_active  | BOOLEAN      | DEFAULT TRUE |                   |
+
+### `items`
+The central table for stockable materials.
+
+| Column        | Type          | Constraints      | Description               |
+|---------------|---------------|------------------|---------------------------|
+| id            | BIGSERIAL     | PRIMARY KEY      |                           |
+| name          | VARCHAR(255)  | NOT NULL         |                           |
+| code          | VARCHAR(50)   | UNIQUE, NOT NULL | Unique item code          |
+| category      | VARCHAR(30)   | NOT NULL         | RAW_MATERIAL, ALLOY, etc. |
+| department_id | BIGINT        | FK (departments) | Primary department        |
+| unit          | VARCHAR(20)   | NOT NULL         | KG, PCS, etc.             |
+| current_stock | DECIMAL(15,3) | DEFAULT 0        | Current quantity on hand  |
+| avg_rate      | DECIMAL(12,2) | DEFAULT 0        | Weighted Average Cost     |
+| reorder_level | DECIMAL(15,3) | DEFAULT 0        |                           |
+
+### `purchase_orders` & `purchase_order_items`
+Tracks formal procurement requests.
+
+### **purchase_orders**
+| Column    | Type        | Constraints      | Description          |
+|-----------|-------------|------------------|----------------------|
+| id        | BIGSERIAL   | PRIMARY KEY      |                      |
+| po_number | VARCHAR(50) | UNIQUE, NOT NULL | e.g., PO-2024-001    |
+| vendor_id | BIGINT      | FK (vendors)     |                      |
+| status    | VARCHAR(30) | NOT NULL         | OPEN, RECEIVED, etc. |
+| po_date   | DATE        | NOT NULL         |                      |
+
+### **purchase_order_items**
+| Column            | Type          | Constraints          | Description |
+|-------------------|---------------|----------------------|-------------|
+| id                | BIGSERIAL     | PRIMARY KEY          |             |
+| po_id             | BIGINT        | FK (purchase_orders) | Parent PO   |
+| item_id           | BIGINT        | FK (items)           |             |
+| ordered_quantity  | DECIMAL(15,3) | NOT NULL             |             |
+| received_quantity | DECIMAL(15,3) | DEFAULT 0            |             |
+| unit_rate         | DECIMAL(12,2) | NOT NULL             |             |
+
+### `material_inwards` & `received_items`
+Tracks reception of materials.
+
+### **material_inwards**
+| Column        | Type        | Constraints          | Description      |
+|---------------|-------------|----------------------|------------------|
+| id            | BIGSERIAL   | PRIMARY KEY          |                  |
+| inward_number | VARCHAR(50) | UNIQUE, NOT NULL     |                  |
+| po_id         | BIGINT      | FK (purchase_orders) | Optional         |
+| vendor_id     | BIGINT      | FK (vendors)         |                  |
+| inward_date   | DATE        | NOT NULL             |                  |
+| status        | VARCHAR(20) | DEFAULT 'DRAFT'      | DRAFT, CONFIRMED |
+
+### **received_items**
+| Column             | Type          | Constraints           | Description          |
+|--------------------|---------------|-----------------------|----------------------|
+| id                 | BIGSERIAL     | PRIMARY KEY           |                      |
+| material_inward_id | BIGINT        | FK (material_inwards) | Parent Inward        |
+| item_id            | BIGINT        | FK (items)            |                      |
+| received_quantity  | DECIMAL(15,3) | NOT NULL              |                      |
+| unit_rate          | DECIMAL(12,2) | NOT NULL              |                      |
+| amount             | DECIMAL(15,2) | GENERATED             | quantity * unit_rate |
+
+### `material_issues` & `issued_items`
+Tracks internal consumption by departments.
+
+### **material_issues**
+| Column        | Type        | Constraints      | Description          |
+|---------------|-------------|------------------|----------------------|
+| id            | BIGSERIAL   | PRIMARY KEY      |                      |
+| issue_number  | VARCHAR(50) | UNIQUE, NOT NULL |                      |
+| department_id | BIGINT      | FK (departments) | Consuming department |
+| issue_date    | DATE        | NOT NULL         |                      |
+
+### **issued_items**
+| Column            | Type          | Constraints          | Description               |
+|-------------------|---------------|----------------------|---------------------------|
+| id                | BIGSERIAL     | PRIMARY KEY          |                           |
+| material_issue_id | BIGINT        | FK (material_issues) | Parent Issue              |
+| item_id           | BIGINT        | FK (items)           |                           |
+| issued_quantity   | DECIMAL(15,3) | NOT NULL             |                           |
+| unit_rate         | DECIMAL(12,2) | NOT NULL             | Captured at time of issue |
+
+### `vendor_ledger`
+Tracks financial obligations to vendors.
+
+| Column             | Type          | Constraints           | Description |
+|--------------------|---------------|-----------------------|-------------|
+| id                 | BIGSERIAL     | PRIMARY KEY           |             |
+| vendor_id          | BIGINT        | FK (vendors)          |             |
+| material_inward_id | BIGINT        | FK (material_inwards) | Optional    |
+| entry_type         | VARCHAR(10)   | CHECK (CREDIT, DEBIT) |             |
+| amount             | DECIMAL(15,2) | NOT NULL              |             |
+| entry_date         | DATE          | NOT NULL              |             |
 

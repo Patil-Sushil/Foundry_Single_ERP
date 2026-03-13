@@ -6,10 +6,10 @@ import com.kalibyte.foundry.inventory.ledger.dto.response.VendorBalanceResponse;
 import com.kalibyte.foundry.inventory.ledger.dto.response.VendorLedgerResponse;
 import com.kalibyte.foundry.inventory.ledger.entity.VendorLedger;
 import com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType;
+import com.kalibyte.foundry.inventory.ledger.mapper.VendorLedgerMapper;
 import com.kalibyte.foundry.inventory.ledger.repository.VendorLedgerRepository;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,10 +24,14 @@ public class VendorLedgerService {
 
     private final VendorLedgerRepository vendorLedgerRepository;
     private final VendorRepository vendorRepository;
+    private final VendorLedgerMapper vendorLedgerMapper;
 
-	public VendorLedgerService(VendorLedgerRepository vendorLedgerRepository, VendorRepository vendorRepository) {
+	public VendorLedgerService(VendorLedgerRepository vendorLedgerRepository, 
+                               VendorRepository vendorRepository,
+                               VendorLedgerMapper vendorLedgerMapper) {
 		this.vendorLedgerRepository = vendorLedgerRepository;
 		this.vendorRepository = vendorRepository;
+        this.vendorLedgerMapper = vendorLedgerMapper;
 	}
 
 	@Transactional(readOnly = true)
@@ -38,7 +42,7 @@ public class VendorLedgerService {
 	@Transactional(readOnly = true)
     public Page<VendorLedgerResponse> getVendorLedger(Long vendorId, LocalDate from, LocalDate to, Pageable pageable) {
         return vendorLedgerRepository.findByVendorIdOrderByEntryDateDesc(vendorId, from, to, pageable)
-                .map(this::toResponse);
+                .map(vendorLedgerMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -72,7 +76,7 @@ public class VendorLedgerService {
                 .entryDate(LocalDate.now())
                 .build();
 
-        return toResponse(vendorLedgerRepository.save(ledger));
+        return vendorLedgerMapper.toResponse(vendorLedgerRepository.save(ledger));
     }
 
     @Transactional
@@ -87,19 +91,5 @@ public class VendorLedgerService {
                 .build();
         
         vendorLedgerRepository.save(ledger);
-    }
-
-    private VendorLedgerResponse toResponse(VendorLedger ledger) {
-        return new VendorLedgerResponse(
-                ledger.getId(),
-                ledger.getVendor().getId(),
-                ledger.getVendor().getName(),
-                ledger.getEntryType(),
-                ledger.getAmount(),
-                ledger.getDescription(),
-                ledger.getEntryDate(),
-                ledger.getMaterialInward() != null ? ledger.getMaterialInward().getInwardNumber() : null,
-                ledger.getCreatedAt()
-        );
     }
 }

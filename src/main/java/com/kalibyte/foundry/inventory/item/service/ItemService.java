@@ -9,6 +9,7 @@ import com.kalibyte.foundry.inventory.item.dto.response.ItemResponse;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemSummary;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
+import com.kalibyte.foundry.inventory.item.mapper.ItemMapper;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,13 +26,17 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
     private final DepartmentRepository departmentRepository;
+    private final ItemMapper itemMapper;
 
-	public ItemService(ItemRepository itemRepository, DepartmentRepository departmentRepository) {
-		this.itemRepository = itemRepository;
-		this.departmentRepository = departmentRepository;
-	}
+    public ItemService(ItemRepository itemRepository, 
+                       DepartmentRepository departmentRepository, 
+                       ItemMapper itemMapper) {
+        this.itemRepository = itemRepository;
+        this.departmentRepository = departmentRepository;
+        this.itemMapper = itemMapper;
+    }
 
-	@Transactional
+    @Transactional
     public ItemResponse create(CreateItemRequest request) {
         Department department = null;
         if (request.departmentId() != null) {
@@ -58,7 +63,7 @@ public class ItemService {
                 .isActive(true)
                 .build();
 
-        return toResponse(itemRepository.save(item));
+        return itemMapper.toResponse(itemRepository.save(item));
     }
 
     @Transactional
@@ -89,14 +94,14 @@ public class ItemService {
             item.setIsActive(request.isActive());
         }
 
-        return toResponse(itemRepository.save(item));
+        return itemMapper.toResponse(itemRepository.save(item));
     }
 
     @Transactional(readOnly = true)
     public ItemResponse getById(Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + id));
-        return toResponse(item);
+        return itemMapper.toResponse(item);
     }
 
     @Transactional(readOnly = true)
@@ -110,7 +115,7 @@ public class ItemService {
         } else {
             items = itemRepository.findAll(pageable);
         }
-        return items.map(this::toResponse);
+        return items.map(itemMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -118,14 +123,7 @@ public class ItemService {
         Pageable limit = PageRequest.of(0, 10);
         return itemRepository.findByNameOrCode(query, limit)
                 .stream()
-                .map(i -> new ItemSummary(
-                        i.getId(),
-                        i.getName(),
-                        i.getCode(),
-                        i.getUnit(),
-                        i.getCurrentStock(),
-                        i.getAvgRate()
-                ))
+                .map(itemMapper::toSummary)
                 .toList();
     }
 
@@ -133,43 +131,18 @@ public class ItemService {
     public List<ItemResponse> getLowStockItems() {
         return itemRepository.findByCurrentStockLessThanEqualAndIsActiveTrue()
                 .stream()
-                .map(this::toResponse)
+                .map(itemMapper::toResponse)
                 .toList();
-    }
-
-    private ItemResponse toResponse(Item item) {
-        return new ItemResponse(
-                item.getId(),
-                item.getName(),
-                item.getCode(),
-                item.getDescription(),
-                item.getCategory(),
-                item.getSubCategory(),
-                item.getDepartment() != null ? item.getDepartment().getName() : null,
-                item.getUnit(),
-                item.getCurrentStock(),
-                item.getReorderLevel(),
-                item.getMinStockLevel(),
-                item.getLocation(),
-                item.getLastPurchaseRate(),
-                item.getAvgRate(),
-                item.getStockValue(),
-                item.getStockStatus(),
-                item.getHsnCode(),
-                item.getGstRate(),
-                item.getIsActive(),
-                item.getCreatedAt()
-        );
     }
 
     @Transactional
     @Modifying
-	public ItemResponse toggleStatus(Long id) {
+    public ItemResponse toggleStatus(Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + id));
 
         item.setIsActive(!item.getIsActive());
         itemRepository.save(item);
-        return toResponse(item);
-	}
+        return itemMapper.toResponse(item);
+    }
 }

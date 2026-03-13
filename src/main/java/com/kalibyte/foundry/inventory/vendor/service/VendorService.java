@@ -7,6 +7,7 @@ import com.kalibyte.foundry.inventory.vendor.dto.response.VendorResponse;
 import com.kalibyte.foundry.inventory.vendor.dto.response.VendorSummary;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
 import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
+import com.kalibyte.foundry.inventory.vendor.mapper.VendorMapper;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,30 +20,19 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-
+@RequiredArgsConstructor
 public class VendorService {
 
     private final VendorRepository vendorRepository;
+    private final VendorMapper vendorMapper;
 
-	public VendorService(VendorRepository vendorRepository) {
-		this.vendorRepository = vendorRepository;
-	}
-
-	@Transactional
+    @Transactional
     public VendorResponse create(CreateVendorRequest request) {
-        Vendor vendor1 = vendorRepository.findByPhone(request.phone());
-        if(vendor1 != null){
-            throw new DuplicateVendorException("Vendor by the phone :"+ request.phone() +" is already in database");
+        if (vendorRepository.findByPhone(request.phone()) != null) {
+            throw new DuplicateVendorException("Vendor by the phone :" + request.phone() + " is already in database");
         }
-        Vendor vendor = Vendor.builder()
-                .name(request.name())
-                .phone(request.phone())
-                .gstNumber(request.gstNumber())
-                .address(request.address())
-                .isActive(true)
-                .build();
-        
-        return toResponse(vendorRepository.save(vendor));
+        Vendor vendor = vendorMapper.toEntity(request);
+        return vendorMapper.toResponse(vendorRepository.save(vendor));
     }
 
     @Transactional
@@ -50,22 +40,16 @@ public class VendorService {
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));
 
-        vendor.setName(request.name());
-        vendor.setPhone(request.phone());
-        vendor.setGstNumber(request.gstNumber());
-        vendor.setAddress(request.address());
-        if (request.isActive() != null) {
-            vendor.setIsActive(request.isActive());
-        }
+        vendorMapper.updateEntity(request, vendor);
 
-        return toResponse(vendorRepository.save(vendor));
+        return vendorMapper.toResponse(vendorRepository.save(vendor));
     }
 
     @Transactional(readOnly = true)
     public VendorResponse getById(Long id) {
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));
-        return toResponse(vendor);
+        return vendorMapper.toResponse(vendor);
     }
 
     @Transactional(readOnly = true)
@@ -76,7 +60,7 @@ public class VendorService {
         } else {
             vendors = vendorRepository.findAll(pageable);
         }
-        return vendors.map(this::toResponse);
+        return vendors.map(vendorMapper::toResponse);
     }
 
     @Transactional
@@ -92,20 +76,7 @@ public class VendorService {
         Pageable limit = PageRequest.of(0, 10);
         return vendorRepository.findByNameContainingIgnoreCaseOrPhoneContaining(query, query, limit)
                 .stream()
-                .map(v -> new VendorSummary(v.getId(), v.getName(), v.getPhone()))
+                .map(vendorMapper::toSummary)
                 .toList();
-    }
-
-    private VendorResponse toResponse(Vendor vendor) {
-        return new VendorResponse(
-                vendor.getId(),
-                vendor.getName(),
-                vendor.getPhone(),
-                vendor.getGstNumber(),
-                vendor.getAddress(),
-                vendor.getIsActive(),
-                vendor.getCreatedAt(),
-                vendor.getUpdatedAt()
-        );
     }
 }

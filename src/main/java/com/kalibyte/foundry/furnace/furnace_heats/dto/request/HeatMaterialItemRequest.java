@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.furnace.furnace_heats.dto;
+package com.kalibyte.foundry.furnace.furnace_heats.dto.request;
 
 import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import jakarta.validation.constraints.NotNull;

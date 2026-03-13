@@ -69,8 +69,7 @@ public class PurchaseOrderController {
     public ApiResponse<LastPurchaseRate> getRateHint(
             @RequestParam Long itemId, 
             @RequestParam Long vendorId) {
-        Optional<LastPurchaseRate> rate = purchaseOrderService.getLastPurchaseRate(itemId, vendorId);
-        return rate.map(ApiResponse::success)
-                   .orElseGet(() -> ApiResponse.success(null));
+        return ApiResponse.success("Last purchase rate retrieved successfully", 
+                purchaseOrderService.getLastPurchaseRate(itemId, vendorId));
     }
 }

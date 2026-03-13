@@ -1,8 +1,8 @@
 package com.kalibyte.foundry.furnace.furnace_heats.service;
 
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatRequest;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatResponse;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatsByOrderResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatsByOrderResponse;
 
 import java.util.List;
 import java.util.UUID;

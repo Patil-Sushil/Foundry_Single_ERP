@@ -2,10 +2,10 @@ package com.kalibyte.foundry.furnace.furnace_heats.service.impl;
 
 import com.kalibyte.foundry.common.exception.InsufficientStockException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatRequest;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.FurnaceHeatResponse;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatMaterialItemRequest;
-import com.kalibyte.foundry.furnace.furnace_heats.dto.HeatsByOrderResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.request.HeatMaterialItemRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatsByOrderResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialItem;
 import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsRepository;

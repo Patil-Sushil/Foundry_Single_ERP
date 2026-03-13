@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.furnace.furnace_heats.dto;
+package com.kalibyte.foundry.furnace.furnace_heats.dto.response;
 
 import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import lombok.AllArgsConstructor;
