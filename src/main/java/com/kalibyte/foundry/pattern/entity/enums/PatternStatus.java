@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.pattern.entity.ENUMS;
+package com.kalibyte.foundry.pattern.entity.enums;
 
 public enum PatternStatus {
     AVAILABLE,

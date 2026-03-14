@@ -8,7 +8,7 @@ import com.kalibyte.foundry.accounts.mapper.PaymentMapper;
 import com.kalibyte.foundry.accounts.repository.PaymentRepository;
 import com.kalibyte.foundry.accounts.service.PaymentService;
 import com.kalibyte.foundry.accounts.util.PaymentNumberGenerator;
-import com.kalibyte.foundry.billing.Enums.InvoiceStatus;
+import com.kalibyte.foundry.billing.enums.InvoiceStatus;
 import com.kalibyte.foundry.billing.invoice.entity.Invoice;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.common.email.EmailService;

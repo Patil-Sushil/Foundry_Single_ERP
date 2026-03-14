@@ -14,7 +14,7 @@ import com.kalibyte.foundry.billing.util.PdfGenerator;
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 

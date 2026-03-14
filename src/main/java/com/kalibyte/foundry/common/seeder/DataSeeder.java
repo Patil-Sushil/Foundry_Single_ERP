@@ -12,8 +12,8 @@ import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsReposit
 import com.kalibyte.foundry.furnace.furnace_report.entity.Enum.Shift;
 import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
 import com.kalibyte.foundry.furnace.furnace_report.repository.FurnaceRepository;
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
-import com.kalibyte.foundry.order.entity.ENUM.OrderType;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderType;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.quotation.entity.Quotation;

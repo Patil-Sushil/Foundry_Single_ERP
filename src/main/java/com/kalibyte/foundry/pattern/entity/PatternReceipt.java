@@ -2,8 +2,8 @@ package com.kalibyte.foundry.pattern.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.enquiry.entity.EnquiryItem;
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternMaterial;
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternType;
+import com.kalibyte.foundry.pattern.entity.enums.PatternMaterial;
+import com.kalibyte.foundry.pattern.entity.enums.PatternType;
 import jakarta.persistence.*;
 import lombok.*;
 

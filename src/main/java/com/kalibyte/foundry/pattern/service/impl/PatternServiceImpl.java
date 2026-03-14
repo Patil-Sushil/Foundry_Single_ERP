@@ -7,7 +7,7 @@ import com.kalibyte.foundry.pattern.dto.request.PatternCreateRequest;
 import com.kalibyte.foundry.pattern.dto.request.PatternStatusUpdateRequest;
 import com.kalibyte.foundry.pattern.dto.request.PatternUpdateRequest;
 import com.kalibyte.foundry.pattern.dto.response.PatternResponse;
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternStatus;
+import com.kalibyte.foundry.pattern.entity.enums.PatternStatus;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import com.kalibyte.foundry.pattern.service.PatternService;

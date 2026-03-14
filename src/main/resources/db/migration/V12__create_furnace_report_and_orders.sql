@@ -68,7 +68,7 @@ ALTER TABLE furnace_heats
 
 CREATE TABLE IF NOT EXISTS orders (
 
-                                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     order_number VARCHAR(50) NOT NULL UNIQUE,
 
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE TABLE IF NOT EXISTS order_item (
 
-                                          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     order_id UUID NOT NULL,
 

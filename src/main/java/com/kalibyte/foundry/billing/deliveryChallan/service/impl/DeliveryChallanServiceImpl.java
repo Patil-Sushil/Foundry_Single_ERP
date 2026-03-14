@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.billing.deliveryChallan.service.impl;
 
-import com.kalibyte.foundry.billing.Enums.DCStatus;
+import com.kalibyte.foundry.billing.enums.DCStatus;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanItemRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.response.DeliveryChallanResponse;
@@ -18,11 +18,11 @@ import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.repository.OrderItemRepository;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.pattern.entity.Pattern;
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternStatus;
+import com.kalibyte.foundry.pattern.entity.enums.PatternStatus;
 import com.kalibyte.foundry.pattern.repository.PatternRepository;
 
 import lombok.RequiredArgsConstructor;

@@ -2,8 +2,8 @@ package com.kalibyte.foundry.order.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
-import com.kalibyte.foundry.order.entity.ENUM.OrderType;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderType;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import jakarta.persistence.*;

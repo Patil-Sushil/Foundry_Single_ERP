@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.billing.invoice.dto.response;
 
-import com.kalibyte.foundry.billing.Enums.InvoiceStatus;
+import com.kalibyte.foundry.billing.enums.InvoiceStatus;
 import lombok.*;
 
 import java.math.BigDecimal;

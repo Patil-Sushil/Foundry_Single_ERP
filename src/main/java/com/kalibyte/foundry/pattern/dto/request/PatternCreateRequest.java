@@ -1,9 +1,7 @@
 package com.kalibyte.foundry.pattern.dto.request;
 
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternMaterial;
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternType;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import com.kalibyte.foundry.pattern.entity.enums.PatternMaterial;
+import com.kalibyte.foundry.pattern.entity.enums.PatternType;
 import lombok.Getter;
 import lombok.Setter;
 

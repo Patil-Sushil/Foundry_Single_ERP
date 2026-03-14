@@ -3,7 +3,7 @@ package com.kalibyte.foundry.order.service;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.order.dto.request.OrderCreateRequest;
 import com.kalibyte.foundry.order.dto.response.OrderResponse;
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;

@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.order.dto.response;
 
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
-import com.kalibyte.foundry.order.entity.ENUM.OrderType;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

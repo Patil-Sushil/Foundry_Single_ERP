@@ -42,4 +42,18 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
            """)
     List<Expense> findByExpenseDateBetweenWithExpenseHead(@Param("from") LocalDate from,
                                                           @Param("to") LocalDate to);
+
+    /**
+     * Returns total expenses paid per day.
+     */
+    @Query("""
+        SELECT
+        e.expenseDate,
+        SUM(e.amount)
+        FROM Expense e
+        WHERE e.expenseDate BETWEEN :from AND :to
+        GROUP BY e.expenseDate
+        ORDER BY e.expenseDate
+        """)
+    List<Object[]> getDailyCashOutflow(LocalDate from, LocalDate to);
 }

@@ -42,48 +42,52 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorizedHandler))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
-            .authorizeHttpRequests(auth -> auth
 
-                // Public
-                    .requestMatchers(
-                            "/api/auth/**",
-                            "/v3/api-docs/**",
-                            "/swagger-ui/**",
-                            "/swagger-ui.html",
-                            "/swagger-ui/index.html",
-                            "/webjars/**",
-                            "/error"
-                    ).permitAll()
+                .authorizeHttpRequests(auth -> auth
 
-                // Admin
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // Public
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html",
+                                "/webjars/**",
+                                "/error"
+                        ).permitAll()
 
-                // Sales
-                .requestMatchers("/api/enquiry/**", "/api/quotation/**")
-                .hasAnyRole("ADMIN", "SALES")
+                        // Reports
+                        .requestMatchers("/api/reports/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT")
 
-                // Production
-                .requestMatchers("/api/production/**")
-                .hasAnyRole("ADMIN", "PRODUCTION")
+                        // Admin
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                // Finance
-                .requestMatchers("/api/finance/**")
-                .hasAnyRole("ADMIN", "FINANCE")
+                        // Sales
+                        .requestMatchers("/api/enquiry/**", "/api/quotation/**")
+                        .hasAnyRole("ADMIN", "SALES")
 
-                // Inventory
-                .requestMatchers(
-                        "/api/items/**",
-                        "/api/vendors/**",
-                        "/api/departments/**",
-                        "/api/purchase-orders/**",
-                        "/api/inwards/**",
-                        "/api/material-issues/**",
-                        "/api/inventory/reports/**"
-                ).hasAnyRole("ADMIN", "STORE", "FINANCE")
+                        // Production
+                        .requestMatchers("/api/production/**")
+                        .hasAnyRole("ADMIN", "PRODUCTION")
 
-                .anyRequest().authenticated()
-        )
+                        // Finance
+                        .requestMatchers("/api/finance/**")
+                        .hasAnyRole("ADMIN", "FINANCE")
+
+                        // Inventory
+                        .requestMatchers(
+                                "/api/items/**",
+                                "/api/vendors/**",
+                                "/api/departments/**",
+                                "/api/purchase-orders/**",
+                                "/api/inwards/**",
+                                "/api/material-issues/**",
+                                "/api/inventory/reports/**"
+                        ).hasAnyRole("ADMIN", "STORE", "FINANCE")
+
+                        .anyRequest().authenticated()
+                )
 
 
                 .authenticationProvider(authenticationProvider())

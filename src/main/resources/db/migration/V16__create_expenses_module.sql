@@ -61,5 +61,6 @@ CREATE TABLE expenses
 CREATE INDEX idx_expenses_date
     ON expenses(expense_date);
 
+
 CREATE INDEX idx_expenses_head
     ON expenses(expense_head_id);

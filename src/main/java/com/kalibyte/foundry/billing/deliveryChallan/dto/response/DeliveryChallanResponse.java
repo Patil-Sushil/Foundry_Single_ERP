@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.billing.deliveryChallan.dto.response;
 
 
-import com.kalibyte.foundry.billing.Enums.DCStatus;
+import com.kalibyte.foundry.billing.enums.DCStatus;
 import lombok.*;
 
 import java.math.BigDecimal;

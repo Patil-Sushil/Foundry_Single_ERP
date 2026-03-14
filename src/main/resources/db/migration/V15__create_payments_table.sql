@@ -38,3 +38,10 @@ CREATE TABLE payments
         FOREIGN KEY (customer_id)
             REFERENCES customer(id)
 );
+
+CREATE INDEX idx_payment_date_status
+    ON payments(payment_date, status);
+
+CREATE INDEX idx_payment_date
+    ON payments(payment_date);
+

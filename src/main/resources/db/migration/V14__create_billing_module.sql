@@ -145,6 +145,11 @@ CREATE TABLE invoices (
 CREATE INDEX idx_invoice_order_id
     ON invoices(order_id);
 
+-- Your aging query will become very slow when invoices reach 100k+ rows.
+-- This composite index will help speed up queries that filter by bill_status and due_date, which are common in aging reports.
+CREATE INDEX idx_invoice_status_due
+    ON invoices (bill_status, due_date);
+
 -------------------------------------------------------
 -- INVOICE ITEMS
 -------------------------------------------------------

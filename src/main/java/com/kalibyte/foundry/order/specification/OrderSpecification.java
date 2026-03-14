@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.order.specification;
 
 import com.kalibyte.foundry.order.entity.Order;
-import com.kalibyte.foundry.order.entity.ENUM.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 

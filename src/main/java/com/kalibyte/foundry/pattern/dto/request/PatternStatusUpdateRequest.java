@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.pattern.dto.request;
 
-import com.kalibyte.foundry.pattern.entity.ENUMS.PatternStatus;
+import com.kalibyte.foundry.pattern.entity.enums.PatternStatus;
 import lombok.Getter;
 import lombok.Setter;
 
