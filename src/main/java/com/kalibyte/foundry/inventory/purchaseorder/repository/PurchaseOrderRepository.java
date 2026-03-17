@@ -51,21 +51,5 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
     """)
     BigDecimal getCOGS(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
-    /**
-     * Returns GST paid on purchases (Input Tax Credit).
-     */
-    @Query("""
-    SELECT po.poNumber,
-           po.poDate,
-           v.name,
-           v.gstNumber,
-           po.totalAmount,
-           po.cgst,
-           po.sgst,
-           po.igst
-    FROM PurchaseOrder po
-    JOIN po.vendor v
-    WHERE po.poDate BETWEEN :from AND :to
-    """)
-    List<Object[]> getGstPurchases(LocalDate from, LocalDate to);
+
 }
