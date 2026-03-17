@@ -7,6 +7,7 @@ import com.kalibyte.foundry.auth.repository.RoleRepository;
 import com.kalibyte.foundry.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
@@ -35,7 +36,7 @@ public class AdminBootstrap implements CommandLineRunner {
     private String adminPhone;
 
     @Override
-    public void run(String... args) {
+    public void run(String @NonNull ... args) {
 
         if (userRepository.count() > 0) {
             log.info("Users already exist. Skipping ADMIN bootstrap.");

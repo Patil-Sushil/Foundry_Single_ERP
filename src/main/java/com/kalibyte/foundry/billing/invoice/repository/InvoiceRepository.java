@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -146,4 +148,145 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Object[]> getReceivableAging();
 
 
+
+    /**
+     * Calculates total invoiced revenue for the given date range.
+     *
+     * @param from start date
+     * @param to   end date
+     * @return total invoice amount
+     */
+    @Query("""
+        SELECT COALESCE(SUM(i.totalAmount),0)
+        FROM Invoice i
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        """)
+    BigDecimal getTotalRevenue(LocalDate from, LocalDate to);
+
+    /**
+     * Returns the number of invoices generated within the given period.
+     */
+    @Query("""
+            SELECT COUNT(i)
+            FROM Invoice i
+            WHERE i.invoiceDate BETWEEN :from AND :to
+            """)
+    Long getInvoiceCount(LocalDate from, LocalDate to);
+
+    /**
+     * Returns monthly aggregated invoice statistics.
+     *
+     * Data returned:
+     * - Month
+     * - Total invoice amount
+     * - Invoice count
+     */
+    @Query("""
+        SELECT FUNCTION('DATE_TRUNC','month',i.invoiceDate),
+               SUM(i.totalAmount),
+               COUNT(i.id)
+        FROM Invoice i
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        GROUP BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
+        ORDER BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
+        """)
+    List<Object[]> getMonthlyInvoiceStats(LocalDate from, LocalDate to);
+
+    /**
+     * Returns customers ranked by revenue generated.
+     *
+     * Limited using Pageable to fetch top N customers.
+     */
+    @Query("""
+        SELECT c.name, SUM(i.totalAmount)
+        FROM Invoice i
+        JOIN i.order.customer c
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        GROUP BY c.name
+        ORDER BY SUM(i.totalAmount) DESC
+        """)
+    List<Object[]> getTopCustomerRevenue(LocalDate from, LocalDate to, Pageable pageable);
+
+    /**
+     * Returns invoices whose due date has passed.
+     */
+    @Query("""
+        SELECT i
+        FROM Invoice i
+        WHERE i.dueDate < CURRENT_DATE
+        AND i.billStatus <> 'PAID'
+    """)
+    Page<Invoice> findOverdueInvoices(Pageable pageable);
+
+    /**
+     * Returns overdue totals grouped by customer.
+     */
+    @Query("""
+        SELECT c.name,
+               SUM(i.totalAmount),
+               COUNT(i),
+               MIN(i.invoiceDate)
+        FROM Invoice i
+        JOIN i.order.customer c
+        WHERE i.dueDate < CURRENT_DATE
+        AND i.billStatus <> 'PAID'
+        GROUP BY c.name
+        ORDER BY SUM(i.totalAmount) DESC
+        """)
+    List<Object[]> getCustomerOverdueSummary();
+
+    /**
+     * Returns total invoiced revenue for the given period.
+     */
+    @Query("""
+        SELECT COALESCE(SUM(i.totalAmount),0)
+        FROM Invoice i
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        """)
+    BigDecimal getRevenue(LocalDate from, LocalDate to);
+
+    /**
+     * Returns month-wise revenue totals for trend analysis.
+     * Result: [month, totalRevenue]
+     */
+    @Query("""
+        SELECT FUNCTION('DATE_TRUNC','month',i.invoiceDate),
+               SUM(i.totalAmount)
+        FROM Invoice i
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        GROUP BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
+        ORDER BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
+        """)
+    List<Object[]> getMonthlyRevenue(LocalDate from, LocalDate to);
+
+    /**
+     * Returns invoice GST details for sales register.
+     */
+    @Query("""
+        SELECT i.invoiceNumber,
+               i.invoiceDate,
+               c.name,
+               c.gstNumber,
+               i.totalAmount,
+               i.cgst,
+               i.sgst,
+               i.igst
+        FROM Invoice i
+        JOIN i.order.customer c
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        """)
+    List<Object[]> getGstSales(LocalDate from, LocalDate to);
+
+    /**
+     * Calculates total GST collected from sales.
+     */
+    @Query("""
+        SELECT COALESCE(SUM(i.cgst),0),
+               COALESCE(SUM(i.sgst),0),
+               COALESCE(SUM(i.igst),0),
+               COALESCE(SUM(i.totalAmount),0)
+        FROM Invoice i
+        WHERE i.invoiceDate BETWEEN :from AND :to
+        """)
+    Object[] getOutputTaxSummary(LocalDate from, LocalDate to);
 }

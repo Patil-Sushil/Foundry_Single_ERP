@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.billing.enums;
+package com.kalibyte.foundry.billing.invoice.entity.enums;
 
 public enum InvoiceStatus {
 

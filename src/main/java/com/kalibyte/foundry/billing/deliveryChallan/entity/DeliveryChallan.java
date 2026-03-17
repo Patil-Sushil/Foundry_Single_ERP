@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.billing.deliveryChallan.entity;
 
-import com.kalibyte.foundry.billing.enums.DCStatus;
+import com.kalibyte.foundry.billing.deliveryChallan.entity.enums.DCStatus;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.Order;

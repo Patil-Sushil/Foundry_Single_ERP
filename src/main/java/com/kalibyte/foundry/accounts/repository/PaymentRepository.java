@@ -147,4 +147,37 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
             """)
     List<Object[]> getDailyCashInflow(LocalDate from, LocalDate to);
 
+    /**
+     * Calculates total payments collected in the given period.
+     */
+            @Query("""
+        SELECT COALESCE(SUM(p.amountPaid),0)
+        FROM Payment p
+        WHERE p.paymentDate BETWEEN :from AND :to
+        """)
+    BigDecimal getTotalCollections(LocalDate from, LocalDate to);
+
+    /**
+     * Returns month-wise collection data.
+     */
+    @Query("""
+            SELECT FUNCTION('DATE_TRUNC','month',p.paymentDate),
+                   SUM(p.amountPaid)
+            FROM Payment p
+            WHERE p.paymentDate BETWEEN :from AND :to
+            GROUP BY FUNCTION('DATE_TRUNC','month',p.paymentDate)
+            ORDER BY FUNCTION('DATE_TRUNC','month',p.paymentDate)
+            """)
+    List<Object[]> getMonthlyCollections(LocalDate from, LocalDate to);
+
+    /**
+     * Returns total payment collections within the period.
+     */
+    @Query("""
+        SELECT COALESCE(SUM(p.amountPaid),0)
+        FROM Payment p
+        WHERE p.paymentDate BETWEEN :from AND :to
+        """)
+    BigDecimal getCollections(LocalDate from, LocalDate to);
+
 }

@@ -2,7 +2,7 @@ package com.kalibyte.foundry.expenses.controller;
 
 
 import com.kalibyte.foundry.common.response.ApiResponse;
-import com.kalibyte.foundry.expenses.dto.request.ExpenseHeadResponse;
+import com.kalibyte.foundry.expenses.dto.response.ExpenseHeadResponse;
 import com.kalibyte.foundry.expenses.service.ExpenseHeadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

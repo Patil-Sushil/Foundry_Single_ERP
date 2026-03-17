@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,4 +38,18 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
     long countByYear(@Param("year") int year);
 
     boolean existsByPoNumber(String poNumber);
+
+    /**
+     * Returns total raw material purchase cost (COGS).
+     */
+    @Query("""
+    SELECT COALESCE(SUM(poi.orderedQuantity * poi.unitRate), 0)
+    FROM PurchaseOrderItem poi
+    JOIN poi.purchaseOrder po
+    WHERE po.poDate BETWEEN :from AND :to
+      AND po.status != 'CANCELLED'
+    """)
+    BigDecimal getCOGS(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+
 }

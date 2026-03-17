@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.expenses.dto.request;
+package com.kalibyte.foundry.expenses.dto.response;
 
 import com.kalibyte.foundry.expenses.entity.enums.ExpenseCategory;
 import lombok.*;
