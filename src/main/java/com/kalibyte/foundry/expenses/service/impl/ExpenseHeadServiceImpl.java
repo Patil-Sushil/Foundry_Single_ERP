@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.expenses.service.impl;
 
-import com.kalibyte.foundry.expenses.dto.request.ExpenseHeadResponse;
+import com.kalibyte.foundry.expenses.dto.response.ExpenseHeadResponse;
 import com.kalibyte.foundry.expenses.mapper.ExpenseHeadMapper;
 import com.kalibyte.foundry.expenses.repository.ExpenseHeadRepository;
 import com.kalibyte.foundry.expenses.service.ExpenseHeadService;

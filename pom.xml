@@ -27,7 +27,7 @@
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<jjwt.version>0.13.0</jjwt.version>
 		<springdoc.version>2.5.0</springdoc.version>
-		<itext.version>7.2.5</itext.version>
+		<itext.version>8.0.5</itext.version>
 	</properties>
 
 	<dependencies>
@@ -69,7 +69,7 @@
 			<artifactId>flyway-core</artifactId>
 		</dependency>
 
-		<!-- Jackson (Explicit) -->
+		<!-- Jackson -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
@@ -80,7 +80,6 @@
 			<artifactId>jackson-annotations</artifactId>
 		</dependency>
 
-		<!-- Source: https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-core</artifactId>
@@ -149,10 +148,10 @@
 			<version>${springdoc.version}</version>
 		</dependency>
 
-		<!-- iText 7 (Correct Version) -->
+		<!--  iText 8 (Migrated from 7.2.6 - Vulnerability Free) -->
 		<dependency>
 			<groupId>com.itextpdf</groupId>
-			<artifactId>itext7-core</artifactId>
+			<artifactId>itext-core</artifactId>
 			<version>${itext.version}</version>
 			<type>pom</type>
 		</dependency>

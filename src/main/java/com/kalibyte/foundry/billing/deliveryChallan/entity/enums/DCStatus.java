@@ -1,4 +1,4 @@
-package com.kalibyte.foundry.billing.enums;
+package com.kalibyte.foundry.billing.deliveryChallan.entity.enums;
 
 public enum DCStatus {
     CREATED,

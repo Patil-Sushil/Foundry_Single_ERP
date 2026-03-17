@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.billing.invoice.entity;
 
-import com.kalibyte.foundry.billing.enums.InvoiceStatus;
+import com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.Order;

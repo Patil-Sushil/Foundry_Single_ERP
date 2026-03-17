@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.billing.deliveryChallan.service.impl;
 
-import com.kalibyte.foundry.billing.enums.DCStatus;
+import com.kalibyte.foundry.billing.deliveryChallan.entity.enums.DCStatus;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanItemRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.response.DeliveryChallanResponse;
