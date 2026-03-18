@@ -44,7 +44,7 @@ CREATE TABLE items (
     location VARCHAR(100),
     last_purchase_rate DECIMAL(12,2) DEFAULT 0,
     avg_rate DECIMAL(12,2) DEFAULT 0,
-    hsn_code VARCHAR(10),
+    hsn_code VARCHAR(10) UNIQUE ,
     gst_rate DECIMAL(5,2) DEFAULT 18.00,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW(),

@@ -44,24 +44,8 @@ public class ItemService {
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
         }
 
-        Item item = Item.builder()
-                .name(request.name())
-                .code(request.code())
-                .description(request.description())
-                .category(request.category())
-                .subCategory(request.subCategory())
-                .department(department)
-                .unit(request.unit())
-                .reorderLevel(request.reorderLevel() != null ? request.reorderLevel() : BigDecimal.ZERO)
-                .minStockLevel(request.minStockLevel() != null ? request.minStockLevel() : BigDecimal.ZERO)
-                .location(request.location())
-                .hsnCode(request.hsnCode())
-                .gstRate(request.gstRate() != null ? request.gstRate() : new BigDecimal("18.00"))
-                .currentStock(BigDecimal.ZERO)
-                .avgRate(BigDecimal.ZERO)
-                .lastPurchaseRate(BigDecimal.ZERO)
-                .isActive(true)
-                .build();
+        Item item = itemMapper.toItem(request);
+        item.setDepartment(department);
 
         return itemMapper.toResponse(itemRepository.save(item));
     }
@@ -76,7 +60,6 @@ public class ItemService {
             department = departmentRepository.findById(request.departmentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
         }
-
         item.setName(request.name());
         item.setCode(request.code());
         item.setDescription(request.description());
@@ -89,7 +72,7 @@ public class ItemService {
         item.setLocation(request.location());
         item.setHsnCode(request.hsnCode());
         item.setGstRate(request.gstRate() != null ? request.gstRate() : new BigDecimal("18.00"));
-        
+
         if (request.isActive() != null) {
             item.setIsActive(request.isActive());
         }

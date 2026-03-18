@@ -17,6 +17,7 @@ import com.kalibyte.foundry.inventory.ledger.entity.VendorLedger;
 import com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType;
 import com.kalibyte.foundry.inventory.ledger.repository.VendorLedgerRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
+import com.kalibyte.foundry.inventory.purchaseorder.entity.enums.POStatus;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.report.dto.*;
 import com.kalibyte.foundry.inventory.report.mapper.InventoryReportMapper;
@@ -378,21 +379,23 @@ public class InventoryReportService {
             vendors = vendorRepository.findAll();
         }
 
-        List<PurchaseOrder> allPos = poRepository.findAll().stream()
-                .filter(po -> (vendorId == null || po.getVendor().getId().equals(vendorId)) &&
-                        !po.getPoDate().isBefore(start) && !po.getPoDate().isAfter(end))
+        // Fetch ALL POs for the relevant vendors once to avoid N+1 and fix pending value logic
+        List<PurchaseOrder> allVendorPos = poRepository.findAll().stream()
+                .filter(po -> vendorId == null || po.getVendor().getId().equals(vendorId))
                 .toList();
-        Map<Long, List<PurchaseOrder>> posByVendor = allPos.stream()
+        Map<Long, List<PurchaseOrder>> posByVendor = allVendorPos.stream()
                 .collect(Collectors.groupingBy(po -> po.getVendor().getId()));
 
-        List<MaterialInward> allInwards = inwardRepository.findAll().stream()
+        // Fetch Inwards in period
+        List<MaterialInward> inwardsInPeriod = inwardRepository.findAll().stream()
                 .filter(in -> (vendorId == null || in.getVendor().getId().equals(vendorId)) &&
                         in.getStatus() == InwardStatus.CONFIRMED &&
                         !in.getInwardDate().isBefore(start) && !in.getInwardDate().isAfter(end))
                 .toList();
-        Map<Long, List<MaterialInward>> inwardsByVendor = allInwards.stream()
+        Map<Long, List<MaterialInward>> inwardsByVendor = inwardsInPeriod.stream()
                 .collect(Collectors.groupingBy(in -> in.getVendor().getId()));
 
+        // Fetch Ledger entries for balance
         List<VendorLedger> allLedger = ledgerRepository.findAll().stream()
                 .filter(l -> (vendorId == null || l.getVendor().getId().equals(vendorId)))
                 .toList();
@@ -402,11 +405,17 @@ public class InventoryReportService {
         List<VendorSummaryReport.VendorSummaryDetail> details = new ArrayList<>();
 
         for (Vendor v : vendors) {
-            List<PurchaseOrder> pos = posByVendor.getOrDefault(v.getId(), Collections.emptyList());
+            List<PurchaseOrder> allPosForVendor = posByVendor.getOrDefault(v.getId(), Collections.emptyList());
+            
+            // POs raised WITHIN the period
+            List<PurchaseOrder> posInPeriod = allPosForVendor.stream()
+                    .filter(po -> !po.getPoDate().isBefore(start) && !po.getPoDate().isAfter(end))
+                    .toList();
+
             List<MaterialInward> inwards = inwardsByVendor.getOrDefault(v.getId(), Collections.emptyList());
             List<VendorLedger> ledger = ledgerByVendor.getOrDefault(v.getId(), Collections.emptyList());
 
-            BigDecimal totalPOVal = pos.stream()
+            BigDecimal totalPOVal = posInPeriod.stream()
                     .flatMap(po -> po.getOrderItems().stream())
                     .map(oi -> oi.getOrderedQuantity().multiply(oi.getUnitRate()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -416,7 +425,9 @@ public class InventoryReportService {
                     .map(ri -> ri.getReceivedQuantity().multiply(ri.getUnitRate()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BigDecimal pendingVal = pos.stream()
+            // Pending value should consider ALL open/partially received POs, even if raised before the period
+            BigDecimal pendingVal = allPosForVendor.stream()
+                    .filter(po -> po.getStatus() == POStatus.OPEN || po.getStatus() == POStatus.PARTIALLY_RECEIVED)
                     .flatMap(po -> po.getOrderItems().stream())
                     .map(oi -> oi.getOrderedQuantity().subtract(oi.getReceivedQuantity()).multiply(oi.getUnitRate()))
                     .filter(val -> val.compareTo(BigDecimal.ZERO) > 0)
@@ -451,7 +462,7 @@ public class InventoryReportService {
                 items.add(new VendorSummaryReport.SuppliedItemDetail(item.getCode(), item.getName(), totalQty, avgR));
             }
 
-            details.add(inventoryReportMapper.toVendorSummaryDetail(v, pos.size(), totalPOVal, inwards.size(), totalInVal, pendingVal, balance, items));
+            details.add(inventoryReportMapper.toVendorSummaryDetail(v, posInPeriod.size(), totalPOVal, inwards.size(), totalInVal, pendingVal, balance, items));
         }
 
         return new VendorSummaryReport(details);

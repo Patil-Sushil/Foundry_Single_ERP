@@ -26,7 +26,9 @@
 		<lombok.version>1.18.36</lombok.version>
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<jjwt.version>0.13.0</jjwt.version>
-		<springdoc.version>2.5.0</springdoc.version>
+		<springdoc.version>3.0.2</springdoc.version>
+		<itext.version>7.2.5</itext.version>
+		<poi.version>5.5.1</poi.version>
 		<itext.version>8.0.5</itext.version>
 	</properties>
 
@@ -65,8 +67,12 @@
 
 		<!-- Flyway -->
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
 		<!-- Jackson -->
@@ -78,6 +84,18 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-annotations</artifactId>
+		</dependency>
+
+		<!-- Apache POI -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>${poi.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>${poi.version}</version>
 		</dependency>
 
 		<dependency>

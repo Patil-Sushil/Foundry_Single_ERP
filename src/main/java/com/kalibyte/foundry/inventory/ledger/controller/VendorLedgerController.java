@@ -55,7 +55,7 @@ public class VendorLedgerController {
     public ApiResponse<VendorLedgerResponse> recordPayment(
             @PathVariable Long vendorId,
             @RequestParam BigDecimal amount,
-            @RequestParam String description) {
+            @RequestParam(required = false) String description) {
         return ApiResponse.success("Payment recorded successfully", 
                 vendorLedgerService.recordPayment(vendorId, amount, description));
     }

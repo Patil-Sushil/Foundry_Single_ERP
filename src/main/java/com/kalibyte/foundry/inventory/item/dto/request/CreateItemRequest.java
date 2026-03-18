@@ -38,5 +38,9 @@ public record CreateItemRequest(
     String hsnCode,
 
     @DecimalMin(value = "0.0", message = "GST rate must be >= 0")
-    BigDecimal gstRate
+    BigDecimal gstRate,
+
+    BigDecimal currentStock,
+
+    BigDecimal avgRate
 ) implements Serializable {}

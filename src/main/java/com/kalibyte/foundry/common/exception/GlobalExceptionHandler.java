@@ -3,7 +3,6 @@ package com.kalibyte.foundry.common.exception;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -36,7 +35,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse<>(false, ex.getMessage(), null));
+                .body(ApiResponse.failure(ex.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

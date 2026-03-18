@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.inventory.item.mapper;
 
+import com.kalibyte.foundry.inventory.item.dto.request.CreateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemResponse;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemSummary;
 import com.kalibyte.foundry.inventory.item.entity.Item;
@@ -24,4 +25,7 @@ public interface ItemMapper {
      * Maps Item entity to ItemSummary DTO for lists and search results.
      */
     ItemSummary toSummary(Item item);
+
+    Item toItem(CreateItemRequest itemRequest);
+
 }
