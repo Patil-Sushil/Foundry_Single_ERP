@@ -12,16 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "production_entries",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_prod_order_date_shift",
-                columnNames = {"order_id", "report_date", "shift"}
-        ))
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "production_entries")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProductionEntry extends BaseEntity {
 
     @Column(name = "entry_number", nullable = false, unique = true)

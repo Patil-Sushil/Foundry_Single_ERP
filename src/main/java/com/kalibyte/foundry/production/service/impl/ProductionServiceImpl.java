@@ -2,62 +2,97 @@ package com.kalibyte.foundry.production.service.impl;
 
 import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.repository.OrderRepository;
+import com.kalibyte.foundry.pattern.entity.Pattern;
+import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import com.kalibyte.foundry.production.dto.PipelineTotals;
 import com.kalibyte.foundry.production.dto.request.ProductionEntryRequest;
 import com.kalibyte.foundry.production.dto.request.ProductionItemRequest;
 import com.kalibyte.foundry.production.dto.request.UpdateStatusRequest;
+import com.kalibyte.foundry.production.dto.response.entry.ProductionEntryListItem;
 import com.kalibyte.foundry.production.dto.response.entry.ProductionEntryResponse;
 import com.kalibyte.foundry.production.dto.response.entry.ProductionItemResponse;
 import com.kalibyte.foundry.production.entity.ProductionEntry;
 import com.kalibyte.foundry.production.entity.ProductionItem;
-import com.kalibyte.foundry.production.mapper.ProductionMapper;
+import com.kalibyte.foundry.production.entity.enums.ProductionShift;
+import com.kalibyte.foundry.production.entity.enums.ProductionStatus;
 import com.kalibyte.foundry.production.repository.ProductionEntryRepository;
 import com.kalibyte.foundry.production.repository.ProductionItemRepository;
 import com.kalibyte.foundry.production.service.ProductionService;
+import com.kalibyte.foundry.production.specification.ProductionSpecification;
 import com.kalibyte.foundry.production.util.ProductionNumberGenerator;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.util.*;
+
+import static com.kalibyte.foundry.production.entity.enums.ProductionStatus.*;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ProductionServiceImpl implements ProductionService {
 
     private final ProductionEntryRepository entryRepo;
     private final ProductionItemRepository itemRepo;
     private final OrderRepository orderRepo;
-    private final ProductionMapper mapper;
+    private final PatternRepository patternRepository;
     private final ProductionNumberGenerator numberGenerator;
 
-    //------------------------------------------------
-    // CREATE ENTRY
-    //------------------------------------------------
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // ── Allowed status transitions ──────────────────
+    private static final Map<ProductionStatus, Set<ProductionStatus>> STATUS_TRANSITIONS = Map.of(
+            IN_PROGRESS, Set.of(COMPLETED, ON_HOLD, CANCELLED),
+            ON_HOLD,     Set.of(IN_PROGRESS, CANCELLED),
+            COMPLETED,   Set.of(),   // terminal — no further transitions
+            CANCELLED,   Set.of()    // terminal — no further transitions
+    );
+
+    // ── Max days in past for report date ────────────
+    private static final int MAX_BACKDATE_DAYS = 7;
+
+
+    // ================================================================
+    //  CREATE ENTRY
+    // ================================================================
 
     @Override
     public ProductionEntryResponse createEntry(ProductionEntryRequest request) {
 
-        // Fetch Order
+        // ── 1. Fetch & validate order ──
         Order order = orderRepo.findWithDetailsById(request.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        // Duplicate Check (Order + Date + Shift)
+        validateOrderForProduction(order);
+        validateReportDate(request.getReportDate());
+
+        // ── 2. Check duplicate (application-level) ──
         if (entryRepo.existsByOrderIdAndReportDateAndShiftAndIsDeletedFalse(
                 request.getOrderId(),
                 request.getReportDate(),
                 request.getShift()
         )) {
-            throw new BusinessException("Production entry already exists for this date & shift");
+            throw new BusinessException(
+                    "Production entry already exists for order " + order.getOrderNumber()
+                            + " on " + request.getReportDate() + " (" + request.getShift() + " shift)"
+            );
         }
 
-        // Create Entry
+        // ── 3. Build entry ──
         ProductionEntry entry = ProductionEntry.builder()
                 .entryNumber(numberGenerator.generate())
                 .order(order)
@@ -67,44 +102,44 @@ public class ProductionServiceImpl implements ProductionService {
                 .remarks(request.getRemarks())
                 .build();
 
+        // ── 4. Process items ──
         List<ProductionItem> items = new ArrayList<>();
-
-        //------------------------------------------------
-        // PROCESS ITEMS
-        //------------------------------------------------
+        List<PipelineTotals> preSaveTotals = new ArrayList<>();
 
         for (ProductionItemRequest itemReq : request.getItems()) {
 
-            OrderItem orderItem = order.getItems().stream()
-                    .filter(i -> i.getId().equals(itemReq.getOrderItemId()))
-                    .findFirst()
-                    .orElseThrow(() -> new BusinessException("Invalid order item"));
+            OrderItem orderItem = findOrderItem(order, itemReq.getOrderItemId());
 
-            //------------------------------------------------
-            // PIPELINE VALIDATION
-            //------------------------------------------------
+            int cores    = safe(itemReq.getReadyCores());
+            int poured   = safe(itemReq.getPouredMoulds());
+            int shot     = safe(itemReq.getShotBlastingQuantity());
+            int fettling = safe(itemReq.getFettlingQuantity());
+            int dispatch = safe(itemReq.getDispatchedQuantity());
 
-            validatePipeline(itemReq, orderItem);
+            // validate at least one positive value
+            validateAtLeastOnePositive(cores, poured, shot, fettling, dispatch, orderItem.getPartName());
 
-            //------------------------------------------------
-            // CREATE ITEM
-            //------------------------------------------------
+            // capture cumulative BEFORE this entry
+            PipelineTotals beforeTotals = getCumulativeTotals(orderItem.getId());
+            preSaveTotals.add(beforeTotals);
+
+            // validate pipeline constraints
+            validatePipeline(cores, poured, shot, fettling, dispatch, orderItem, beforeTotals);
+
+            // resolve pattern
+            Pattern pattern = resolvePattern(itemReq.getPatternNumber());
 
             ProductionItem item = ProductionItem.builder()
                     .productionEntry(entry)
                     .orderItem(orderItem)
-                    .itemName(orderItem.getProductName())
-                    .patternNumber(
-                            orderItem.getPattern() != null
-                                    ? orderItem.getPattern().getPatternNumber()
-                                    : null
-                    )
+                    .itemName(orderItem.getPartName())
+                    .pattern(pattern)
                     .orderedQuantity(orderItem.getQuantity())
-                    .readyCores(itemReq.getReadyCores())
-                    .pouredMoulds(itemReq.getPouredMoulds())
-                    .shotBlastingQuantity(itemReq.getShotBlastingQuantity())
-                    .fettlingQuantity(itemReq.getFettlingQuantity())
-                    .dispatchedQuantity(itemReq.getDispatchedQuantity())
+                    .readyCores(cores)
+                    .pouredMoulds(poured)
+                    .shotBlastingQuantity(shot)
+                    .fettlingQuantity(fettling)
+                    .dispatchedQuantity(dispatch)
                     .itemRemark(itemReq.getItemRemark())
                     .build();
 
@@ -112,29 +147,29 @@ public class ProductionServiceImpl implements ProductionService {
         }
 
         entry.setProductionItems(items);
+        calculateEntryTotals(entry);
 
-        //------------------------------------------------
-        // CALCULATE TOTALS
-        //------------------------------------------------
+        // ── 5. Save with race-condition handling ──
+        try {
+            entryRepo.saveAndFlush(entry);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Concurrent production entry creation detected for order={}, date={}, shift={}",
+                    order.getOrderNumber(), request.getReportDate(), request.getShift());
+            throw new BusinessException(
+                    "Production entry already exists for this order, date & shift (concurrent creation detected)"
+            );
+        }
 
-        calculateTotals(entry);
+        log.info("Created production entry {} for order {}", entry.getEntryNumber(), order.getOrderNumber());
 
-        //------------------------------------------------
-        // SAVE
-        //------------------------------------------------
-
-        entryRepo.saveAndFlush(entry);
-
-        //------------------------------------------------
-        // RESPONSE BUILD
-        //------------------------------------------------
-
-        return buildResponse(entry);
+        // ── 6. Build response using pre-computed totals ──
+        return buildCreateResponse(entry, preSaveTotals);
     }
 
-    //------------------------------------------------
-    // GET BY ID
-    //------------------------------------------------
+
+    // ================================================================
+    //  GET BY ID
+    // ================================================================
 
     @Override
     @Transactional(readOnly = true)
@@ -143,109 +178,368 @@ public class ProductionServiceImpl implements ProductionService {
         ProductionEntry entry = entryRepo.findWithItems(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Production entry not found"));
 
-        return buildResponse(entry);
+        return buildFullResponse(entry);
     }
 
-    //------------------------------------------------
-    // UPDATE STATUS
-    //------------------------------------------------
+
+    // ================================================================
+    //  LIST (PAGINATED + FILTERED)
+    // ================================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ProductionEntryListItem> list(
+            UUID orderId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            ProductionStatus status,
+            ProductionShift shift,
+            int page,
+            int size
+    ) {
+        Page<ProductionEntry> entries = entryRepo.findAll(
+                ProductionSpecification.withFilters(orderId, fromDate, toDate, status, shift),
+                PageRequest.of(page, size)
+        );
+
+        return PageResponse.from(entries, this::toListItem);
+    }
+
+
+    // ================================================================
+    //  UPDATE STATUS
+    // ================================================================
 
     @Override
     public ProductionEntryResponse updateStatus(UUID id, UpdateStatusRequest request) {
 
-        ProductionEntry entry = entryRepo.findById(id)
+        ProductionEntry entry = entryRepo.findWithItems(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Production entry not found"));
 
-        entry.setStatus(request.getStatus());
+        // validate transition
+        validateStatusTransition(entry.getStatus(), request.getStatus());
 
-        return buildResponse(entry);
+        entry.setStatus(request.getStatus());
+        entryRepo.saveAndFlush(entry);
+
+        log.info("Updated production entry {} status: {} → {}",
+                entry.getEntryNumber(), entry.getStatus(), request.getStatus());
+
+        return buildFullResponse(entry);
     }
 
-    //------------------------------------------------
-    // DELETE (SOFT DELETE)
-    //------------------------------------------------
+
+    // ================================================================
+    //  UPDATE ENTRY (FULL EDIT)
+    // ================================================================
+
+    @Override
+    public ProductionEntryResponse updateEntry(UUID id, ProductionEntryRequest request) {
+
+        ProductionEntry entry = entryRepo.findWithItems(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Production entry not found"));
+
+        // ── only allow editing IN_PROGRESS entries ──
+        if (entry.getStatus() != IN_PROGRESS) {
+            throw new BusinessException(
+                    "Cannot edit entry with status: " + entry.getStatus()
+                            + ". Only IN_PROGRESS entries can be modified."
+            );
+        }
+
+        validateReportDate(request.getReportDate());
+
+        // ── Re-fetch order with details (entry.getOrder() is lazy) ──
+        Order order = orderRepo.findWithDetailsById(entry.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        // ── Check if date/shift changed and new combo already exists ──
+        boolean dateOrShiftChanged = !entry.getReportDate().equals(request.getReportDate())
+                || entry.getShift() != request.getShift();
+
+        if (dateOrShiftChanged
+                && entryRepo.existsByOrderIdAndReportDateAndShiftAndIsDeletedFalse(
+                order.getId(), request.getReportDate(), request.getShift()
+        )) {
+            throw new BusinessException(
+                    "Another production entry already exists for order " + order.getOrderNumber()
+                            + " on " + request.getReportDate() + " (" + request.getShift() + " shift)"
+            );
+        }
+
+        // ── Clear old items ──
+        entry.getProductionItems().clear();
+        entityManager.flush();
+
+        // ── Rebuild items ──
+        List<PipelineTotals> preSaveTotals = new ArrayList<>();
+
+        for (ProductionItemRequest itemReq : request.getItems()) {
+
+            OrderItem orderItem = findOrderItem(order, itemReq.getOrderItemId());
+
+            int cores    = safe(itemReq.getReadyCores());
+            int poured   = safe(itemReq.getPouredMoulds());
+            int shot     = safe(itemReq.getShotBlastingQuantity());
+            int fettling = safe(itemReq.getFettlingQuantity());
+            int dispatch = safe(itemReq.getDispatchedQuantity());
+
+            validateAtLeastOnePositive(cores, poured, shot, fettling, dispatch, orderItem.getPartName());
+
+            // cumulative EXCLUDING this entry's old values
+            PipelineTotals beforeTotals = getCumulativeTotalsExcluding(orderItem.getId(), entry.getId());
+            preSaveTotals.add(beforeTotals);
+
+            validatePipeline(cores, poured, shot, fettling, dispatch, orderItem, beforeTotals);
+
+            Pattern pattern = resolvePattern(itemReq.getPatternNumber());
+
+            ProductionItem item = ProductionItem.builder()
+                    .productionEntry(entry)
+                    .orderItem(orderItem)
+                    .itemName(orderItem.getPartName())
+                    .pattern(pattern)
+                    .orderedQuantity(orderItem.getQuantity())
+                    .readyCores(cores)
+                    .pouredMoulds(poured)
+                    .shotBlastingQuantity(shot)
+                    .fettlingQuantity(fettling)
+                    .dispatchedQuantity(dispatch)
+                    .itemRemark(itemReq.getItemRemark())
+                    .build();
+
+            entry.getProductionItems().add(item);
+        }
+
+        // ── Update metadata ──
+        entry.setReportDate(request.getReportDate());
+        entry.setShift(request.getShift());
+        entry.setOperatorName(request.getOperatorName());
+        entry.setRemarks(request.getRemarks());
+
+        calculateEntryTotals(entry);
+
+        try {
+            entryRepo.saveAndFlush(entry);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException("Failed to update — possible duplicate date/shift combination");
+        }
+
+        log.info("Updated production entry {}", entry.getEntryNumber());
+
+        return buildCreateResponse(entry, preSaveTotals);
+    }
+
+
+    // ================================================================
+    //  DELETE (SOFT)
+    // ================================================================
 
     @Override
     public void delete(UUID id) {
 
-        ProductionEntry entry = entryRepo.findById(id)
+        ProductionEntry entry = entryRepo.findWithItems(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Production entry not found"));
 
         entry.setIsDeleted(true);
+        entry.getProductionItems().forEach(item -> item.setIsDeleted(true));
+
+        log.info("Soft-deleted production entry {} with {} items",
+                entry.getEntryNumber(), entry.getProductionItems().size());
     }
 
-    //------------------------------------------------
-    // PIPELINE VALIDATION
-    //------------------------------------------------
 
-    private void validatePipeline(ProductionItemRequest item, OrderItem orderItem) {
+    // ================================================================
+    //  PRIVATE — ORDER VALIDATION
+    // ================================================================
 
-        int ordered = orderItem.getQuantity();
-        UUID orderItemId = orderItem.getId();
+    private void validateOrderForProduction(Order order) {
+        String status = order.getStatus().name();
 
-        // Get already produced cumulative totals
-        PipelineTotals cumulative = getCumulativeTotals(orderItemId);
+        Set<String> blockedStatuses = Set.of("CANCELLED", "COMPLETED", "REJECTED");
 
-        int alreadyCores = cumulative.getTotalReadyCores();
-        int alreadyPoured = cumulative.getTotalPouredMoulds();
-        int alreadyShot = cumulative.getTotalShotBlasting();
-        int alreadyFettling = cumulative.getTotalFettling();
-        int alreadyDispatch = cumulative.getTotalDispatched();
-
-        // Check cumulative + today doesn't exceed ordered
-        if (alreadyCores + item.getReadyCores() > ordered) {
+        if (blockedStatuses.contains(status)) {
             throw new BusinessException(
-                    String.format("Ready cores would exceed ordered quantity. Ordered: %d, Already done: %d, Today: %d, Max allowed today: %d",
-                            ordered, alreadyCores, item.getReadyCores(), ordered - alreadyCores)
+                    "Cannot create production entry for " + status + " order: " + order.getOrderNumber()
             );
         }
+    }
 
-        if (alreadyPoured + item.getPouredMoulds() > alreadyCores + item.getReadyCores()) {
-            throw new BusinessException("Poured moulds cannot exceed total ready cores");
+
+    // ================================================================
+    //  PRIVATE — DATE VALIDATION
+    // ================================================================
+
+    private void validateReportDate(LocalDate reportDate) {
+        LocalDate today = LocalDate.now();
+
+        if (reportDate.isAfter(today)) {
+            throw new BusinessException("Report date cannot be in the future");
         }
 
-        if (alreadyShot + item.getShotBlastingQuantity() > alreadyPoured + item.getPouredMoulds()) {
-            throw new BusinessException("Shot blasting cannot exceed total poured moulds");
-        }
-
-        if (alreadyFettling + item.getFettlingQuantity() > alreadyShot + item.getShotBlastingQuantity()) {
-            throw new BusinessException("Fettling cannot exceed total shot blasting");
-        }
-
-        if (alreadyDispatch + item.getDispatchedQuantity() > alreadyFettling + item.getFettlingQuantity()) {
-            throw new BusinessException("Dispatched cannot exceed total fettling");
-        }
-
-        // Internal pipeline order (today's values)
-        if (item.getPouredMoulds() > item.getReadyCores()) {
-            throw new BusinessException("Today's poured cannot exceed today's cores");
-        }
-
-        if (item.getShotBlastingQuantity() > item.getPouredMoulds()) {
-            throw new BusinessException("Today's shot blasting cannot exceed today's poured");
-        }
-
-        if (item.getFettlingQuantity() > item.getShotBlastingQuantity()) {
-            throw new BusinessException("Today's fettling cannot exceed today's shot blasting");
-        }
-
-        if (item.getDispatchedQuantity() > item.getFettlingQuantity()) {
-            throw new BusinessException("Today's dispatch cannot exceed today's fettling");
+        LocalDate maxPast = today.minusDays(MAX_BACKDATE_DAYS);
+        if (reportDate.isBefore(maxPast)) {
+            throw new BusinessException(
+                    "Report date cannot be older than " + MAX_BACKDATE_DAYS + " days. "
+                            + "Earliest allowed: " + maxPast
+            );
         }
     }
 
-    //------------------------------------------------
-    // TOTAL CALCULATION
-    //------------------------------------------------
 
-    private void calculateTotals(ProductionEntry entry) {
+    // ================================================================
+    //  PRIVATE — AT LEAST ONE POSITIVE VALUE
+    // ================================================================
 
+    private void validateAtLeastOnePositive(
+            int cores, int poured, int shot, int fettling, int dispatch,
+            String itemName
+    ) {
+        if (cores == 0 && poured == 0 && shot == 0 && fettling == 0 && dispatch == 0) {
+            throw new BusinessException(
+                    "At least one production quantity must be greater than zero for item: " + itemName
+            );
+        }
+    }
+
+
+    // ================================================================
+    //  PRIVATE — STATUS TRANSITION VALIDATION
+    // ================================================================
+
+    private void validateStatusTransition(ProductionStatus from, ProductionStatus to) {
+
+        if (from == to) {
+            throw new BusinessException("Entry is already in " + from + " status");
+        }
+
+        Set<ProductionStatus> allowed = STATUS_TRANSITIONS.getOrDefault(from, Set.of());
+
+        if (!allowed.contains(to)) {
+            throw new BusinessException(String.format(
+                    "Cannot transition from %s to %s. Allowed transitions: %s",
+                    from, to, allowed.isEmpty() ? "none (terminal state)" : allowed
+            ));
+        }
+    }
+
+
+    // ================================================================
+    //  PRIVATE — PIPELINE VALIDATION
+    // ================================================================
+
+    private void validatePipeline(
+            int cores, int poured, int shot, int fettling, int dispatch,
+            OrderItem orderItem, PipelineTotals cumulative
+    ) {
+        int ordered = orderItem.getQuantity();
+        String itemName = orderItem.getPartName();
+
+        int cumCores    = cumulative.totalReadyCores();
+        int cumPoured   = cumulative.totalPouredMoulds();
+        int cumShot     = cumulative.totalShotBlasting();
+        int cumFettling = cumulative.totalFettling();
+        int cumDispatch = cumulative.totalDispatched();
+
+        // ── Cumulative + today must not exceed ordered quantity ──
+        if (cumCores + cores > ordered) {
+            throw new BusinessException(String.format(
+                    "[%s] Ready cores would exceed ordered qty. Ordered: %d, Already: %d, Today: %d, Max today: %d",
+                    itemName, ordered, cumCores, cores, ordered - cumCores
+            ));
+        }
+
+        // ── Pipeline flow: each stage cannot exceed previous stage (cumulative) ──
+        if (cumPoured + poured > cumCores + cores) {
+            throw new BusinessException(String.format(
+                    "[%s] Cumulative poured moulds (%d + %d = %d) cannot exceed cumulative ready cores (%d + %d = %d)",
+                    itemName, cumPoured, poured, cumPoured + poured, cumCores, cores, cumCores + cores
+            ));
+        }
+
+        if (cumShot + shot > cumPoured + poured) {
+            throw new BusinessException(String.format(
+                    "[%s] Cumulative shot blasting (%d + %d = %d) cannot exceed cumulative poured moulds (%d + %d = %d)",
+                    itemName, cumShot, shot, cumShot + shot, cumPoured, poured, cumPoured + poured
+            ));
+        }
+
+        if (cumFettling + fettling > cumShot + shot) {
+            throw new BusinessException(String.format(
+                    "[%s] Cumulative fettling (%d + %d = %d) cannot exceed cumulative shot blasting (%d + %d = %d)",
+                    itemName, cumFettling, fettling, cumFettling + fettling, cumShot, shot, cumShot + shot
+            ));
+        }
+
+        if (cumDispatch + dispatch > cumFettling + fettling) {
+            throw new BusinessException(String.format(
+                    "[%s] Cumulative dispatched (%d + %d = %d) cannot exceed cumulative fettling (%d + %d = %d)",
+                    itemName, cumDispatch, dispatch, cumDispatch + dispatch, cumFettling, fettling, cumFettling + fettling
+            ));
+        }
+
+        // ── Today's per-row constraint (matches DB constraint) ──
+        if (poured > cores) {
+            throw new BusinessException(String.format(
+                    "[%s] Today's poured moulds (%d) cannot exceed today's ready cores (%d)",
+                    itemName, poured, cores
+            ));
+        }
+    }
+
+
+    // ================================================================
+    //  PRIVATE — CUMULATIVE TOTALS
+    // ================================================================
+
+    private PipelineTotals getCumulativeTotals(UUID orderItemId) {
+        List<Object[]> results = itemRepo.getPipelineTotalsRaw(orderItemId);
+        return extractTotals(results);
+    }
+
+    private PipelineTotals getCumulativeTotalsExcluding(UUID orderItemId, UUID excludeEntryId) {
+        List<Object[]> results = itemRepo.getPipelineTotalsExcluding(orderItemId, excludeEntryId);
+        return extractTotals(results);
+    }
+
+    private PipelineTotals extractTotals(List<Object[]> results) {
+        if (results == null || results.isEmpty()) {
+            return PipelineTotals.ZERO;
+        }
+        Object[] raw = results.get(0);
+        if (raw == null || raw.length < 5) {
+            return PipelineTotals.ZERO;
+        }
+        return new PipelineTotals(
+                toInt(raw[0]),
+                toInt(raw[1]),
+                toInt(raw[2]),
+                toInt(raw[3]),
+                toInt(raw[4])
+        );
+    }
+
+
+    // ================================================================
+    //  PRIVATE — UTILITY HELPERS
+    // ================================================================
+
+    private OrderItem findOrderItem(Order order, UUID orderItemId) {
+        return order.getItems().stream()
+                .filter(i -> i.getId().equals(orderItemId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(
+                        "Order item " + orderItemId + " not found in order " + order.getOrderNumber()
+                ));
+    }
+
+    private void calculateEntryTotals(ProductionEntry entry) {
         int cores = 0, poured = 0, shot = 0, fettling = 0, dispatch = 0;
 
         for (ProductionItem item : entry.getProductionItems()) {
-            cores += item.getReadyCores();
-            poured += item.getPouredMoulds();
-            shot += item.getShotBlastingQuantity();
+            cores    += item.getReadyCores();
+            poured   += item.getPouredMoulds();
+            shot     += item.getShotBlastingQuantity();
             fettling += item.getFettlingQuantity();
             dispatch += item.getDispatchedQuantity();
         }
@@ -257,85 +551,132 @@ public class ProductionServiceImpl implements ProductionService {
         entry.setTotalDispatchedQuantity(dispatch);
     }
 
-    //------------------------------------------------
-    // GET CUMULATIVE TOTALS (HELPER)
-    //------------------------------------------------
-
-    private PipelineTotals getCumulativeTotals(UUID orderItemId) {
-
-        Object[] totals = itemRepo.getPipelineTotals(orderItemId);
-
-        int totalCores = 0;
-        int totalPoured = 0;
-        int totalShot = 0;
-        int totalFettling = 0;
-        int totalDispatch = 0;
-
-        if (totals != null && totals.length >= 5) {
-            totalCores = totals[0] != null ? ((Number) totals[0]).intValue() : 0;
-            totalPoured = totals[1] != null ? ((Number) totals[1]).intValue() : 0;
-            totalShot = totals[2] != null ? ((Number) totals[2]).intValue() : 0;
-            totalFettling = totals[3] != null ? ((Number) totals[3]).intValue() : 0;
-            totalDispatch = totals[4] != null ? ((Number) totals[4]).intValue() : 0;
+    private Pattern resolvePattern(String patternNumber) {
+        if (patternNumber == null || patternNumber.isBlank()) {
+            return null;
         }
-
-        return new PipelineTotals(totalCores, totalPoured, totalShot, totalFettling, totalDispatch);
+        return patternRepository.findByPatternNumber(patternNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Pattern not found: " + patternNumber));
     }
 
-    //------------------------------------------------
-    // RESPONSE BUILDER (CUMULATIVE)
-    //------------------------------------------------
+    private int safe(Integer value) {
+        return value != null ? value : 0;
+    }
 
-    private ProductionEntryResponse buildResponse(ProductionEntry entry) {
+    private int toInt(Object value) {
+        return value != null ? ((Number) value).intValue() : 0;
+    }
+
+
+    // ================================================================
+    //  RESPONSE BUILDER — CREATE
+    //  Uses pre-computed cumulative totals (before + today).
+    //  No DB re-query needed — avoids flush/timing issues.
+    // ================================================================
+
+    private ProductionEntryResponse buildCreateResponse(
+            ProductionEntry entry,
+            List<PipelineTotals> preSaveTotals
+    ) {
+        List<ProductionItemResponse> itemResponses = new ArrayList<>();
+        List<ProductionItem> items = entry.getProductionItems();
+
+        for (int i = 0; i < items.size(); i++) {
+
+            ProductionItem item = items.get(i);
+            PipelineTotals before = preSaveTotals.get(i);
+            int ordered = item.getOrderedQuantity();
+
+            // cumulative = what was before + what we just added
+            int cumCores    = before.totalReadyCores()    + item.getReadyCores();
+            int cumPoured   = before.totalPouredMoulds()  + item.getPouredMoulds();
+            int cumShot     = before.totalShotBlasting()  + item.getShotBlastingQuantity();
+            int cumFettling = before.totalFettling()      + item.getFettlingQuantity();
+            int cumDispatch = before.totalDispatched()    + item.getDispatchedQuantity();
+
+            itemResponses.add(buildItemResponse(item, ordered,
+                    cumCores, cumPoured, cumShot, cumFettling, cumDispatch));
+        }
+
+        return buildEntryResponse(entry, itemResponses);
+    }
+
+
+    // ================================================================
+    //  RESPONSE BUILDER — READ
+    //  Queries DB for cumulative totals.
+    //  Used by getById, updateStatus.
+    // ================================================================
+
+    private ProductionEntryResponse buildFullResponse(ProductionEntry entry) {
 
         List<ProductionItemResponse> itemResponses = new ArrayList<>();
 
         for (ProductionItem item : entry.getProductionItems()) {
 
             PipelineTotals totals = getCumulativeTotals(item.getOrderItem().getId());
-
-            int totalCores = totals.getTotalReadyCores();
-            int totalPoured = totals.getTotalPouredMoulds();
-            int totalShot = totals.getTotalShotBlasting();
-            int totalFettling = totals.getTotalFettling();
-            int totalDispatch = totals.getTotalDispatched();
-
             int ordered = item.getOrderedQuantity();
 
-            ProductionItemResponse res = ProductionItemResponse.builder()
-                    .id(item.getId())
-                    .orderItemId(item.getOrderItem().getId())
-                    .itemName(item.getItemName())
-                    .patternNumber(item.getPatternNumber())
-                    .orderedQuantity(ordered)
-
-                    // today
-                    .readyCores(item.getReadyCores())
-                    .pouredMoulds(item.getPouredMoulds())
-                    .shotBlastingQuantity(item.getShotBlastingQuantity())
-                    .fettlingQuantity(item.getFettlingQuantity())
-                    .dispatchedQuantity(item.getDispatchedQuantity())
-
-                    // cumulative
-                    .totalReadyCores(totalCores)
-                    .totalPouredMoulds(totalPoured)
-                    .totalShotBlasting(totalShot)
-                    .totalFettling(totalFettling)
-                    .totalDispatched(totalDispatch)
-
-                    // pending
-                    .pendingDispatch(ordered - totalDispatch)
-                    .pendingFettling(totalShot - totalFettling)
-                    .pendingShotBlasting(totalPoured - totalShot)
-                    .pendingPouring(totalCores - totalPoured)
-                    .pendingCores(ordered - totalCores)
-
-                    .itemRemark(item.getItemRemark())
-                    .build();
-
-            itemResponses.add(res);
+            itemResponses.add(buildItemResponse(item, ordered,
+                    totals.totalReadyCores(),
+                    totals.totalPouredMoulds(),
+                    totals.totalShotBlasting(),
+                    totals.totalFettling(),
+                    totals.totalDispatched()));
         }
 
+        return buildEntryResponse(entry, itemResponses);
+    }
+
+
+    // ================================================================
+    //  RESPONSE BUILDER — SHARED ITEM BUILDER
+    //  Eliminates duplicate code between create & read responses.
+    // ================================================================
+
+    private ProductionItemResponse buildItemResponse(
+            ProductionItem item, int ordered,
+            int cumCores, int cumPoured, int cumShot, int cumFettling, int cumDispatch
+    ) {
+        return ProductionItemResponse.builder()
+                .id(item.getId())
+                .orderItemId(item.getOrderItem().getId())
+                .itemName(item.getItemName())
+                .patternNumber(item.getPattern() != null
+                        ? item.getPattern().getPatternNumber() : null)
+                .orderedQuantity(ordered)
+                // ── today's values ──
+                .readyCores(item.getReadyCores())
+                .pouredMoulds(item.getPouredMoulds())
+                .shotBlastingQuantity(item.getShotBlastingQuantity())
+                .fettlingQuantity(item.getFettlingQuantity())
+                .dispatchedQuantity(item.getDispatchedQuantity())
+                // ── cumulative totals ──
+                .totalReadyCores(cumCores)
+                .totalPouredMoulds(cumPoured)
+                .totalShotBlasting(cumShot)
+                .totalFettling(cumFettling)
+                .totalDispatched(cumDispatch)
+                // ── pending (ordered minus completed at each stage) ──
+                .pendingCores(ordered - cumCores)
+                .pendingPouring(cumCores - cumPoured)
+                .pendingShotBlasting(cumPoured - cumShot)
+                .pendingFettling(cumShot - cumFettling)
+                .pendingDispatch(ordered - cumDispatch)
+                // ── remark ──
+                .itemRemark(item.getItemRemark())
+                .build();
+    }
+
+
+    // ================================================================
+    //  RESPONSE BUILDER — SHARED ENTRY BUILDER
+    // ================================================================
+
+    private ProductionEntryResponse buildEntryResponse(
+            ProductionEntry entry,
+            List<ProductionItemResponse> itemResponses
+    ) {
         return ProductionEntryResponse.builder()
                 .id(entry.getId())
                 .entryNumber(entry.getEntryNumber())
@@ -353,5 +694,30 @@ public class ProductionServiceImpl implements ProductionService {
                 .totalDispatchedQuantity(entry.getTotalDispatchedQuantity())
                 .items(itemResponses)
                 .build();
+    }
+
+
+    // ================================================================
+    //  LIST ITEM MAPPER
+    // ================================================================
+
+    private ProductionEntryListItem toListItem(ProductionEntry entry) {
+        return new ProductionEntryListItem(
+                entry.getId(),
+                entry.getEntryNumber(),
+                entry.getOrder().getId(),
+                entry.getOrder().getOrderNumber(),
+                entry.getOrder().getCustomer().getName(),
+                entry.getReportDate(),
+                entry.getShift(),
+                entry.getStatus(),
+                entry.getOperatorName(),
+                entry.getTotalReadyCores(),
+                entry.getTotalPouredMoulds(),
+                entry.getTotalShotBlastingQuantity(),
+                entry.getTotalFettlingQuantity(),
+                entry.getTotalDispatchedQuantity(),
+                entry.getCreatedAt()
+        );
     }
 }

@@ -1,47 +1,29 @@
 package com.kalibyte.foundry.order.dto.response;
 
-import com.kalibyte.foundry.order.entity.enums.OrderStatus;
-import com.kalibyte.foundry.order.entity.enums.OrderType;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
 @Builder
 public class OrderResponse {
 
     private UUID id;
-
     private String orderNumber;
 
-    private OrderStatus status;
-
-    private OrderType orderType;
+    private UUID customerId;
+    private String customerName;
 
     private LocalDate orderDate;
-
     private LocalDate deliveryDate;
 
-    private String placeOfSupply;
-
-    private String poReference;
-
-    private CustomerSummary customer;
-
-    private QuotationSummary quotation;
-
-    private List<OrderItemResponse> items;
+    private String status;
 
     private BigDecimal totalAmount;
 
-    private LocalDateTime createdAt;
-
-    private String createdBy;
+    private List<OrderItemResponse> items;
 }

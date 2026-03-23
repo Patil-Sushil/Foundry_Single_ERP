@@ -1,25 +1,16 @@
 package com.kalibyte.foundry.production.dto.response.report.orderwise;
 
-import lombok.Builder;
-import lombok.Data;
-
 import java.util.UUID;
 
-@Data
-@Builder
-public class OrderItemProgress {
-
-    private String itemName;
-    private String patternNumber;
-
-    private Integer orderedQuantity;
-    private UUID orderItemId;
-
-    private Integer totalReadyCores;
-    private Integer totalPouredMoulds;
-    private Integer totalShotBlasting;
-    private Integer totalFettling;
-    private Integer totalDispatched;
-
-    private Integer pendingDispatch;
-}
+public record OrderItemProgress(
+        String itemName,
+        String patternNumber,
+        int orderedQuantity,
+        UUID orderItemId,
+        int totalReadyCores,
+        int totalPouredMoulds,
+        int totalShotBlasting,
+        int totalFettling,
+        int totalDispatched,
+        int pendingDispatch
+) {}

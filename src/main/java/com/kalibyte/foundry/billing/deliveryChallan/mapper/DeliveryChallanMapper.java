@@ -42,7 +42,7 @@ public class DeliveryChallanMapper {
         String castingName = null;
 
         if (orderItem != null) {
-            castingName = orderItem.getProductName();  // or getCastingName()
+            castingName = orderItem.getPartName();  // or getCastingName()
         }
 
         return DeliveryChallanItemResponse.builder()

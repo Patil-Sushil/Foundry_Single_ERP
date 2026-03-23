@@ -9,23 +9,25 @@ import java.util.UUID;
 @Data
 public class ProductionItemRequest {
 
-    @NotNull
+    @NotNull(message = "Order item ID is required")
     private UUID orderItemId;
 
-    @Min(0)
-    private Integer readyCores = 0;
+    private String patternNumber;
 
-    @Min(0)
-    private Integer pouredMoulds = 0;
+    @Min(value = 0, message = "Ready cores cannot be negative")
+    private Integer readyCores;
 
-    @Min(0)
-    private Integer shotBlastingQuantity = 0;
+    @Min(value = 0, message = "Poured moulds cannot be negative")
+    private Integer pouredMoulds;
 
-    @Min(0)
-    private Integer fettlingQuantity = 0;
+    @Min(value = 0, message = "Shot blasting quantity cannot be negative")
+    private Integer shotBlastingQuantity;
 
-    @Min(0)
-    private Integer dispatchedQuantity = 0;
+    @Min(value = 0, message = "Fettling quantity cannot be negative")
+    private Integer fettlingQuantity;
+
+    @Min(value = 0, message = "Dispatched quantity cannot be negative")
+    private Integer dispatchedQuantity;
 
     private String itemRemark;
 }

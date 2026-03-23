@@ -3,6 +3,7 @@ package com.kalibyte.foundry.enquiry.entity;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
+import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.PatternReceipt;
 import jakarta.persistence.*;
@@ -48,18 +49,10 @@ public class EnquiryItem extends BaseEntity {
 
     // ===== Pattern Logic =====
 
-    @Column(name = "pattern_provided_by_customer", nullable = false)
-    private Boolean patternProvidedByCustomer;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pattern_provided_by", nullable = false)
+    private PatternProvidedBy patternProvidedBy;
 
-    // Used when customer does NOT provide pattern
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pattern_id")
-    private Pattern pattern;
-
-    // Used when customer provides pattern
-    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "pattern_receipt_id")
-    private PatternReceipt patternReceipt;
 
     @Column(name = "machine_required", nullable = false)
     private Boolean machineRequired;

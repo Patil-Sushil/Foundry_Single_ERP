@@ -4,12 +4,18 @@ import com.kalibyte.foundry.enquiry.dto.response.EnquiryItemResponse;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.entity.Enquiry;
 import com.kalibyte.foundry.enquiry.entity.EnquiryItem;
-import com.kalibyte.foundry.pattern.entity.Pattern;
-import com.kalibyte.foundry.pattern.entity.PatternReceipt;
-import org.mapstruct.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 
+/**
+ * Enquiry Mapper
+ *
+ * PURPOSE:
+ * - Convert Entity → Response DTO
+ * - Hide internal fields
+ */
 @Mapper(componentModel = "spring")
 public interface EnquiryMapper {
 
@@ -20,62 +26,17 @@ public interface EnquiryMapper {
 
     List<EnquiryResponse> toResponseList(List<Enquiry> enquiries);
 
+    //--------------------------------------------
+    // ITEM MAPPING
+    //--------------------------------------------
+
     @Mapping(source = "metalCategory.displayName", target = "metalCategory")
     @Mapping(source = "metalType.displayName", target = "metalType")
-    @Mapping(target = "patternName", expression = "java(getPatternName(item))")
-    @Mapping(target = "patternType", expression = "java(getPatternType(item))")
-    @Mapping(target = "patternMaterial", expression = "java(getPatternMaterial(item))")
-    @Mapping(target = "inwardDate", expression = "java(getInwardDate(item))")
-    @Mapping(target = "outwardDate", expression = "java(getOutwardDate(item))")
+
+    // IMPORTANT FIX
+    @Mapping(source = "patternProvidedBy", target = "patternProvidedBy")
+
     EnquiryItemResponse toItemResponse(EnquiryItem item);
 
     List<EnquiryItemResponse> toItemResponseList(List<EnquiryItem> items);
-
-    // ---------- Custom Logic ----------
-
-    default String getPatternName(EnquiryItem item) {
-        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-            PatternReceipt pr = item.getPatternReceipt();
-            return pr != null ? pr.getName() : null;
-        } else {
-            Pattern pattern = item.getPattern();
-            return pattern != null ? pattern.getName() : null;
-        }
-    }
-
-    default String getPatternType(EnquiryItem item) {
-        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-            PatternReceipt pr = item.getPatternReceipt();
-            return pr != null ? pr.getType().name() : null;
-        } else {
-            Pattern pattern = item.getPattern();
-            return pattern != null ? pattern.getType().name() : null;
-        }
-    }
-
-    default String getPatternMaterial(EnquiryItem item) {
-        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-            PatternReceipt pr = item.getPatternReceipt();
-            return pr != null ? pr.getMaterial().name() : null;
-        } else {
-            Pattern pattern = item.getPattern();
-            return pattern != null ? pattern.getMaterial().name() : null;
-        }
-    }
-
-    default java.time.LocalDate getInwardDate(EnquiryItem item) {
-        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-            PatternReceipt pr = item.getPatternReceipt();
-            return pr != null ? pr.getInwardDate() : null;
-        }
-        return null;
-    }
-
-    default java.time.LocalDate getOutwardDate(EnquiryItem item) {
-        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-            PatternReceipt pr = item.getPatternReceipt();
-            return pr != null ? pr.getOutwardDate() : null;
-        }
-        return null;
-    }
 }

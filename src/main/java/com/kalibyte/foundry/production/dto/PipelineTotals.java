@@ -1,15 +1,12 @@
 package com.kalibyte.foundry.production.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
-@Data
-@AllArgsConstructor
-public class PipelineTotals {
-
-    private Integer totalReadyCores;
-    private Integer totalPouredMoulds;
-    private Integer totalShotBlasting;
-    private Integer totalFettling;
-    private Integer totalDispatched;
+public record PipelineTotals(
+        int totalReadyCores,
+        int totalPouredMoulds,
+        int totalShotBlasting,
+        int totalFettling,
+        int totalDispatched
+) {
+    public static final PipelineTotals ZERO = new PipelineTotals(0, 0, 0, 0, 0);
 }

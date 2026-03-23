@@ -4,10 +4,8 @@ import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
-import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -25,82 +23,69 @@ import java.util.List;
 public class Order extends BaseEntity {
 
     @Column(nullable = false, unique = true)
-    @NotBlank
     private String orderNumber;
 
     //------------------------------------------------
     // CUSTOMER
     //------------------------------------------------
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     //------------------------------------------------
-    // ORDER TYPE
+    // TYPE
     //------------------------------------------------
-
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type", nullable = false)
     private OrderType orderType;
 
     //------------------------------------------------
-    // QUOTATION
+    // QUOTATION (OPTIONAL)
     //------------------------------------------------
-
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quotation_id", unique = true)
     private Quotation quotation;
 
     //------------------------------------------------
-    // ORDER DATA
+    // DETAILS
     //------------------------------------------------
-
     private LocalDate orderDate;
-
-    @Column(length = 150)
-    private String placeOfSupply;
-
-    @Column(length = 150)
-    private String poReference;
-
     private LocalDate deliveryDate;
 
-    @Enumerated(EnumType.STRING)
-    private OrderStatus status;
+    private String placeOfSupply;
+    private String poReference;
 
-    @Column(precision = 19, scale = 2)
-    private BigDecimal totalAmount;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status = OrderStatus.CREATED;
+
+    //------------------------------------------------
+    // AMOUNTS
+    //------------------------------------------------
+    private BigDecimal subTotal = BigDecimal.ZERO;
+    private BigDecimal discount = BigDecimal.ZERO;
+    private BigDecimal tax = BigDecimal.ZERO;
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     //------------------------------------------------
     // ITEMS
     //------------------------------------------------
-
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<OrderItem> orderItems = new ArrayList<>();
+    private List<OrderItem> items = new ArrayList<>();
 
     //------------------------------------------------
-    // HELPER METHODS
+    // HELPERS
     //------------------------------------------------
-
-    public Pattern getPattern() {
-        if (!orderItems.isEmpty()) {
-            return orderItems.get(0).getPattern();
-        }
-        return null;
+    public void addItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
     }
 
-    public int getTotalQuantity() {
-        return orderItems.stream()
-                .mapToInt(OrderItem::getQuantity)
-                .sum();
-    }
-
-    public List<OrderItem> getItems() {
-        return orderItems;
+    public void clearItems() {
+        items.forEach(i -> i.setOrder(null));
+        items.clear();
     }
 }

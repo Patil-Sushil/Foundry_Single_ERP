@@ -30,7 +30,7 @@ public class PatternServiceImpl implements PatternService {
 
         Long sequence = patternRepository.getNextPatternSequence();
 
-        String patternNumber = "PAT-" + String.format("%05d", sequence);
+        String patternNumber = "PAT-" + String.format("%04d", sequence);
 
         Pattern pattern = Pattern.builder()
                 .patternNumber(patternNumber)

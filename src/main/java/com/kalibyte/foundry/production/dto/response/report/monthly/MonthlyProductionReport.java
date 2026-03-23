@@ -5,15 +5,10 @@ import lombok.Data;
 
 import java.util.List;
 
-@Data
-@Builder
-public class MonthlyProductionReport {
-
-    private int month;
-    private int year;
-
-    private Integer totalProduction;
-    private Integer totalDispatch;
-
-    private List<MonthlyDaySummary> dailyData;
-}
+public record MonthlyProductionReport(
+        int month,
+        int year,
+        int totalProduction,
+        int totalDispatch,
+        List<MonthlyDaySummary> dailyData
+) {}

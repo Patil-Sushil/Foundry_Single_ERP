@@ -1,6 +1,8 @@
 package com.kalibyte.foundry.quotation.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
+import com.kalibyte.foundry.pattern.entity.Pattern;
+import com.kalibyte.foundry.pattern.entity.PatternReceipt;
 import com.kalibyte.foundry.quotation.entity.enums.PatternStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
@@ -45,6 +47,17 @@ public class QuotationItem extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "pattern_status", length = 20)
     private PatternStatus patternStatus;
+
+    @Column(name = "pattern_provided_by_customer")
+    private Boolean patternProvidedByCustomer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pattern_id")
+    private Pattern pattern;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "pattern_receipt_id")
+    private PatternReceipt patternReceipt;
 
     // ================= PRICING =================
 

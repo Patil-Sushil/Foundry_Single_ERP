@@ -8,15 +8,19 @@ import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.order.dto.request.OrderCreateRequest;
 import com.kalibyte.foundry.order.dto.request.OrderItemRequest;
 import com.kalibyte.foundry.order.dto.response.OrderResponse;
-import com.kalibyte.foundry.order.entity.enums.OrderType;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
+import com.kalibyte.foundry.order.entity.enums.OrderType;
 import com.kalibyte.foundry.order.mapper.OrderMapper;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.order.service.OrderService;
 import com.kalibyte.foundry.order.specification.OrderSpecification;
 import com.kalibyte.foundry.order.validation.OrderStatusTransitionValidator;
+import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
+import com.kalibyte.foundry.pattern.entity.Pattern;
+import com.kalibyte.foundry.pattern.entity.PatternReceipt;
+import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import com.kalibyte.foundry.quotation.entity.enums.QuotationStatus;
 import com.kalibyte.foundry.quotation.repository.QuotationRepository;
@@ -48,6 +52,7 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final OrderMapper orderMapper;
     private final EmailService emailService;
+    private final PatternRepository patternRepository;
 
     //-----------------------------------------------------
     // CREATE ORDER
@@ -55,8 +60,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse createOrder(OrderCreateRequest request) {
-
-        log.info("Creating order request received");
 
         if (request.getQuotationId() != null) {
             return createFromQuotation(request);
@@ -73,7 +76,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     //-----------------------------------------------------
-    // CREATE ORDER FROM QUOTATION
+    // FROM QUOTATION
     //-----------------------------------------------------
 
     private OrderResponse createFromQuotation(OrderCreateRequest request) {
@@ -84,7 +87,7 @@ public class OrderServiceImpl implements OrderService {
         if (!QuotationStatus.APPROVED.equals(quotation.getStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Quotation must be approved before creating order"
+                    "Quotation must be approved"
             );
         }
 
@@ -103,30 +106,44 @@ public class OrderServiceImpl implements OrderService {
                 .orderDate(LocalDate.now())
                 .deliveryDate(request.getDeliveryDate())
                 .status(OrderStatus.CREATED)
-                .totalAmount(quotation.getTotalAmount())
                 .placeOfSupply(request.getPlaceOfSupply())
                 .poReference(request.getPoReference())
                 .build();
 
         List<OrderItem> items = quotation.getItems()
                 .stream()
-                .map(qItem -> OrderItem.builder()
-                        .order(order)
-                        .productName(qItem.getPartName())
-                        .metalType(qItem.getMaterialGrade())
-                        .quantity(qItem.getQuantity())
-                        .unitPrice(qItem.getUnitPrice())
-                        .totalPrice(qItem.getLineTotal())
-                        .build())
+                .map(q -> {
+
+                    OrderItem item = OrderItem.builder()
+                            .order(order)
+                            .partName(q.getPartName())
+                            .materialGrade(q.getMaterialGrade())
+                            .netWeightKg(q.getNetWeightKg())
+                            .quantity(q.getQuantity())
+                            .unitPrice(q.getUnitPrice())
+                            .lineTotal(q.getLineTotal())
+                            .patternProvidedByCustomer(q.getPatternProvidedByCustomer())
+                            .build();
+
+                    if (Boolean.TRUE.equals(q.getPatternProvidedByCustomer())) {
+                        item.setPatternReceipt(q.getPatternReceipt());
+                    } else {
+                        item.setPattern(q.getPattern());
+                    }
+
+                    return item;
+                })
                 .toList();
 
-        order.setOrderItems(items);
+        order.setItems(items);
+
+        BigDecimal total = items.stream()
+                .map(OrderItem::getLineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        order.setTotalAmount(total);
 
         Order saved = orderRepository.save(order);
-
-        //-------------------------------------------------
-        // SEND ORDER EMAIL
-        //-------------------------------------------------
 
         sendOrderConfirmationEmail(saved);
 
@@ -134,7 +151,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     //-----------------------------------------------------
-    // CREATE DIRECT ORDER
+    // DIRECT ORDER
     //-----------------------------------------------------
 
     private OrderResponse createDirectOrder(OrderCreateRequest request) {
@@ -145,7 +162,7 @@ public class OrderServiceImpl implements OrderService {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Order items are required for direct order"
+                    "Items required"
             );
         }
 
@@ -162,22 +179,18 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> items = request.getItems()
                 .stream()
-                .map(item -> buildOrderItem(order, item))
+                .map(i -> buildOrderItem(order, i))
                 .toList();
 
-        order.setOrderItems(items);
+        order.setItems(items);
 
-        BigDecimal totalAmount = items.stream()
-                .map(OrderItem::getTotalPrice)
+        BigDecimal total = items.stream()
+                .map(OrderItem::getLineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        order.setTotalAmount(totalAmount);
+        order.setTotalAmount(total);
 
         Order saved = orderRepository.save(order);
-
-        //-------------------------------------------------
-        // SEND ORDER EMAIL
-        //-------------------------------------------------
 
         sendOrderConfirmationEmail(saved);
 
@@ -185,25 +198,83 @@ public class OrderServiceImpl implements OrderService {
     }
 
     //-----------------------------------------------------
-    // GET ORDER BY ID
+    // ITEM BUILDER (FINAL FIX)
     //-----------------------------------------------------
 
-    @Override
-    @Transactional(readOnly = true)
-    public OrderResponse getById(UUID id) {
+    private OrderItem buildOrderItem(Order order, OrderItemRequest item) {
 
-        Order order = orderRepository.findWithDetailsById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        if (item.getNetWeightKg() == null) {
+            throw new IllegalArgumentException("Net weight is required");
+        }
 
-        return orderMapper.toResponse(order);
+        BigDecimal total = item.getNetWeightKg()
+                .multiply(item.getUnitPrice())
+                .multiply(BigDecimal.valueOf(item.getQuantity()));
+
+        OrderItem orderItem = OrderItem.builder()
+                .order(order)
+                .partName(item.getPartName())
+                .materialGrade(item.getMaterialGrade())
+                .netWeightKg(item.getNetWeightKg())
+                .quantity(item.getQuantity())
+                .unitPrice(item.getUnitPrice())
+                .lineTotal(total)
+                .patternProvidedByCustomer(item.getPatternProvidedByCustomer())
+                .build();
+
+        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
+
+            PatternReceiptRequest pr = item.getPatternReceipt();
+
+            PatternReceipt receipt = PatternReceipt.builder()
+                    .name(pr.getName())
+                    .type(pr.getType())
+                    .material(pr.getMaterial())
+                    .inwardDate(pr.getInwardDate())
+                    .outwardDate(pr.getOutwardDate())
+                    .build();
+
+            orderItem.setPatternReceipt(receipt);
+
+        } else {
+
+            Pattern pattern = patternRepository.findById(item.getPatternId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Pattern not found"));
+
+            orderItem.setPattern(pattern);
+        }
+
+        return orderItem;
     }
 
     //-----------------------------------------------------
-    // GET ALL ORDERS
+    // STATUS UPDATE
     //-----------------------------------------------------
 
     @Override
-    @Transactional(readOnly = true)
+    public void updateStatus(UUID id, OrderStatus status) {
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        OrderStatusTransitionValidator.validate(order.getStatus(), status);
+
+        order.setStatus(status);
+    }
+
+    //-----------------------------------------------------
+    // GET METHODS
+    //-----------------------------------------------------
+
+    @Override
+    public OrderResponse getById(UUID id) {
+        return orderMapper.toResponse(
+                orderRepository.findWithDetailsById(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Order not found"))
+        );
+    }
+
+    @Override
     public PageResponse<OrderResponse> getAll(
             OrderStatus status,
             UUID customerId,
@@ -211,75 +282,37 @@ public class OrderServiceImpl implements OrderService {
             LocalDate to,
             Pageable pageable) {
 
-        Specification<Order> specification =
+        Specification<Order> spec =
                 OrderSpecification.filter(status, customerId, from, to);
 
-        Page<Order> page = orderRepository.findAll(specification, pageable);
+        Page<Order> page = orderRepository.findAll(spec, pageable);
 
         return PageResponse.of(page.map(orderMapper::toResponse));
     }
 
     //-----------------------------------------------------
-    // UPDATE ORDER STATUS
-    //-----------------------------------------------------
-
-    @Override
-    public void updateStatus(UUID id, OrderStatus newStatus) {
-
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-
-        OrderStatusTransitionValidator.validate(order.getStatus(), newStatus);
-
-        order.setStatus(newStatus);
-    }
-
-    //-----------------------------------------------------
-    // SEND ORDER CONFIRMATION EMAIL
+    // EMAIL
     //-----------------------------------------------------
 
     private void sendOrderConfirmationEmail(Order order) {
 
         Customer customer = order.getCustomer();
 
-        String subject = "Order Confirmation - " + order.getOrderNumber();
+        String body = "Order: " + order.getOrderNumber()
+                + "\nAmount: " + order.getTotalAmount();
 
-        String body = "Dear " + customer.getName() + ",\n\n"
-                + "Your order has been created successfully.\n\n"
-                + "Order Number: " + order.getOrderNumber() + "\n"
-                + "Order Date: " + order.getOrderDate() + "\n"
-                + "Total Amount: " + order.getTotalAmount() + "\n\n"
-                + "Thank you for doing business with us.\n"
-                + "Kalibyte Foundry ERP";
-
-        emailService.sendEmail(customer.getEmail(), subject, body);
+        emailService.sendEmail(customer.getEmail(), "Order Created", body);
     }
 
     //-----------------------------------------------------
-    // HELPER METHODS
+    // NUMBER
     //-----------------------------------------------------
-
-    private OrderItem buildOrderItem(Order order, OrderItemRequest item) {
-
-        BigDecimal total = item.getUnitPrice()
-                .multiply(BigDecimal.valueOf(item.getQuantity()));
-
-        return OrderItem.builder()
-                .order(order)
-                .productName(item.getProductName())
-                .metalType(item.getMetalType())
-                .quantity(item.getQuantity())
-                .unitPrice(item.getUnitPrice())
-                .totalPrice(total)
-                .build();
-    }
 
     private String generateOrderNumber() {
 
         int year = LocalDate.now().getYear();
-
         long count = orderRepository.count() + 1;
 
-        return String.format("ORD-%d-%05d", year, count);
+        return String.format("ORD-%d-%04d", year, count);
     }
 }

@@ -2,6 +2,7 @@ package com.kalibyte.foundry.production.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.order.entity.OrderItem;
+import com.kalibyte.foundry.pattern.entity.Pattern;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +26,10 @@ public class ProductionItem extends BaseEntity {
     @Column(nullable = false)
     private String itemName;
 
-    private String patternNumber;
+    @ManyToOne
+    @JoinColumn(name = "pattern_id")
+    private Pattern pattern;
+
 
     @Column(nullable = false)
     private Integer orderedQuantity;

@@ -12,20 +12,12 @@ import java.util.UUID;
 @Repository
 public interface ProductionItemRepository extends JpaRepository<ProductionItem, UUID> {
 
-    //------------------------------------------------
-    // BY ENTRY
-    //------------------------------------------------
-
     @Query("""
         SELECT pi FROM ProductionItem pi
         WHERE pi.productionEntry.id = :entryId
         AND pi.isDeleted = false
     """)
     List<ProductionItem> findByEntry(@Param("entryId") UUID entryId);
-
-    //------------------------------------------------
-    // BY ORDER ITEM
-    //------------------------------------------------
 
     @Query("""
         SELECT pi FROM ProductionItem pi
@@ -34,33 +26,43 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
     """)
     List<ProductionItem> findByOrderItem(@Param("orderItemId") UUID orderItemId);
 
-    //------------------------------------------------
-    // TOTAL PRODUCED (SUM)
-    //------------------------------------------------
-
     @Query("""
-        SELECT COALESCE(SUM(pi.dispatchedQuantity),0)
+        SELECT COALESCE(SUM(pi.dispatchedQuantity), 0)
         FROM ProductionItem pi
         WHERE pi.orderItem.id = :orderItemId
         AND pi.isDeleted = false
     """)
-    Integer getTotalDispatched(@Param("orderItemId") UUID orderItemId);
+    int getTotalDispatched(@Param("orderItemId") UUID orderItemId);
 
-    //------------------------------------------------
-    // FULL PIPELINE SUM
-    //------------------------------------------------
-
+    // ── Pipeline totals for an order item ──
     @Query("""
-        SELECT 
-            COALESCE(SUM(pi.readyCores),0),
-            COALESCE(SUM(pi.pouredMoulds),0),
-            COALESCE(SUM(pi.shotBlastingQuantity),0),
-            COALESCE(SUM(pi.fettlingQuantity),0),
-            COALESCE(SUM(pi.dispatchedQuantity),0)
+        SELECT
+            COALESCE(SUM(pi.readyCores), 0),
+            COALESCE(SUM(pi.pouredMoulds), 0),
+            COALESCE(SUM(pi.shotBlastingQuantity), 0),
+            COALESCE(SUM(pi.fettlingQuantity), 0),
+            COALESCE(SUM(pi.dispatchedQuantity), 0)
         FROM ProductionItem pi
         WHERE pi.orderItem.id = :orderItemId
         AND pi.isDeleted = false
     """)
-    Object[] getPipelineTotals(@Param("orderItemId") UUID orderItemId);
+    List<Object[]> getPipelineTotalsRaw(@Param("orderItemId") UUID orderItemId);
 
+    // ── Pipeline totals EXCLUDING a specific entry (for update) ──
+    @Query("""
+        SELECT
+            COALESCE(SUM(pi.readyCores), 0),
+            COALESCE(SUM(pi.pouredMoulds), 0),
+            COALESCE(SUM(pi.shotBlastingQuantity), 0),
+            COALESCE(SUM(pi.fettlingQuantity), 0),
+            COALESCE(SUM(pi.dispatchedQuantity), 0)
+        FROM ProductionItem pi
+        WHERE pi.orderItem.id = :orderItemId
+        AND pi.productionEntry.id != :excludeEntryId
+        AND pi.isDeleted = false
+    """)
+    List<Object[]> getPipelineTotalsExcluding(
+            @Param("orderItemId") UUID orderItemId,
+            @Param("excludeEntryId") UUID excludeEntryId
+    );
 }

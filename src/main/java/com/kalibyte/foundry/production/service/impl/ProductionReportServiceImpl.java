@@ -4,6 +4,7 @@ import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.repository.OrderRepository;
+import com.kalibyte.foundry.production.dto.PipelineTotals;
 import com.kalibyte.foundry.production.dto.response.report.daily.DailyOrderEntry;
 import com.kalibyte.foundry.production.dto.response.report.daily.DailyProductionReport;
 import com.kalibyte.foundry.production.dto.response.report.monthly.MonthlyDaySummary;
@@ -11,26 +12,30 @@ import com.kalibyte.foundry.production.dto.response.report.monthly.MonthlyProduc
 import com.kalibyte.foundry.production.dto.response.report.orderwise.OrderItemProgress;
 import com.kalibyte.foundry.production.dto.response.report.orderwise.OrderProductionReport;
 import com.kalibyte.foundry.production.dto.response.report.summary.ProductionDashboardSummary;
+import com.kalibyte.foundry.production.entity.ProductionEntry;
+import com.kalibyte.foundry.production.entity.enums.ProductionStatus;
 import com.kalibyte.foundry.production.repository.ProductionEntryRepository;
 import com.kalibyte.foundry.production.repository.ProductionItemRepository;
 import com.kalibyte.foundry.production.service.ProductionReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ProductionReportServiceImpl implements ProductionReportService {
 
     private final OrderRepository orderRepo;
     private final ProductionEntryRepository entryRepo;
     private final ProductionItemRepository itemRepo;
 
-    //------------------------------------------------
-    // ORDER REPORT
-    //------------------------------------------------
+    // ================================================================
+    //  ORDER REPORT
+    // ================================================================
 
     @Override
     public OrderProductionReport getOrderReport(UUID orderId) {
@@ -39,83 +44,97 @@ public class ProductionReportServiceImpl implements ProductionReportService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
         List<OrderItemProgress> items = new ArrayList<>();
-
-        int totalDispatch = 0;
+        int totalDispatched = 0;
         int totalOrdered = 0;
 
         for (OrderItem item : order.getItems()) {
 
-            Object[] totals = itemRepo.getPipelineTotals(item.getId());
+            // ── FIX: Use List<Object[]> extraction ──
+            PipelineTotals totals = getCumulativeTotals(item.getId());
 
-            int dispatched = ((Number) totals[4]).intValue();
-
-            totalDispatch += dispatched;
+            totalDispatched += totals.totalDispatched();
             totalOrdered += item.getQuantity();
 
-            items.add(OrderItemProgress.builder()
-                    .itemName(item.getProductName())
-                    .patternNumber(item.getPattern() != null
-                            ? item.getPattern().getPatternNumber()
-                            : null)
-                    .orderedQuantity(item.getQuantity())
-                    .totalReadyCores(((Number) totals[0]).intValue())
-                    .totalPouredMoulds(((Number) totals[1]).intValue())
-                    .totalShotBlasting(((Number) totals[2]).intValue())
-                    .totalFettling(((Number) totals[3]).intValue())
-                    .totalDispatched(dispatched)
-                    .pendingDispatch(item.getQuantity() - dispatched)
-                    .build());
+            items.add(new OrderItemProgress(
+                    item.getPartName(),
+                    item.getPattern() != null ? item.getPattern().getPatternNumber() : null,
+                    item.getQuantity(),
+                    item.getId(),
+                    totals.totalReadyCores(),
+                    totals.totalPouredMoulds(),
+                    totals.totalShotBlasting(),
+                    totals.totalFettling(),
+                    totals.totalDispatched(),
+                    item.getQuantity() - totals.totalDispatched()
+            ));
         }
 
-        return OrderProductionReport.builder()
-                .orderNumber(order.getOrderNumber())
-                .customerName(order.getCustomer().getName())
-                .totalOrderedQuantity(totalOrdered)
-                .totalProduced(totalDispatch)
-                .totalDispatched(totalDispatch)
-                .pendingDispatch(totalOrdered - totalDispatch)
-                .items(items)
-                .build();
+        return new OrderProductionReport(
+                order.getOrderNumber(),
+                order.getCustomer().getName(),
+                totalOrdered,
+                totalDispatched,
+                totalDispatched,
+                totalOrdered - totalDispatched,
+                items
+        );
     }
 
-    //------------------------------------------------
-    // DAILY REPORT
-    //------------------------------------------------
+// ── Add this helper to report service too ──
+
+    private PipelineTotals getCumulativeTotals(UUID orderItemId) {
+        List<Object[]> results = itemRepo.getPipelineTotalsRaw(orderItemId);
+        if (results == null || results.isEmpty()) {
+            return PipelineTotals.ZERO;
+        }
+        Object[] raw = results.get(0);
+        if (raw == null || raw.length < 5) {
+            return PipelineTotals.ZERO;
+        }
+        return new PipelineTotals(
+                toInt(raw[0]), toInt(raw[1]), toInt(raw[2]),
+                toInt(raw[3]), toInt(raw[4])
+        );
+    }
+
+    private int toInt(Object value) {
+        return value != null ? ((Number) value).intValue() : 0;
+    }
+
+    // ================================================================
+    //  DAILY REPORT
+    // ================================================================
 
     @Override
     public DailyProductionReport getDailyReport(LocalDate date) {
 
-        var entries = entryRepo.findByDate(date);
-
-        List<DailyOrderEntry> orders = new ArrayList<>();
+        List<ProductionEntry> entries = entryRepo.findByDateWithOrder(date);
 
         int totalProd = 0;
         int totalDispatch = 0;
+        List<DailyOrderEntry> orders = new ArrayList<>();
 
-        for (var entry : entries) {
+        for (ProductionEntry entry : entries) {
+            int produced = entry.getTotalFettlingQuantity();
+            int dispatched = entry.getTotalDispatchedQuantity();
 
-            totalProd += entry.getTotalFettlingQuantity();
-            totalDispatch += entry.getTotalDispatchedQuantity();
+            totalProd += produced;
+            totalDispatch += dispatched;
 
-            orders.add(DailyOrderEntry.builder()
-                    .orderNumber(entry.getOrder().getOrderNumber())
-                    .customerName(entry.getOrder().getCustomer().getName())
-                    .produced(entry.getTotalFettlingQuantity())
-                    .dispatched(entry.getTotalDispatchedQuantity())
-                    .build());
+            orders.add(new DailyOrderEntry(
+                    entry.getOrder().getOrderNumber(),
+                    entry.getOrder().getCustomer().getName(),
+                    produced,
+                    dispatched
+            ));
         }
 
-        return DailyProductionReport.builder()
-                .date(date)
-                .totalProduction(totalProd)
-                .totalDispatch(totalDispatch)
-                .orders(orders)
-                .build();
+        return new DailyProductionReport(date, totalProd, totalDispatch, orders);
     }
 
-    //------------------------------------------------
-    // MONTHLY REPORT
-    //------------------------------------------------
+    // ================================================================
+    //  MONTHLY REPORT
+    // ================================================================
 
     @Override
     public MonthlyProductionReport getMonthlyReport(int month, int year) {
@@ -123,79 +142,68 @@ public class ProductionReportServiceImpl implements ProductionReportService {
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 
-        var entries = entryRepo.findByDateRange(start, end);
+        List<ProductionEntry> entries = entryRepo.findByDateRangeWithOrder(start, end);
 
-        Map<LocalDate, MonthlyDaySummary> map = new HashMap<>();
-
+        // aggregate by date using int[] to avoid mutable record issue
+        Map<LocalDate, int[]> map = new LinkedHashMap<>();
         int totalProd = 0;
         int totalDispatch = 0;
 
-        for (var entry : entries) {
-
+        for (ProductionEntry entry : entries) {
             LocalDate date = entry.getReportDate();
+            int[] vals = map.computeIfAbsent(date, k -> new int[2]);
 
-            map.putIfAbsent(date, MonthlyDaySummary.builder()
-                    .date(date)
-                    .produced(0)
-                    .dispatched(0)
-                    .build());
+            int produced = entry.getTotalFettlingQuantity();
+            int dispatched = entry.getTotalDispatchedQuantity();
 
-            MonthlyDaySummary day = map.get(date);
+            vals[0] += produced;
+            vals[1] += dispatched;
 
-            day.setProduced(day.getProduced() + entry.getTotalFettlingQuantity());
-            day.setDispatched(day.getDispatched() + entry.getTotalDispatchedQuantity());
-
-            totalProd += entry.getTotalFettlingQuantity();
-            totalDispatch += entry.getTotalDispatchedQuantity();
+            totalProd += produced;
+            totalDispatch += dispatched;
         }
 
-        return MonthlyProductionReport.builder()
-                .month(month)
-                .year(year)
-                .totalProduction(totalProd)
-                .totalDispatch(totalDispatch)
-                .dailyData(new ArrayList<>(map.values()))
-                .build();
+        List<MonthlyDaySummary> dailyData = map.entrySet().stream()
+                .map(e -> new MonthlyDaySummary(e.getKey(), e.getValue()[0], e.getValue()[1]))
+                .sorted(Comparator.comparing(MonthlyDaySummary::date))
+                .toList();
+
+        return new MonthlyProductionReport(month, year, totalProd, totalDispatch, dailyData);
     }
 
-    //------------------------------------------------
-    // DASHBOARD
-    //------------------------------------------------
+    // ================================================================
+    //  DASHBOARD
+    // ================================================================
 
     @Override
     public ProductionDashboardSummary getDashboardSummary() {
 
         LocalDate today = LocalDate.now();
+        LocalDate startOfMonth = today.withDayOfMonth(1);
 
-        var todayEntries = entryRepo.findByDate(today);
-
+        // today
+        List<ProductionEntry> todayEntries = entryRepo.findByDateWithOrder(today);
         int todayProd = todayEntries.stream()
-                .mapToInt(e -> e.getTotalFettlingQuantity())
-                .sum();
-
+                .mapToInt(ProductionEntry::getTotalFettlingQuantity).sum();
         int todayDispatch = todayEntries.stream()
-                .mapToInt(e -> e.getTotalDispatchedQuantity())
-                .sum();
+                .mapToInt(ProductionEntry::getTotalDispatchedQuantity).sum();
 
-        LocalDate startMonth = today.withDayOfMonth(1);
-
-        var monthEntries = entryRepo.findByDateRange(startMonth, today);
-
+        // month
+        List<ProductionEntry> monthEntries = entryRepo.findByDateRangeWithOrder(startOfMonth, today);
         int monthProd = monthEntries.stream()
-                .mapToInt(e -> e.getTotalFettlingQuantity())
-                .sum();
-
+                .mapToInt(ProductionEntry::getTotalFettlingQuantity).sum();
         int monthDispatch = monthEntries.stream()
-                .mapToInt(e -> e.getTotalDispatchedQuantity())
-                .sum();
+                .mapToInt(ProductionEntry::getTotalDispatchedQuantity).sum();
 
-        return ProductionDashboardSummary.builder()
-                .todayProduction(todayProd)
-                .todayDispatch(todayDispatch)
-                .monthProduction(monthProd)
-                .monthDispatch(monthDispatch)
-                .totalPendingDispatch(0) // can enhance later
-                .activeOrders(0) // can enhance later
-                .build();
+        // active orders & pending dispatch
+        int activeOrders = (int) entryRepo.countDistinctOrdersByStatus(ProductionStatus.IN_PROGRESS);
+        int pendingDispatch = entryRepo.calculateTotalPendingDispatch();
+
+        return new ProductionDashboardSummary(
+                todayProd, todayDispatch,
+                monthProd, monthDispatch,
+                pendingDispatch,
+                activeOrders
+        );
     }
 }
