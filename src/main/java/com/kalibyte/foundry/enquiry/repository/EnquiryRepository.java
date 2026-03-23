@@ -25,9 +25,7 @@ public interface EnquiryRepository extends JpaRepository<Enquiry, UUID> {
     // Solving N+1
     @EntityGraph(attributePaths = {
             "customer",
-            "enquiryItems",
-            "enquiryItems.pattern",
-            "enquiryItems.patternReceipt"
+            "enquiryItems"
     })
     Page<Enquiry>findByCustomerId(UUID customerId, Pageable pageable);
 }

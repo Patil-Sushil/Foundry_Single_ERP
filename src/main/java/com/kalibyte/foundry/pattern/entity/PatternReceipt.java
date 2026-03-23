@@ -35,6 +35,4 @@ public class PatternReceipt extends BaseEntity {
     @Column(nullable = false)
     private PatternMaterial material;
 
-    @OneToOne(mappedBy = "patternReceipt")
-    private EnquiryItem enquiryItem;
 }

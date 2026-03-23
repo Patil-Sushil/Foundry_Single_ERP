@@ -266,7 +266,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
                 .mapToInt(DeliveryChallanItem::getQuantity)
                 .sum();
 
-        int totalOrderedQty = order.getOrderItems()
+        int totalOrderedQty = order.getItems()
                 .stream()
                 .mapToInt(OrderItem::getQuantity)
                 .sum();
@@ -276,11 +276,14 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
             order.setStatus(OrderStatus.COMPLETED);
             orderRepository.save(order);
 
-            Pattern pattern = order.getPattern();
+            for (OrderItem orderItem : order.getItems()) {
 
-            if (pattern != null) {
-                pattern.setStatus(PatternStatus.AVAILABLE);
-                patternRepository.save(pattern);
+                Pattern pattern = orderItem.getPattern();
+
+                if (pattern != null) {
+                    pattern.setStatus(PatternStatus.AVAILABLE);
+                    patternRepository.save(pattern);
+                }
             }
         }
     }

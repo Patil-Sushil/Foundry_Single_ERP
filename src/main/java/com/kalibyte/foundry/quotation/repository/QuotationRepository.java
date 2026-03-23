@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -21,8 +22,14 @@ public interface QuotationRepository extends JpaRepository<Quotation, UUID> {
             "items",
             "enquiry"
     })
-    Optional<Quotation> findById(UUID id);
-
+    @Query("""
+        SELECT q FROM Quotation q
+        LEFT JOIN FETCH q.items i
+        LEFT JOIN FETCH i.pattern
+        LEFT JOIN FETCH i.patternReceipt
+        WHERE q.id = :id
+        """)
+    Optional<Quotation> findByIdWithItems(UUID id);
     Page<Quotation> findByStatus(QuotationStatus status, Pageable pageable);
 
     boolean existsByEnquiryId(UUID enquiryId);

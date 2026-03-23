@@ -1,16 +1,14 @@
 package com.kalibyte.foundry.order.mapper;
 
-import com.kalibyte.foundry.order.dto.response.CustomerSummary;
 import com.kalibyte.foundry.order.dto.response.OrderItemResponse;
 import com.kalibyte.foundry.order.dto.response.OrderResponse;
-import com.kalibyte.foundry.order.dto.response.QuotationSummary;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
-import com.kalibyte.foundry.customer.entity.Customer;
-import com.kalibyte.foundry.quotation.entity.Quotation;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
@@ -20,40 +18,42 @@ public interface OrderMapper {
     //------------------------------------------------
     // ORDER → RESPONSE
     //------------------------------------------------
-
-    @Mapping(source = "orderItems", target = "items")
-    @Mapping(source = "customer", target = "customer")
-    @Mapping(source = "quotation", target = "quotation")
-    @Mapping(source = "placeOfSupply", target = "placeOfSupply")
-    @Mapping(source = "poReference", target = "poReference")
+    @Mapping(source = "customer.id", target = "customerId")
+    @Mapping(source = "customer.name", target = "customerName")
+    @Mapping(source = "items", target = "items")
     OrderResponse toResponse(Order order);
 
     //------------------------------------------------
-    // ORDER ITEM → RESPONSE
+    // ITEM → RESPONSE
     //------------------------------------------------
-
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "partName", target = "partName")
+    @Mapping(source = "materialGrade", target = "materialGrade")
+    @Mapping(source = "lineTotal", target = "lineTotal")
     OrderItemResponse toItemResponse(OrderItem item);
 
     List<OrderItemResponse> toItemResponses(List<OrderItem> items);
 
     //------------------------------------------------
-    // CUSTOMER → SUMMARY
+    // PATTERN LOGIC
     //------------------------------------------------
+    @AfterMapping
+    default void mapPattern(OrderItem item,
+                            @MappingTarget OrderItemResponse res) {
 
-    @Mapping(source = "id", target = "id")
-    @Mapping(source = "name", target = "name")
-    @Mapping(source = "email", target = "email")
-    @Mapping(source = "phone", target = "phone")
-    @Mapping(source = "address", target = "address")
-    CustomerSummary toCustomerSummary(Customer customer);
+        if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
 
-    //------------------------------------------------
-    // QUOTATION → SUMMARY
-    //------------------------------------------------
+            if (item.getPatternReceipt() != null) {
+                res.setReceiptName(item.getPatternReceipt().getName());
+                res.setReceiptType(item.getPatternReceipt().getType().name());
+            }
 
-    @Mapping(source = "id", target = "id")
-    @Mapping(source = "quotationNumber", target = "quotationNumber")
-    @Mapping(source = "quotationDate", target = "quotationDate")
-    @Mapping(source = "totalAmount", target = "totalAmount")
-    QuotationSummary toQuotationSummary(Quotation quotation);
+        } else {
+
+            if (item.getPattern() != null) {
+                res.setPatternNumber(item.getPattern().getPatternNumber());
+                res.setPatternName(item.getPattern().getName());
+            }
+        }
+    }
 }

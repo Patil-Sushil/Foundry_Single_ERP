@@ -1,13 +1,18 @@
 package com.kalibyte.foundry.enquiry.dto.request;
 
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
-import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
+import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
+/**
+ * Enquiry Item Create Request
+ * NOTE:
+ * - Only capture whether pattern is provided by customer
+ * - Do NOT capture pattern details here
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,7 +22,6 @@ public class EnquiryItemCreateRequest {
 
     @NotBlank(message = "Part name is required")
     private String partName;
-
 
     @NotNull(message = "Metal type is required")
     private MetalType metalType;
@@ -35,14 +39,6 @@ public class EnquiryItemCreateRequest {
 
     private Boolean machineRequired;
 
-    @NotNull(message = "Pattern provided flag is required")
-    private Boolean patternProvidedByCustomer;
-
-    // Used when patternProvidedByCustomer = false
-    private UUID patternId;
-
-    // Used when patternProvidedByCustomer = true
-    private PatternReceiptRequest patternReceipt;
+    @NotNull(message = "Pattern source is required")
+    private PatternProvidedBy patternProvidedBy;
 }
-
-

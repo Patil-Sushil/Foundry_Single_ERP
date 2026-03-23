@@ -1,14 +1,22 @@
 package com.kalibyte.foundry.enquiry.dto.response;
 
+import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
+/**
+ * Enquiry Item Response
+
+ * NOTE:
+ * - We only expose patternProvidedByCustomer (NOT full pattern details)
+ * - Pattern details will be used internally or in later modules (Quotation/Order)
+ */
 @Builder
 @Data
 public class EnquiryItemResponse {
+
     private String partName;
     private String metalCategory;
     private String metalType;
@@ -16,12 +24,8 @@ public class EnquiryItemResponse {
     private BigDecimal approxPieceWeightKg;
     private BigDecimal totalWeightKg;
     private String castingProcess;
-    private Boolean patternProvidedByCustomer;
-    private String patternName;
-    private String patternType;
-    private String patternMaterial;
-    private LocalDate inwardDate;
-    private LocalDate outwardDate;
-    private Boolean machineRequired;
 
+    private PatternProvidedBy patternProvidedBy;
+
+    private Boolean machineRequired;
 }

@@ -24,7 +24,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID>,
         SELECT o FROM Order o
         LEFT JOIN FETCH o.customer
         LEFT JOIN FETCH o.quotation
-        LEFT JOIN FETCH o.orderItems
+        LEFT JOIN FETCH o.items
         WHERE o.id = :id
     """)
     Optional<Order> findWithDetailsById(@Param("id") UUID id);

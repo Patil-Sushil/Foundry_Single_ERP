@@ -2,29 +2,21 @@ package com.kalibyte.foundry.billing.util;
 
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
-import com.itextpdf.kernel.events.Event;
-import com.itextpdf.kernel.events.IEventHandler;
-import com.itextpdf.kernel.events.PdfDocumentEvent;
+import com.itextpdf.kernel.events.*;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
-import com.itextpdf.kernel.geom.PageSize;
-import com.itextpdf.kernel.geom.Rectangle;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfPage;
-import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.geom.*;
+import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
-import com.itextpdf.kernel.pdf.canvas.draw.DashedLine;
-import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
+import com.itextpdf.kernel.pdf.canvas.draw.*;
 import com.itextpdf.io.font.constants.StandardFonts;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.borders.Border;
-import com.itextpdf.layout.borders.SolidBorder;
+import com.itextpdf.layout.*;
+import com.itextpdf.layout.borders.*;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
-import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallan;
-import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallanItem;
-import com.kalibyte.foundry.billing.invoice.entity.Invoice;
-import com.kalibyte.foundry.billing.invoice.entity.InvoiceItem;
+import com.kalibyte.foundry.billing.deliveryChallan.entity.*;
+import com.kalibyte.foundry.billing.invoice.entity.*;
+
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -32,7 +24,7 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
 
 @Component
@@ -220,7 +212,7 @@ public class PdfGenerator {
                         TextAlignment.CENTER, isEven));
                 table.addCell(bodyCell(
                         safe(item != null && item.getOrderItem() != null
-                                ? item.getOrderItem().getProductName() : null),
+                                ? item.getOrderItem().getPartName() : null),
                         TextAlignment.LEFT, isEven));
                 table.addCell(bodyCell("FG 260",
                         TextAlignment.CENTER, isEven));
@@ -474,7 +466,7 @@ public class PdfGenerator {
                         TextAlignment.CENTER, isEven));
                 table.addCell(bodyCell(
                         safe(item != null && item.getOrderItem() != null
-                                ? item.getOrderItem().getProductName() : null),
+                                ? item.getOrderItem().getPartName() : null),
                         TextAlignment.LEFT, isEven));
                 table.addCell(bodyCell("SG 500/7",
                         TextAlignment.CENTER, isEven));

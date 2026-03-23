@@ -94,41 +94,41 @@ public class RevenueReportServiceImpl implements RevenueReportService {
     private List<RevenueMonthlyItem> buildMonthlyBreakdown(LocalDate from, LocalDate to) {
 
         List<Object[]> invoiceRows = invoiceRepository.getMonthlyInvoiceStats(from, to);
-
         List<Object[]> paymentRows = paymentRepository.getMonthlyCollections(from, to);
 
         Map<YearMonth, BigDecimal> payments = new HashMap<>();
 
+        //--------------------------------------------------
+        // PAYMENTS LOOP (FIXED)
+        //--------------------------------------------------
         for (Object[] row : paymentRows) {
 
-            YearMonth month =
-                    YearMonth.from(((java.sql.Timestamp) row[0]).toLocalDateTime());
+            YearMonth month = extractYearMonth(row[0]); // ✅ FIX
 
             payments.put(month, (BigDecimal) row[1]);
         }
 
+        //--------------------------------------------------
+        // INVOICE LOOP (FIXED)
+        //--------------------------------------------------
         List<RevenueMonthlyItem> result = new ArrayList<>();
 
         BigDecimal previousRevenue = BigDecimal.ZERO;
 
         for (Object[] row : invoiceRows) {
 
-            YearMonth month =
-                    YearMonth.from(((java.sql.Timestamp) row[0]).toLocalDateTime());
+            YearMonth month = extractYearMonth(row[0]); // ✅ FIX
 
             BigDecimal invoiced = (BigDecimal) row[1];
-
             Long invoiceCount = ((Number) row[2]).longValue();
 
-            BigDecimal collected =
-                    payments.getOrDefault(month, BigDecimal.ZERO);
+            BigDecimal collected = payments.getOrDefault(month, BigDecimal.ZERO);
 
             BigDecimal outstanding = invoiced.subtract(collected);
 
             BigDecimal growth = BigDecimal.ZERO;
 
             if (previousRevenue.compareTo(BigDecimal.ZERO) > 0) {
-
                 growth = invoiced.subtract(previousRevenue)
                         .divide(previousRevenue, 4, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100));
@@ -192,5 +192,24 @@ public class RevenueReportServiceImpl implements RevenueReportService {
         }
 
         return result;
+    }
+
+//     HELPER METHOD
+
+    private YearMonth extractYearMonth(Object dateObj) {
+
+        if (dateObj instanceof java.sql.Timestamp ts) {
+            return YearMonth.from(ts.toLocalDateTime());
+        }
+
+        if (dateObj instanceof LocalDate ld) {
+            return YearMonth.from(ld);
+        }
+
+        if (dateObj instanceof LocalDateTime ldt) {
+            return YearMonth.from(ldt);
+        }
+
+        throw new RuntimeException("Unsupported date type: " + dateObj.getClass());
     }
 }

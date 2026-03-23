@@ -1,14 +1,85 @@
 -- ============================================
 -- EXTENSION (UUID)
 -- ============================================
-
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+
+-- ============================================
+-- ORDERS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS orders (
+                                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_number VARCHAR(50) NOT NULL UNIQUE,
+
+    customer_id UUID NOT NULL,
+    quotation_id UUID UNIQUE,
+
+    order_type VARCHAR(50) NOT NULL,
+
+    order_date DATE,
+    delivery_date DATE,
+
+    place_of_supply VARCHAR(255),
+    po_reference VARCHAR(255),
+
+    status VARCHAR(30) NOT NULL DEFAULT 'CREATED',
+
+    -- AMOUNTS
+    sub_total NUMERIC(19,2) DEFAULT 0,
+    discount NUMERIC(19,2) DEFAULT 0,
+    tax NUMERIC(19,2) DEFAULT 0,
+    total_amount NUMERIC(19,2) DEFAULT 0,
+
+    -- AUDIT FIELDS
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
+    is_deleted BOOLEAN DEFAULT FALSE
+    );
+
+
+-- ============================================
+-- ORDER ITEMS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS order_items (
+                                           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    order_id UUID NOT NULL,
+
+    -- PART INFO
+    part_name VARCHAR(255),
+    drawing_number VARCHAR(100),
+    material_grade VARCHAR(100),
+
+    -- WEIGHT
+    net_weight_kg NUMERIC(10,3),
+    gross_weight_kg NUMERIC(10,3),
+
+    -- PATTERN LOGIC
+    pattern_status VARCHAR(50),
+    pattern_provided_by_customer BOOLEAN,
+
+    pattern_id UUID,
+    pattern_receipt_id UUID,
+
+    -- PRICING
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price NUMERIC(19,2),
+    line_total NUMERIC(19,2),
+
+    -- AUDIT FIELDS
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
+    is_deleted BOOLEAN DEFAULT FALSE
+    );
 
 
 -- ============================================
 -- FURNACE REPORTS
 -- ============================================
-
 CREATE TABLE IF NOT EXISTS furnace_reports (
                                                id BIGSERIAL PRIMARY KEY,
                                                furnace_ref_no VARCHAR(50) NOT NULL UNIQUE,
@@ -16,7 +87,8 @@ CREATE TABLE IF NOT EXISTS furnace_reports (
     shift VARCHAR(8),
     incharge_name VARCHAR(50),
     date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted BOOLEAN DEFAULT FALSE
     );
 
 ALTER TABLE furnace_reports
@@ -27,7 +99,6 @@ ALTER TABLE furnace_reports
 -- ============================================
 -- FURNACE HEATS
 -- ============================================
-
 CREATE TABLE IF NOT EXISTS furnace_heats (
                                              id BIGSERIAL PRIMARY KEY,
 
@@ -52,77 +123,16 @@ CREATE TABLE IF NOT EXISTS furnace_heats (
 
                                              order_id UUID,
 
-                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                             is_deleted BOOLEAN DEFAULT FALSE
 );
-
-ALTER TABLE furnace_heats
-    ADD CONSTRAINT fk_furnace_heat_report
-        FOREIGN KEY (furnace_id)
-            REFERENCES furnace_reports(id)
-            ON DELETE CASCADE;
-
-
--- ============================================
--- ORDERS TABLE
--- ============================================
-
-CREATE TABLE IF NOT EXISTS orders (
-
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    order_number VARCHAR(50) NOT NULL UNIQUE,
-
-    customer_id UUID NOT NULL,
-    quotation_id UUID UNIQUE,
-
-    order_date DATE,
-    delivery_date DATE,
-
-    place_of_supply VARCHAR(100),
-    po_reference VARCHAR(100),
-
-    status VARCHAR(30),
-
-    total_amount NUMERIC(19,2),
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    updated_by VARCHAR(255)
-    );
-
-
--- ============================================
--- ORDER ITEMS TABLE
--- ============================================
-
-CREATE TABLE IF NOT EXISTS order_item (
-
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    order_id UUID NOT NULL,
-
-    product_name VARCHAR(255) NOT NULL,
-    metal_type VARCHAR(100) NOT NULL,
-
-    pattern_id UUID,
-
-    quantity INTEGER NOT NULL CHECK (quantity > 0),
-
-    unit_price NUMERIC(19,2),
-    total_price NUMERIC(19,2),
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    updated_by VARCHAR(255)
-    );
 
 
 -- ============================================
 -- FOREIGN KEYS
 -- ============================================
 
+-- Orders
 ALTER TABLE orders
     ADD CONSTRAINT fk_orders_customer
         FOREIGN KEY (customer_id)
@@ -133,16 +143,29 @@ ALTER TABLE orders
         FOREIGN KEY (quotation_id)
             REFERENCES quotations(id);
 
-ALTER TABLE order_item
-    ADD CONSTRAINT fk_order_item_order
+-- Order Items
+ALTER TABLE order_items
+    ADD CONSTRAINT fk_order_items_order
         FOREIGN KEY (order_id)
             REFERENCES orders(id)
             ON DELETE CASCADE;
 
-ALTER TABLE order_item
-    ADD CONSTRAINT fk_order_item_pattern
+ALTER TABLE order_items
+    ADD CONSTRAINT fk_order_items_pattern
         FOREIGN KEY (pattern_id)
             REFERENCES patterns(id);
+
+ALTER TABLE order_items
+    ADD CONSTRAINT fk_order_items_pattern_receipt
+        FOREIGN KEY (pattern_receipt_id)
+            REFERENCES pattern_receipt(id);
+
+-- Furnace
+ALTER TABLE furnace_heats
+    ADD CONSTRAINT fk_furnace_heat_report
+        FOREIGN KEY (furnace_id)
+            REFERENCES furnace_reports(id)
+            ON DELETE CASCADE;
 
 ALTER TABLE furnace_heats
     ADD CONSTRAINT fk_furnace_heat_order
@@ -152,35 +175,19 @@ ALTER TABLE furnace_heats
 
 
 -- ============================================
--- INDEXES (IMPORTANT FOR ERP PERFORMANCE)
+-- INDEXES
 -- ============================================
 
-CREATE INDEX IF NOT EXISTS idx_orders_customer
-    ON orders(customer_id);
+-- Orders
+CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_order_type ON orders(order_type);
+CREATE INDEX IF NOT EXISTS idx_orders_order_date ON orders(order_date);
 
-CREATE INDEX IF NOT EXISTS idx_orders_status
-    ON orders(status);
+-- Order Items
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_pattern ON order_items(pattern_id);
 
-CREATE INDEX IF NOT EXISTS idx_orders_order_date
-    ON orders(order_date);
-
-CREATE INDEX IF NOT EXISTS idx_order_item_order
-    ON order_item(order_id);
-
-CREATE INDEX IF NOT EXISTS idx_order_item_pattern
-    ON order_item(pattern_id);
-
-CREATE INDEX IF NOT EXISTS idx_furnace_heats_furnace
-    ON furnace_heats(furnace_id);
-
-CREATE INDEX IF NOT EXISTS idx_furnace_heats_order
-    ON furnace_heats(order_id);
-
-ALTER TABLE furnace_heats
-    ADD CONSTRAINT fk_furnace_heats_order
-        FOREIGN KEY (order_id)
-            REFERENCES orders(id)
-            ON DELETE SET NULL;
-
-CREATE INDEX idx_furnace_heats_order_id ON furnace_heats(order_id);
-CREATE INDEX idx_furnace_report_furnace_ref_no on furnace_reports(furnace_ref_no);
+-- Furnace
+CREATE INDEX IF NOT EXISTS idx_furnace_heats_order ON furnace_heats(order_id);
+CREATE INDEX IF NOT EXISTS idx_furnace_heats_furnace ON furnace_heats(furnace_id);
