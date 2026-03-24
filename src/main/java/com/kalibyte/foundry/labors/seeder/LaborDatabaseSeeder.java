@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.labors.seeder;
 
 import com.kalibyte.foundry.labors.advance.dto.AdvanceTransactionRequestDTO;
+import com.kalibyte.foundry.labors.advance.entity.Enum.TransactionType;
 import com.kalibyte.foundry.labors.advance.service.AdvanceService;
 import com.kalibyte.foundry.labors.attendance.dto.AttendanceRequestDTO;
 import com.kalibyte.foundry.labors.attendance.service.AttendanceService;
@@ -97,6 +98,7 @@ public class LaborDatabaseSeeder implements CommandLineRunner {
                     .laborerId(hourly1.getId())
                     .transactionDate(today.minusDays(6))
                     .amount(new BigDecimal("500.00"))
+                    .transactionType(TransactionType.GIVEN)
                     .notes("Initial loan")
                     .build());
 

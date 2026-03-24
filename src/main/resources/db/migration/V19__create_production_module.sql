@@ -228,3 +228,13 @@ CREATE INDEX idx_prod_items_order_item_active
 CREATE INDEX idx_prod_items_pattern
     ON production_items (pattern_id)
     WHERE pattern_id IS NOT NULL;
+
+CREATE TABLE electricity_rates (
+    id BIGSERIAL PRIMARY KEY ,
+    rate_per_unit DOUBLE PRECISION NOT NULL DEFAULT 0,
+    effective_from DATE NOT NULL ,
+    effective_to DATE,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP
+)

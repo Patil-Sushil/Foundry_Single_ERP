@@ -9,7 +9,6 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ReportMapper {
 
-    @Mapping(target = "laborerName", source = "laborer.name")
     @Mapping(target = "pieceCompleted", source = "piecesCompleted")
     LaborAttendanceReportDTO toAttendanceReport(Attendance attendance);
 }

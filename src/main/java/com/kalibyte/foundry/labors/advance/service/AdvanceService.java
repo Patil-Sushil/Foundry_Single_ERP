@@ -25,9 +25,10 @@ public class AdvanceService {
 		this.advanceTransactionMapper = advanceTransactionMapper;
 	}
 
-	@Transactional
+    @Transactional
     public AdvanceTransactionResponseDTO grantAdvance(AdvanceTransactionRequestDTO request) {
         AdvanceTransaction transaction = advanceTransactionMapper.toEntity(request);
+        transaction.setTransactionType(TransactionType.GIVEN);
         return advanceTransactionMapper.toResponseDTO(advanceTransactionRepository.save(transaction));
     }
 
