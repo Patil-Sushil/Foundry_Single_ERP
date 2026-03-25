@@ -1,43 +1,39 @@
 package com.kalibyte.foundry.quotation.dto.request;
 
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
-import com.kalibyte.foundry.quotation.entity.enums.PatternStatus;
-import lombok.Getter;
-import lombok.Setter;
+import com.kalibyte.foundry.quotation.entity.enums.QuotationPatternStatus;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/**
- * Quotation Item Request
-
- * RULE:
- * - ALWAYS requires full pattern details
- */
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class QuotationItemRequest {
 
     private String partName;
     private String drawingNumber;
     private String materialGrade;
 
+    // Metal & Casting
+    private MetalType metalType;
+    private String castingProcess;
+
     private BigDecimal netWeightKg;
     private BigDecimal grossWeightKg;
 
-    private PatternStatus patternStatus;
+    private QuotationPatternStatus patternStatus;
 
-    private int quantity;
+    private Integer quantity;
     private BigDecimal unitPrice;
 
-    //--------------------------------------------
-    // PATTERN (MANDATORY)
-    //--------------------------------------------
-
+    // Pattern logic
     private PatternProvidedBy patternProvidedBy;
-
-    private UUID patternId; // if company pattern
-
-    private PatternReceiptRequest patternReceipt; // if customer pattern
+    private UUID patternId;
+    private PatternReceiptRequest patternReceipt;
 }

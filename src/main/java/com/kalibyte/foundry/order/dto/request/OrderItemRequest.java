@@ -1,57 +1,49 @@
 package com.kalibyte.foundry.order.dto.request;
 
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class OrderItemRequest {
 
-    //------------------------------------------------
-    // PART INFO
-    //------------------------------------------------
     @NotBlank(message = "Part name is required")
     private String partName;
 
-    @NotBlank(message = "Material grade is required")
     private String materialGrade;
 
-    //------------------------------------------------
-    // WEIGHT (IMPORTANT)
-    //------------------------------------------------
+    // Metal & Casting
+    private MetalType metalType;
+    private String castingProcess;
+
     @NotNull(message = "Net weight is required")
+    @DecimalMin(value = "0.001", message = "Net weight must be greater than 0")
     private BigDecimal netWeightKg;
 
-    //------------------------------------------------
-    // QUANTITY
-    //------------------------------------------------
-    @Min(value = 1, message = "Quantity must be at least 1")
-    private int quantity;
+    private BigDecimal grossWeightKg;
 
-    //------------------------------------------------
-    // PRICING
-    //------------------------------------------------
+    @NotNull(message = "Quantity is required")
+    @Min(value = 1, message = "Quantity must be at least 1")
+    private Integer quantity;
+
     @NotNull(message = "Unit price is required")
+    @DecimalMin(value = "0.01", message = "Unit price must be greater than 0")
     private BigDecimal unitPrice;
 
-    //------------------------------------------------
-    // PATTERN LOGIC
-    //------------------------------------------------
-    @NotNull(message = "Pattern source (customer/company) must be specified")
+    @NotNull(message = "Pattern source is required")
     private Boolean patternProvidedByCustomer;
 
-    // If company pattern
     private UUID patternId;
 
-    // If customer pattern
     @Valid
     private PatternReceiptRequest patternReceipt;
 }

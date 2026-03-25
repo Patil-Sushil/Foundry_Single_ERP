@@ -1,32 +1,43 @@
 package com.kalibyte.foundry.order.dto.response;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/**
- * Order Item Response
- */
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class OrderItemResponse {
+
     private UUID id;
     private String partName;
+    private String drawingNumber;
     private String materialGrade;
+
+    // Metal & Casting
+    private String metalType;
+    private String metalCategory;
+    private String castingProcess;
+
+    private BigDecimal netWeightKg;
+    private BigDecimal grossWeightKg;
+
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal lineTotal;
 
-    //--------------------------------------------
-    // PATTERN
-    //--------------------------------------------
     private Boolean patternProvidedByCustomer;
-
     private String patternNumber;
     private String patternName;
 
     private String receiptName;
     private String receiptType;
+    private String receiptMaterial;
+
+    private Integer producedQuantity;
+    private Integer dispatchedQuantity;
+    private Integer pendingQuantity;
 }

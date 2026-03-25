@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.quotation.entity.enums;
 
-public enum PatternStatus {
+public enum QuotationPatternStatus {
     AVAILABLE,
     TO_BE_MADE,
     CUSTOMER_SUPPLY

@@ -35,6 +35,8 @@ public interface OrderService {
     // Update Order Status (Workflow validated)
     void updateStatus(UUID id, OrderStatus status);
 
+    PageResponse<OrderResponse> getPendingOrders(Pageable pageable);
+
     // Delete Order (Optional - if needed)
     // void delete(UUID id);
 }

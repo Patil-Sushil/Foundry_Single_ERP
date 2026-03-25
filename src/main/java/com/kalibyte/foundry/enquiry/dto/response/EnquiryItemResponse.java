@@ -20,6 +20,7 @@ public class EnquiryItemResponse {
     private String partName;
     private String metalCategory;
     private String metalType;
+    private String materialGrade;
     private Integer requiredQuantity;
     private BigDecimal approxPieceWeightKg;
     private BigDecimal totalWeightKg;
