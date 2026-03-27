@@ -71,6 +71,7 @@ public class EnquiryServiceImpl implements EnquiryService {
             item.setEnquiry(enquiry);
             item.setPartName(itemReq.getPartName());
             item.setMetalCategory(category);
+            item.setMaterialGrade(itemReq.getMaterialGrade());
             item.setMetalType(type);
             item.setCastingProcess(itemReq.getCastingProcess());
             item.setRequiredQuantity(itemReq.getRequiredQuantity());

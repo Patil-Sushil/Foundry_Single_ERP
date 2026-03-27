@@ -1,9 +1,10 @@
 package com.kalibyte.foundry.quotation.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.PatternReceipt;
-import com.kalibyte.foundry.quotation.entity.enums.PatternStatus;
+import com.kalibyte.foundry.quotation.entity.enums.QuotationPatternStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import lombok.Getter;
@@ -34,19 +35,25 @@ public class QuotationItem extends BaseEntity {
     @Column(name = "material_grade", length = 100)
     private String materialGrade;
 
+    // ================= METAL & CASTING =================
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metal_type", length = 50)
+    private MetalType metalType;
+
+    @Column(name = "casting_process", length = 50)
+    private String castingProcess;
+
     // ================= WEIGHT =================
 
     @Column(name = "net_weight_kg", precision = 10, scale = 3)
     private BigDecimal netWeightKg;
 
-    @Column(name = "gross_weight_kg", precision = 10, scale = 3)
-    private BigDecimal grossWeightKg;
-
     // ================= PATTERN =================
 
     @Enumerated(EnumType.STRING)
     @Column(name = "pattern_status", length = 20)
-    private PatternStatus patternStatus;
+    private QuotationPatternStatus patternStatus;
 
     @Column(name = "pattern_provided_by_customer")
     private Boolean patternProvidedByCustomer;
@@ -74,11 +81,12 @@ public class QuotationItem extends BaseEntity {
     // ================= BUSINESS METHOD =================
 
     public void calculateLineTotal() {
-        // quantity is primitive, so we check > 0 instead of != null
         if (netWeightKg != null && unitPrice != null && quantity > 0) {
             this.lineTotal = netWeightKg
                     .multiply(unitPrice)
                     .multiply(BigDecimal.valueOf(quantity));
         }
     }
+
+
 }

@@ -26,9 +26,7 @@ public class CustomerValidator {
              throw new InvalidCustomerException("Credit limit must be positive");
         }
 
-        if (StringUtils.hasText(request.getPaymentTerms()) && !ALLOWED_PAYMENT_TERMS.contains(request.getPaymentTerms())) {
-            throw new InvalidCustomerException("Invalid payment terms. Allowed: " + ALLOWED_PAYMENT_TERMS);
-        }
+
         
         // Add more validations like GST format (regex) if needed
     }

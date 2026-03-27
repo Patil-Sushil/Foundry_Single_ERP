@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS customer (
     postal_code VARCHAR(20),
     country VARCHAR(100),
     gst_number VARCHAR(50),
-    payment_terms VARCHAR(100),
     credit_limit NUMERIC(15,2),
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

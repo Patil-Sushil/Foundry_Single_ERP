@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.reports.account.service.cashflow.impl;
 
-import com.kalibyte.foundry.accounts.repository.PaymentRepository;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.expenses.repository.ExpenseRepository;
 import com.kalibyte.foundry.reports.account.dto.response.cashflow.CashFlowItem;
 import com.kalibyte.foundry.reports.account.dto.response.cashflow.CashFlowReport;

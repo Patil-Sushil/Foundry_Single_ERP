@@ -4,6 +4,7 @@ import com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.Order;
+import com.kalibyte.foundry.order.entity.enums.GstType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,7 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"order","items"})
+@ToString(exclude = {"order", "items"})
 public class Invoice extends BaseEntity {
 
     @Column(name = "invoice_number", nullable = false, unique = true)
@@ -47,6 +48,14 @@ public class Invoice extends BaseEntity {
 
     private BigDecimal subtotal;
 
+    //------------------------------------------------
+    // GST FIELDS
+    //------------------------------------------------
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gst_type")
+    private GstType gstType;
+
     private BigDecimal cgst;
 
     private BigDecimal sgst;
@@ -54,6 +63,8 @@ public class Invoice extends BaseEntity {
     private BigDecimal igst;
 
     private BigDecimal gstPercentage;
+
+    private BigDecimal totalGst;
 
     private BigDecimal totalAmount;
 
@@ -64,7 +75,7 @@ public class Invoice extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private InvoiceStatus billStatus;
 
-    public Customer getCustomer(){
+    public Customer getCustomer() {
         return order.getCustomer();
     }
 }

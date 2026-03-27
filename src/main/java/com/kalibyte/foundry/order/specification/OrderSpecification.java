@@ -10,30 +10,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-
 public class OrderSpecification {
+
+    private OrderSpecification() {}
 
     public static Specification<Order> filter(
             OrderStatus status,
             UUID customerId,
             LocalDate from,
-            LocalDate to
-    ) {
+            LocalDate to) {
+
         return (root, query, cb) -> {
 
             List<Predicate> predicates = new ArrayList<>();
 
-            if (status != null)
+            if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));
+            }
 
-            if (customerId != null)
+            if (customerId != null) {
                 predicates.add(cb.equal(root.get("customer").get("id"), customerId));
+            }
 
-            if (from != null)
+            if (from != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("orderDate"), from));
+            }
 
-            if (to != null)
+            if (to != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("orderDate"), to));
+            }
+
+            query.orderBy(cb.desc(root.get("orderDate")));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

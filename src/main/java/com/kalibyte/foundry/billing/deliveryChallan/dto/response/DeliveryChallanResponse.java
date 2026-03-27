@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.billing.deliveryChallan.dto.response;
 
-
 import com.kalibyte.foundry.billing.deliveryChallan.entity.enums.DCStatus;
+import com.kalibyte.foundry.order.entity.enums.GstType;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -36,10 +36,18 @@ public class DeliveryChallanResponse {
 
     private BigDecimal totalWeight;
 
+    // GST breakdown
+    private GstType gstType;
+    private BigDecimal gstPercentage;
+    private BigDecimal subtotal;
+    private BigDecimal cgst;
+    private BigDecimal sgst;
+    private BigDecimal igst;
+    private BigDecimal totalGst;
+
     private BigDecimal totalAmount;
 
     private DCStatus status;
 
     private List<DeliveryChallanItemResponse> items;
-
 }

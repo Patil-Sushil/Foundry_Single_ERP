@@ -25,6 +25,8 @@ public interface QuotationMapper {
     //--------------------------------------------------
     // ITEM
     //--------------------------------------------------
+    @Mapping(source = "metalType.displayName", target = "metalType")
+    @Mapping(target = "metalCategory", ignore = true)
     @Mapping(source = "patternStatus", target = "patternStatus")
     @Mapping(source = "patternProvidedByCustomer", target = "patternProvidedByCustomer")
     @Mapping(target = "receiptName", ignore = true)
@@ -40,46 +42,37 @@ public interface QuotationMapper {
     List<QuotationItemResponse> toItemResponseList(List<QuotationItem> items);
 
     //--------------------------------------------------
-    // AFTER MAPPING (CUSTOM LOGIC)
+    // AFTER MAPPING
     //--------------------------------------------------
     @AfterMapping
-    default void mapPatternDetails(QuotationItem item,
-                                   @MappingTarget QuotationItemResponse response) {
-
+    default void mapExtraDetails(QuotationItem item,
+                                 @MappingTarget QuotationItemResponse response) {
         if (item == null) return;
 
+        // Metal Category from MetalType
+        if (item.getMetalType() != null && item.getMetalType().getCategory() != null) {
+            response.setMetalCategory(item.getMetalType().getCategory().getDisplayName());
+        }
+
+        // Pattern Details
         if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {
-
             if (item.getPatternReceipt() != null) {
-
                 response.setReceiptName(item.getPatternReceipt().getName());
                 response.setReceiptType(String.valueOf(item.getPatternReceipt().getType()));
-
                 if (item.getPatternReceipt().getMaterial() != null) {
-                    response.setReceiptMaterial(
-                            item.getPatternReceipt().getMaterial().name()
-                    );
+                    response.setReceiptMaterial(item.getPatternReceipt().getMaterial().name());
                 }
-
                 if (item.getPatternReceipt().getInwardDate() != null) {
-                    response.setInwardDate(
-                            item.getPatternReceipt().getInwardDate().toString()
-                    );
+                    response.setInwardDate(item.getPatternReceipt().getInwardDate().toString());
                 }
-
                 if (item.getPatternReceipt().getOutwardDate() != null) {
-                    response.setOutwardDate(
-                            item.getPatternReceipt().getOutwardDate().toString()
-                    );
+                    response.setOutwardDate(item.getPatternReceipt().getOutwardDate().toString());
                 }
             }
-
         } else {
-
             if (item.getPattern() != null) {
-
                 response.setPatternNumber(item.getPattern().getPatternNumber());
-                response.setPatternName(item.getPattern().getName());
+                response.setPatternName(item.getPattern().getPatternName());
                 response.setPatternType(String.valueOf(item.getPattern().getType()));
             }
         }

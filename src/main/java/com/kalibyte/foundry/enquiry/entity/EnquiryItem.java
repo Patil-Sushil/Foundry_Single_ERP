@@ -31,6 +31,9 @@ public class EnquiryItem extends BaseEntity {
     @Column(name = "metal_category", nullable = false)
     private MetalCategory metalCategory;
 
+    @Column(name = "material_grade", length = 100)
+    private String materialGrade;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "metal_type", nullable = false)
     private MetalType metalType;

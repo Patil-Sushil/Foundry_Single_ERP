@@ -4,7 +4,6 @@ import com.kalibyte.foundry.common.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -46,9 +45,6 @@ public class Customer extends BaseEntity {
 
     @Column(name = "gst_number")
     private String gstNumber;
-
-    @Column(name = "payment_terms")
-    private String paymentTerms;
 
     @Column(name = "credit_limit")
     private BigDecimal creditLimit;

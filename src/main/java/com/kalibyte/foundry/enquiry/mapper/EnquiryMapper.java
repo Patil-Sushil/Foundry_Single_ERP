@@ -32,6 +32,8 @@ public interface EnquiryMapper {
 
     @Mapping(source = "metalCategory.displayName", target = "metalCategory")
     @Mapping(source = "metalType.displayName", target = "metalType")
+    @Mapping(source = "materialGrade", target = "materialGrade")
+
 
     // IMPORTANT FIX
     @Mapping(source = "patternProvidedBy", target = "patternProvidedBy")

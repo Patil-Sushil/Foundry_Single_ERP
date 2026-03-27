@@ -1,39 +1,43 @@
 package com.kalibyte.foundry.quotation.dto.response;
 
-import lombok.Data;
+import com.kalibyte.foundry.quotation.entity.enums.QuotationPatternStatus;
+import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class QuotationItemResponse {
-
-    private UUID id;
 
     private String partName;
     private String drawingNumber;
     private String materialGrade;
 
+    // Metal & Casting
+    private String metalType;
+    private String metalCategory;
+    private String castingProcess;
+
     private BigDecimal netWeightKg;
     private BigDecimal grossWeightKg;
 
-    private String patternStatus;
+    private QuotationPatternStatus patternStatus;
+    private Boolean patternProvidedByCustomer;
 
-    private int quantity;
+    private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal lineTotal;
 
-
-    private Boolean patternProvidedByCustomer;
-
-    // CUSTOMER PATTERN
+    // Pattern details
     private String receiptName;
     private String receiptType;
     private String receiptMaterial;
     private String inwardDate;
     private String outwardDate;
 
-    // COMPANY PATTERN
     private String patternNumber;
     private String patternName;
     private String patternType;

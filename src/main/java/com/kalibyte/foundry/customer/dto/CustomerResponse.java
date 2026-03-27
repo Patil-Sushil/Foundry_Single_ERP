@@ -24,7 +24,6 @@ public class CustomerResponse {
     private String postalCode;
     private String country;
     private String gstNumber;
-    private String paymentTerms;
     private BigDecimal creditLimit;
     private String status;            // ACTIVE, INACTIVE, BLOCKED
 }

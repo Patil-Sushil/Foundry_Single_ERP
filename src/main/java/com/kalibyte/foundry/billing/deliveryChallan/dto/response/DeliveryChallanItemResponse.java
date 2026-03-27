@@ -23,4 +23,8 @@ public class DeliveryChallanItemResponse {
 
     private BigDecimal amount;
 
+    // GST per item
+    private BigDecimal gstPercentage;
+    private BigDecimal gstAmount;
+    private BigDecimal totalWithGst;
 }
