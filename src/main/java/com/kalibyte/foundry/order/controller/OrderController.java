@@ -2,7 +2,9 @@ package com.kalibyte.foundry.order.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.common.response.PageResponse;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.order.dto.request.OrderCreateRequest;
+import com.kalibyte.foundry.order.dto.response.OrderItemResponse;
 import com.kalibyte.foundry.order.dto.response.OrderResponse;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.service.OrderService;
@@ -117,5 +119,77 @@ public class OrderController {
 
         orderService.updateStatus(id, status);
         return ApiResponse.success("Order status updated successfully", null);
+    }
+
+    // =============================================================
+    //  ORDER ITEM APIs
+    // =============================================================
+
+    //-----------------------------------------------------
+    // GET ALL ORDER ITEMS (ACROSS ALL ORDERS)
+    //-----------------------------------------------------
+    @GetMapping("/items")
+    @Operation(summary = "Get all order items across all orders",
+            description = "Returns all order items with order and customer details. "
+                    + "Supports filtering by order, customer, status, part name, metal type, "
+                    + "casting process, and pending status.")
+    public ApiResponse<PageResponse<OrderItemResponse>> getAllOrderItems(
+
+            @Parameter(description = "Filter by specific order ID")
+            @RequestParam(required = false) UUID orderId,
+
+            @Parameter(description = "Filter by customer ID")
+            @RequestParam(required = false) UUID customerId,
+
+            @Parameter(description = "Filter by order status")
+            @RequestParam(required = false) OrderStatus orderStatus,
+
+            @Parameter(description = "Search by part name (case-insensitive)")
+            @RequestParam(required = false) String partName,
+
+            @Parameter(description = "Filter by metal type")
+            @RequestParam(required = false) MetalType metalType,
+
+            @Parameter(description = "Filter by casting process")
+            @RequestParam(required = false) String castingProcess,
+
+            @Parameter(description = "Show only pending items (produced < quantity)")
+            @RequestParam(required = false) Boolean pendingOnly,
+
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+
+        PageResponse<OrderItemResponse> response = orderService.getAllOrderItems(
+                orderId, customerId, orderStatus, partName,
+                metalType, castingProcess, pendingOnly, pageable);
+
+        return ApiResponse.success(response);
+    }
+
+    //-----------------------------------------------------
+    // GET ORDER ITEM BY ID
+    //-----------------------------------------------------
+    @GetMapping("/items/{itemId}")
+    @Operation(summary = "Get a single order item by ID",
+            description = "Returns order item with full order and customer details")
+    public ApiResponse<OrderItemResponse> getOrderItemById(
+            @PathVariable UUID itemId) {
+
+        OrderItemResponse response = orderService.getOrderItemById(itemId);
+        return ApiResponse.success(response);
+    }
+
+    //-----------------------------------------------------
+    // GET PENDING ORDER ITEMS
+    //-----------------------------------------------------
+    @GetMapping("/items/pending")
+    @Operation(summary = "Get all pending order items",
+            description = "Returns items where produced quantity is less than ordered quantity")
+    public ApiResponse<PageResponse<OrderItemResponse>> getPendingOrderItems(
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC)
+            Pageable pageable) {
+
+        PageResponse<OrderItemResponse> response = orderService.getPendingOrderItems(pageable);
+        return ApiResponse.success(response);
     }
 }

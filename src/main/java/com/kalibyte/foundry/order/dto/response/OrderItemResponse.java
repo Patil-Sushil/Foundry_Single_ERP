@@ -13,6 +13,16 @@ import java.util.UUID;
 public class OrderItemResponse {
 
     private UUID id;
+
+    // Order reference (populated when fetching items across orders)
+    private UUID orderId;
+    private String orderNumber;
+    private String orderStatus;
+
+    // Customer reference
+    private UUID customerId;
+    private String customerName;
+
     private String partName;
     private String drawingNumber;
     private String materialGrade;

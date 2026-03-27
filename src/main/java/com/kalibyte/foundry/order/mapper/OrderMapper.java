@@ -23,7 +23,7 @@ public interface OrderMapper {
     @Mapping(target = "customerName", source = "customer.name")
     @Mapping(target = "quotationId", source = "quotation.id")
     @Mapping(target = "quotationNumber", source = "quotation.quotationNumber")
-    @Mapping(target = "items", source = "items")
+    @Mapping(target = "items", source = "items", qualifiedByName = "toItemResponse")
     @Mapping(target = "paymentTermsDisplay", expression = "java(order.getPaymentTermsDisplay())")
     @Mapping(target = "totalQuantity", expression = "java(calculateTotalQuantity(order))")
     @Mapping(target = "producedQuantity", expression = "java(calculateProducedQuantity(order))")
@@ -33,9 +33,14 @@ public interface OrderMapper {
     List<OrderResponse> toResponseList(List<Order> orders);
 
     // =========================================================
-    //  ORDER ITEM -> ORDER ITEM RESPONSE
+    //  ORDER ITEM -> ORDER ITEM RESPONSE (within an order context)
     // =========================================================
 
+    @Mapping(target = "orderId", ignore = true)
+    @Mapping(target = "orderNumber", ignore = true)
+    @Mapping(target = "orderStatus", ignore = true)
+    @Mapping(target = "customerId", ignore = true)
+    @Mapping(target = "customerName", ignore = true)
     @Mapping(target = "metalType", expression = "java(item.getMetalType() != null ? item.getMetalType().name() : null)")
     @Mapping(target = "metalCategory", expression = "java(item.getMetalType() != null ? item.getMetalType().getDisplayName() : null)")
     @Mapping(target = "patternNumber", source = "pattern.patternNumber")
@@ -44,9 +49,34 @@ public interface OrderMapper {
     @Mapping(target = "receiptType", source = "patternReceipt.type")
     @Mapping(target = "receiptMaterial", source = "patternReceipt.material")
     @Mapping(target = "pendingQuantity", expression = "java(item.getPendingQuantity())")
+    @Named("toItemResponse")
     OrderItemResponse toItemResponse(OrderItem item);
 
+    @IterableMapping(qualifiedByName = "toItemResponse")
     List<OrderItemResponse> toItemResponseList(List<OrderItem> items);
+
+    // =========================================================
+    //  ORDER ITEM -> ORDER ITEM RESPONSE (with order details)
+    // =========================================================
+
+    @Mapping(target = "orderId", source = "order.id")
+    @Mapping(target = "orderNumber", source = "order.orderNumber")
+    @Mapping(target = "orderStatus", expression = "java(item.getOrder() != null && item.getOrder().getStatus() != null ? item.getOrder().getStatus().name() : null)")
+    @Mapping(target = "customerId", source = "order.customer.id")
+    @Mapping(target = "customerName", source = "order.customer.name")
+    @Mapping(target = "metalType", expression = "java(item.getMetalType() != null ? item.getMetalType().name() : null)")
+    @Mapping(target = "metalCategory", expression = "java(item.getMetalType() != null ? item.getMetalType().getDisplayName() : null)")
+    @Mapping(target = "patternNumber", source = "pattern.patternNumber")
+    @Mapping(target = "patternName", source = "pattern.patternName")
+    @Mapping(target = "receiptName", source = "patternReceipt.name")
+    @Mapping(target = "receiptType", source = "patternReceipt.type")
+    @Mapping(target = "receiptMaterial", source = "patternReceipt.material")
+    @Mapping(target = "pendingQuantity", expression = "java(item.getPendingQuantity())")
+    @Named("toItemResponseWithOrder")
+    OrderItemResponse toItemResponseWithOrder(OrderItem item);
+
+    @IterableMapping(qualifiedByName = "toItemResponseWithOrder")
+    List<OrderItemResponse> toItemResponseWithOrderList(List<OrderItem> items);
 
     // =========================================================
     //  HELPER METHODS

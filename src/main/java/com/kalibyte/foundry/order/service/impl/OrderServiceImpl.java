@@ -8,8 +8,10 @@ import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.enquiry.entity.Enquiry;
 import com.kalibyte.foundry.enquiry.entity.EnquiryItem;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.order.dto.request.OrderCreateRequest;
 import com.kalibyte.foundry.order.dto.request.OrderItemRequest;
+import com.kalibyte.foundry.order.dto.response.OrderItemResponse;
 import com.kalibyte.foundry.order.dto.response.OrderResponse;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
@@ -17,8 +19,10 @@ import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
 import com.kalibyte.foundry.order.entity.enums.PaymentTerms;
 import com.kalibyte.foundry.order.mapper.OrderMapper;
+import com.kalibyte.foundry.order.repository.OrderItemRepository;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.order.service.OrderService;
+import com.kalibyte.foundry.order.specification.OrderItemSpecification;
 import com.kalibyte.foundry.order.specification.OrderSpecification;
 import com.kalibyte.foundry.order.validation.OrderStatusTransitionValidator;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
@@ -54,6 +58,7 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final QuotationRepository quotationRepository;
     private final CustomerRepository customerRepository;
     private final PatternRepository patternRepository;
@@ -109,7 +114,6 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal gstPercentage = request.getGstPercentage() != null
                 ? request.getGstPercentage() : BigDecimal.valueOf(18);
 
-        // Validate payment terms
         validatePaymentTerms(request);
 
         Order order = Order.builder()
@@ -231,7 +235,6 @@ public class OrderServiceImpl implements OrderService {
                     "Items are required for direct order");
         }
 
-        // Validate payment terms
         validatePaymentTerms(request);
 
         BigDecimal defaultGstPercentage = request.getGstPercentage() != null
@@ -366,7 +369,6 @@ public class OrderServiceImpl implements OrderService {
         if (request.getPaymentTerms() == PaymentTerms.CUSTOM) {
             return request.getCustomPaymentTerms();
         }
-        // Clear custom terms if not CUSTOM type
         return null;
     }
 
@@ -498,6 +500,63 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Order {} status changed: {} -> {}",
                 order.getOrderNumber(), oldStatus, newStatus);
+    }
+
+    // =========================================================
+//  GET ALL ORDER ITEMS (ACROSS ALL ORDERS)
+// =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderItemResponse> getAllOrderItems(
+            UUID orderId,
+            UUID customerId,
+            OrderStatus orderStatus,
+            String partName,
+            MetalType metalType,
+            String castingProcess,
+            Boolean pendingOnly,
+            Pageable pageable) {
+
+        Specification<OrderItem> spec = OrderItemSpecification.filter(
+                orderId, customerId, orderStatus, partName,
+                metalType, castingProcess, pendingOnly);
+
+        Page<OrderItem> page = orderItemRepository.findAll(spec, pageable);
+
+        Page<OrderItemResponse> responsePage = page.map(orderMapper::toItemResponseWithOrder);
+
+        return PageResponse.from(responsePage);
+    }
+
+    // =========================================================
+    //  GET ORDER ITEM BY ID
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderItemResponse getOrderItemById(UUID itemId) {
+
+        OrderItem item = orderItemRepository.findWithDetailsById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Order item not found: " + itemId));
+
+        return orderMapper.toItemResponseWithOrder(item);
+    }
+
+    // =========================================================
+    //  GET PENDING ORDER ITEMS
+    // =========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderItemResponse> getPendingOrderItems(Pageable pageable) {
+
+        Page<OrderItem> page = orderItemRepository.findPendingItems(pageable);
+
+        Page<OrderItemResponse> responsePage = page.map(orderMapper::toItemResponseWithOrder);
+
+        return PageResponse.from(responsePage);
     }
 
     // =========================================================

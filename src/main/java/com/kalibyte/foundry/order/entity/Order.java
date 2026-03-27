@@ -2,6 +2,7 @@ package com.kalibyte.foundry.order.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
+
 import com.kalibyte.foundry.order.entity.enums.GstType;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
