@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.reports.account.service.dailycollection.impl;
 
 
-import com.kalibyte.foundry.accounts.repository.PaymentRepository;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.reports.account.dto.response.dailycollection.DailyCollectionItem;
 import com.kalibyte.foundry.reports.account.dto.response.dailycollection.DailyCollectionReport;
 import com.kalibyte.foundry.reports.account.service.dailycollection.DailyCollectionReportService;

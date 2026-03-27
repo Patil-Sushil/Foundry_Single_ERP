@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.reports.account.service.collectionsummary.impl;
 
-import com.kalibyte.foundry.accounts.repository.PaymentRepository;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.reports.account.dto.response.collectionsummary.CollectionSummaryReport;
 import com.kalibyte.foundry.reports.account.dto.response.collectionsummary.PaymentMethodSummary;
 import com.kalibyte.foundry.reports.account.dto.response.collectionsummary.TopCustomerCollection;

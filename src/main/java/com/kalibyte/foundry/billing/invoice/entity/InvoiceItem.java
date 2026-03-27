@@ -47,4 +47,17 @@ public class InvoiceItem extends BaseEntity {
 
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
+
+    //------------------------------------------------
+    // GST PER ITEM
+    //------------------------------------------------
+
+    @Column(name = "gst_percentage", precision = 5, scale = 2)
+    private BigDecimal gstPercentage;
+
+    @Column(name = "gst_amount", precision = 19, scale = 2)
+    private BigDecimal gstAmount;
+
+    @Column(name = "total_with_gst", precision = 19, scale = 2)
+    private BigDecimal totalWithGst;
 }

@@ -20,7 +20,7 @@ public class Pattern extends BaseEntity {
     private String patternNumber;
 
     @Column(nullable = false)
-    private String name;
+    private String patternName;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

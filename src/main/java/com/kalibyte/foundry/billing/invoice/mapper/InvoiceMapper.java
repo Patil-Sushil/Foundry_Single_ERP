@@ -1,26 +1,37 @@
 package com.kalibyte.foundry.billing.invoice.mapper;
 
-
+import com.kalibyte.foundry.billing.invoice.dto.response.InvoiceItemResponse;
 import com.kalibyte.foundry.billing.invoice.dto.response.InvoiceResponse;
 import com.kalibyte.foundry.billing.invoice.entity.Invoice;
+import com.kalibyte.foundry.billing.invoice.entity.InvoiceItem;
+import org.mapstruct.*;
 
-public class InvoiceMapper {
+import java.util.List;
 
-    public static InvoiceResponse toResponse(Invoice invoice) {
+@Mapper(
+        componentModel = "spring",
+        unmappedTargetPolicy = ReportingPolicy.IGNORE,
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
+)
+public interface InvoiceMapper {
 
-        return InvoiceResponse.builder()
-                .id(invoice.getId())
-                .invoiceNumber(invoice.getInvoiceNumber())
-                .orderId(invoice.getOrder().getId())
-                .vehicleNumber(invoice.getVehicleNumber())
-                .subtotal(invoice.getSubtotal())
-                .cgst(invoice.getCgst())
-                .sgst(invoice.getSgst())
-                .igst(invoice.getIgst())
-                .totalAmount(invoice.getTotalAmount())
-                .invoiceDate(invoice.getInvoiceDate())
-                .dueDate(invoice.getDueDate())
-                .billStatus(invoice.getBillStatus())
-                .build();
-    }
+    // =========================================================
+    //  INVOICE -> INVOICE RESPONSE
+    // =========================================================
+
+    @Mapping(target = "orderId", source = "order.id")
+    @Mapping(target = "items", source = "items")
+    InvoiceResponse toResponse(Invoice invoice);
+
+    List<InvoiceResponse> toResponseList(List<Invoice> invoices);
+
+    // =========================================================
+    //  INVOICE ITEM -> INVOICE ITEM RESPONSE
+    // =========================================================
+
+    @Mapping(target = "partName", source = "orderItem.partName")
+    @Mapping(target = "materialGrade", source = "orderItem.materialGrade")
+    InvoiceItemResponse toItemResponse(InvoiceItem item);
+
+    List<InvoiceItemResponse> toItemResponseList(List<InvoiceItem> items);
 }

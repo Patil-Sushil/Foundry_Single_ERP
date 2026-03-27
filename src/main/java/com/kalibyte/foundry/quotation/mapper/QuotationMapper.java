@@ -72,7 +72,7 @@ public interface QuotationMapper {
         } else {
             if (item.getPattern() != null) {
                 response.setPatternNumber(item.getPattern().getPatternNumber());
-                response.setPatternName(item.getPattern().getName());
+                response.setPatternName(item.getPattern().getPatternName());
                 response.setPatternType(String.valueOf(item.getPattern().getType()));
             }
         }

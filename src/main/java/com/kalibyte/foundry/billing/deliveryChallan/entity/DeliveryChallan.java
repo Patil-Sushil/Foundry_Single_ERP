@@ -4,6 +4,7 @@ import com.kalibyte.foundry.billing.deliveryChallan.entity.enums.DCStatus;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.Order;
+import com.kalibyte.foundry.order.entity.enums.GstType;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -43,6 +44,29 @@ public class DeliveryChallan extends BaseEntity {
     private Integer totalQuantity;
 
     private BigDecimal totalWeight;
+
+    // ---- GST Fields ----
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gst_type")
+    private GstType gstType;
+
+    @Column(name = "gst_percentage", precision = 5, scale = 2)
+    private BigDecimal gstPercentage;
+
+    @Column(name = "subtotal", precision = 19, scale = 2)
+    private BigDecimal subtotal;
+
+    @Column(name = "cgst", precision = 19, scale = 2)
+    private BigDecimal cgst;
+
+    @Column(name = "sgst", precision = 19, scale = 2)
+    private BigDecimal sgst;
+
+    @Column(name = "igst", precision = 19, scale = 2)
+    private BigDecimal igst;
+
+    @Column(name = "total_gst", precision = 19, scale = 2)
+    private BigDecimal totalGst;
 
     private BigDecimal totalAmount;
 

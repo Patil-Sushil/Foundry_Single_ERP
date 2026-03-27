@@ -1,193 +1,241 @@
--------------------------------------------------------
--- EXTENSION (UUID generation)
--------------------------------------------------------
+-- ============================================
+-- V14__create_delivery_challan_and_invoice.sql
+-- ============================================
 
+-- ============================================
+-- EXTENSION (UUID generation)
+-- ============================================
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--------------------------------------------------------
+-- ============================================
 -- DELIVERY CHALLANS
--------------------------------------------------------
+-- ============================================
+CREATE TABLE IF NOT EXISTS delivery_challans (
 
-CREATE TABLE delivery_challans (
+                                                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-                                   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dc_number VARCHAR(50) UNIQUE NOT NULL,
 
-                                   dc_number VARCHAR(50) UNIQUE NOT NULL,
+    order_id UUID NOT NULL,
+    customer_id UUID NOT NULL,
 
-                                   order_id UUID NOT NULL,
-                                   customer_id UUID NOT NULL,
+    dispatch_date DATE,
 
-                                   dispatch_date DATE,
+    vehicle_number VARCHAR(50),
+    transport_name VARCHAR(100),
+    lr_number VARCHAR(100),
 
-                                   vehicle_number VARCHAR(50),
-                                   transport_name VARCHAR(100),
-                                   lr_number VARCHAR(100),
+    total_quantity INT,
+    total_weight DECIMAL(12,2),
 
-                                   total_quantity INT,
-                                   total_weight DECIMAL(10,2),
-                                   total_amount DECIMAL(12,2),
+    -- GST FIELDS (NEW)
+    gst_type VARCHAR(20),
+    gst_percentage DECIMAL(5,2) DEFAULT 18,
+    subtotal DECIMAL(19,2) DEFAULT 0,
+    cgst DECIMAL(19,2) DEFAULT 0,
+    sgst DECIMAL(19,2) DEFAULT 0,
+    igst DECIMAL(19,2) DEFAULT 0,
+    total_gst DECIMAL(19,2) DEFAULT 0,
 
-                                   status VARCHAR(20) DEFAULT 'CREATED',
+    total_amount DECIMAL(19,2) DEFAULT 0,
 
-                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                   updated_at TIMESTAMP,
-                                   created_by VARCHAR(255),
-                                   updated_by VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'CREATED',
 
-                                   CONSTRAINT fk_dc_order
-                                       FOREIGN KEY (order_id)
-                                           REFERENCES orders(id),
+    -- AUDIT FIELDS
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
 
-                                   CONSTRAINT fk_dc_customer
-                                       FOREIGN KEY (customer_id)
-                                           REFERENCES customer(id)
+    -- CONSTRAINTS
+    CONSTRAINT chk_dc_status
+    CHECK (status IN ('CREATED', 'DISPATCHED', 'DELIVERED', 'INVOICED', 'CANCELLED')),
 
-);
+    CONSTRAINT chk_dc_gst_type
+    CHECK (gst_type IS NULL OR gst_type IN ('CGST_SGST', 'IGST'))
+    );
 
--------------------------------------------------------
--- INDEXES
--------------------------------------------------------
-
-CREATE INDEX idx_dc_order_id
-    ON delivery_challans(order_id);
-
-CREATE INDEX idx_dc_customer_id
-    ON delivery_challans(customer_id);
-
--------------------------------------------------------
+-- ============================================
 -- DELIVERY CHALLAN ITEMS
--------------------------------------------------------
+-- ============================================
+CREATE TABLE IF NOT EXISTS delivery_challan_items (
 
-CREATE TABLE delivery_challan_items (
+                                                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    dc_id UUID NOT NULL,
+    order_item_id UUID NOT NULL,
+
+    quantity INT,
+    weight DECIMAL(12,2),
+    rate DECIMAL(12,2),
+    amount DECIMAL(19,2),
+
+    -- GST PER ITEM (NEW)
+    gst_percentage DECIMAL(5,2) DEFAULT 18,
+    gst_amount DECIMAL(19,2) DEFAULT 0,
+    total_with_gst DECIMAL(19,2) DEFAULT 0,
+
+    -- AUDIT FIELDS
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255)
+    );
+
+-- ============================================
+-- INVOICES (1 ORDER → 1 INVOICE)
+-- ============================================
+CREATE TABLE IF NOT EXISTS invoices (
 
                                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-                                        dc_id UUID NOT NULL,
+    invoice_number VARCHAR(50) UNIQUE NOT NULL,
 
-                                        order_item_id UUID NOT NULL,
+    order_id UUID UNIQUE NOT NULL,
 
-                                        quantity INT,
-                                        weight DECIMAL(10,2),
-                                        rate DECIMAL(10,2),
+    vehicle_number VARCHAR(50),
 
-                                        amount DECIMAL(12,2),
+    subtotal DECIMAL(19,2) DEFAULT 0,
 
-                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                        updated_at TIMESTAMP,
-                                        created_by VARCHAR(255),
-                                        updated_by VARCHAR(255),
+    -- GST FIELDS (UPDATED)
+    gst_type VARCHAR(20),
+    gst_percentage DECIMAL(5,2) DEFAULT 18,
+    cgst DECIMAL(19,2) DEFAULT 0,
+    sgst DECIMAL(19,2) DEFAULT 0,
+    igst DECIMAL(19,2) DEFAULT 0,
+    total_gst DECIMAL(19,2) DEFAULT 0,
 
-                                        CONSTRAINT fk_dc_items
-                                            FOREIGN KEY (dc_id)
-                                                REFERENCES delivery_challans(id)
-                                                ON DELETE CASCADE,
+    total_amount DECIMAL(19,2) DEFAULT 0,
 
-                                        CONSTRAINT fk_dc_order_item
-                                            FOREIGN KEY (order_item_id)
-                                                REFERENCES order_items(id)
+    invoice_date DATE,
+    due_date DATE,
 
-);
+    bill_status VARCHAR(20) DEFAULT 'UNPAID',
 
--------------------------------------------------------
--- INDEXES
--------------------------------------------------------
+    -- AUDIT FIELDS
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
 
-CREATE INDEX idx_dc_items_dc_id
-    ON delivery_challan_items(dc_id);
+    -- CONSTRAINTS
+    CONSTRAINT chk_invoice_status
+    CHECK (bill_status IN ('PAID', 'UNPAID', 'PARTIALLY_PAID', 'CANCELLED')),
 
-CREATE INDEX idx_dc_items_order_item_id
-    ON delivery_challan_items(order_item_id);
+    CONSTRAINT chk_invoice_gst_type
+    CHECK (gst_type IS NULL OR gst_type IN ('CGST_SGST', 'IGST'))
+    );
 
--------------------------------------------------------
--- INVOICES (1 ORDER → 1 INVOICE)
--------------------------------------------------------
-
-CREATE TABLE invoices (
-
-                          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-                          invoice_number VARCHAR(50) UNIQUE NOT NULL,
-
-                          order_id UUID UNIQUE NOT NULL,
-
-                          vehicle_number VARCHAR(50),
-
-                          subtotal DECIMAL(12,2),
-
-                          cgst DECIMAL(10,2),
-                          sgst DECIMAL(10,2),
-                          igst DECIMAL(10,2),
-
-                          gst_percentage DECIMAL(5,2),
-
-                          total_amount DECIMAL(12,2),
-
-                          invoice_date DATE,
-                          due_date DATE,
-
-                          bill_status VARCHAR(20) DEFAULT 'UNPAID',
-
-                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                          updated_at TIMESTAMP,
-                          created_by VARCHAR(255),
-                          updated_by VARCHAR(255),
-
-                          CONSTRAINT fk_invoice_order
-                              FOREIGN KEY (order_id)
-                                  REFERENCES orders(id)
-
-);
-
--------------------------------------------------------
--- INDEXES
--------------------------------------------------------
-
-CREATE INDEX idx_invoice_order_id
-    ON invoices(order_id);
-
-CREATE INDEX idx_invoice_status_due
-    ON invoices (bill_status, due_date);
-
--------------------------------------------------------
+-- ============================================
 -- INVOICE ITEMS
--------------------------------------------------------
+-- ============================================
+CREATE TABLE IF NOT EXISTS invoice_items (
 
-CREATE TABLE invoice_items (
+                                             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-                               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID NOT NULL,
+    order_item_id UUID NOT NULL,
 
-                               invoice_id UUID NOT NULL,
+    quantity INT,
+    weight DECIMAL(12,2),
+    rate DECIMAL(12,2),
+    amount DECIMAL(19,2),
 
-                               order_item_id UUID NOT NULL,
+    -- GST PER ITEM (NEW)
+    gst_percentage DECIMAL(5,2) DEFAULT 18,
+    gst_amount DECIMAL(19,2) DEFAULT 0,
+    total_with_gst DECIMAL(19,2) DEFAULT 0,
 
-                               quantity INT,
-                               weight DECIMAL(10,2),
-                               rate DECIMAL(10,2),
+    -- AUDIT FIELDS
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255)
+    );
 
-                               amount DECIMAL(12,2),
+-- ============================================
+-- FOREIGN KEYS - DELIVERY CHALLANS
+-- ============================================
+ALTER TABLE delivery_challans
+    ADD CONSTRAINT fk_dc_order
+        FOREIGN KEY (order_id)
+            REFERENCES orders(id)
+            ON DELETE RESTRICT;
 
-                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                               updated_at TIMESTAMP,
-                               created_by VARCHAR(255),
-                               updated_by VARCHAR(255),
+ALTER TABLE delivery_challans
+    ADD CONSTRAINT fk_dc_customer
+        FOREIGN KEY (customer_id)
+            REFERENCES customer(id)
+            ON DELETE RESTRICT;
 
-                               CONSTRAINT fk_invoice_items_invoice
-                                   FOREIGN KEY (invoice_id)
-                                       REFERENCES invoices(id)
-                                       ON DELETE CASCADE,
+-- ============================================
+-- FOREIGN KEYS - DELIVERY CHALLAN ITEMS
+-- ============================================
+ALTER TABLE delivery_challan_items
+    ADD CONSTRAINT fk_dc_items_dc
+        FOREIGN KEY (dc_id)
+            REFERENCES delivery_challans(id)
+            ON DELETE CASCADE;
 
-                               CONSTRAINT fk_invoice_items_order_item
-                                   FOREIGN KEY (order_item_id)
-                                       REFERENCES order_items(id)
+ALTER TABLE delivery_challan_items
+    ADD CONSTRAINT fk_dc_items_order_item
+        FOREIGN KEY (order_item_id)
+            REFERENCES order_items(id)
+            ON DELETE RESTRICT;
 
-);
+-- ============================================
+-- FOREIGN KEYS - INVOICES
+-- ============================================
+ALTER TABLE invoices
+    ADD CONSTRAINT fk_invoice_order
+        FOREIGN KEY (order_id)
+            REFERENCES orders(id)
+            ON DELETE RESTRICT;
 
--------------------------------------------------------
--- INDEXES
--------------------------------------------------------
+-- ============================================
+-- FOREIGN KEYS - INVOICE ITEMS
+-- ============================================
+ALTER TABLE invoice_items
+    ADD CONSTRAINT fk_invoice_items_invoice
+        FOREIGN KEY (invoice_id)
+            REFERENCES invoices(id)
+            ON DELETE CASCADE;
 
-CREATE INDEX idx_invoice_items_invoice_id
-    ON invoice_items(invoice_id);
+ALTER TABLE invoice_items
+    ADD CONSTRAINT fk_invoice_items_order_item
+        FOREIGN KEY (order_item_id)
+            REFERENCES order_items(id)
+            ON DELETE RESTRICT;
 
-CREATE INDEX idx_invoice_items_order_item_id
-    ON invoice_items(order_item_id);
+-- ============================================
+-- INDEXES - DELIVERY CHALLANS
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_dc_order_id ON delivery_challans(order_id);
+CREATE INDEX IF NOT EXISTS idx_dc_customer_id ON delivery_challans(customer_id);
+CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status);
+CREATE INDEX IF NOT EXISTS idx_dc_dispatch_date ON delivery_challans(dispatch_date);
+CREATE INDEX IF NOT EXISTS idx_dc_number ON delivery_challans(dc_number);
+CREATE INDEX IF NOT EXISTS idx_dc_gst_type ON delivery_challans(gst_type);
+
+-- ============================================
+-- INDEXES - DELIVERY CHALLAN ITEMS
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_dc_items_dc_id ON delivery_challan_items(dc_id);
+CREATE INDEX IF NOT EXISTS idx_dc_items_order_item_id ON delivery_challan_items(order_item_id);
+
+-- ============================================
+-- INDEXES - INVOICES
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_invoice_order_id ON invoices(order_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_status ON invoices(bill_status);
+CREATE INDEX IF NOT EXISTS idx_invoice_due_date ON invoices(due_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_date ON invoices(invoice_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_number ON invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoice_status_due ON invoices(bill_status, due_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_gst_type ON invoices(gst_type);
+
+-- ============================================
+-- INDEXES - INVOICE ITEMS
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice_id ON invoice_items(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_items_order_item_id ON invoice_items(order_item_id);

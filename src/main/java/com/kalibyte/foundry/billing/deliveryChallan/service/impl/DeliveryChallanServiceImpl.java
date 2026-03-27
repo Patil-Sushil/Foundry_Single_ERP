@@ -11,6 +11,7 @@ import com.kalibyte.foundry.billing.deliveryChallan.repository.DeliveryChallanIt
 import com.kalibyte.foundry.billing.deliveryChallan.repository.DeliveryChallanRepository;
 import com.kalibyte.foundry.billing.deliveryChallan.service.DeliveryChallanService;
 import com.kalibyte.foundry.billing.util.DCNumberGenerator;
+import com.kalibyte.foundry.billing.util.GstCalculationResult;
 import com.kalibyte.foundry.billing.util.PdfGenerator;
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.response.PageResponse;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +50,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
     private final OrderItemRepository orderItemRepository;
     private final PatternRepository patternRepository;
 
+    private final DeliveryChallanMapper deliveryChallanMapper;  // Injected MapStruct mapper
     private final EmailService emailService;
     private final PdfGenerator pdfGenerator;
 
@@ -79,7 +82,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         deliveryChallanRepository.save(dc);
 
         //------------------------------------------------
-        // CREATE ITEMS
+        // CREATE ITEMS WITH GST
         //------------------------------------------------
 
         List<DeliveryChallanItem> items = request.getItems()
@@ -102,13 +105,31 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
                 .map(DeliveryChallanItem::getWeight)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalAmount = items.stream()
+        BigDecimal subtotal = items.stream()
                 .map(DeliveryChallanItem::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         dc.setTotalQuantity(totalQty);
         dc.setTotalWeight(totalWeight);
-        dc.setTotalAmount(totalAmount);
+        dc.setSubtotal(subtotal);
+
+        //------------------------------------------------
+        // CALCULATE GST AT DC LEVEL
+        //------------------------------------------------
+
+        BigDecimal gstPercentage = order.getGstPercentage() != null
+                ? order.getGstPercentage() : BigDecimal.valueOf(18);
+
+        GstCalculationResult gstResult = GstCalculationResult.calculate(
+                subtotal, gstPercentage, customer.getState());
+
+        dc.setGstType(gstResult.getGstType());
+        dc.setGstPercentage(gstResult.getGstPercentage());
+        dc.setCgst(gstResult.getCgst());
+        dc.setSgst(gstResult.getSgst());
+        dc.setIgst(gstResult.getIgst());
+        dc.setTotalGst(gstResult.getTotalGst());
+        dc.setTotalAmount(gstResult.getGrandTotal());
 
         deliveryChallanRepository.save(dc);
 
@@ -132,11 +153,11 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
                 "DeliveryChallan-" + dc.getDcNumber() + ".pdf"
         );
 
-        return DeliveryChallanMapper.toResponse(dc);
+        return deliveryChallanMapper.toResponse(dc);
     }
 
     //------------------------------------------------
-    // CREATE ITEM
+    // CREATE ITEM WITH GST
     //------------------------------------------------
 
     private DeliveryChallanItem createItem(DeliveryChallanItemRequest request, DeliveryChallan dc) {
@@ -159,6 +180,14 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         BigDecimal amount = request.getWeight().multiply(request.getRate());
 
+        BigDecimal gstPercentage = orderItem.getGstPercentage() != null
+                ? orderItem.getGstPercentage() : BigDecimal.valueOf(18);
+
+        BigDecimal gstAmount = amount.multiply(gstPercentage)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+        BigDecimal totalWithGst = amount.add(gstAmount);
+
         return DeliveryChallanItem.builder()
                 .deliveryChallan(dc)
                 .orderItem(orderItem)
@@ -166,6 +195,9 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
                 .weight(request.getWeight())
                 .rate(request.getRate())
                 .amount(amount)
+                .gstPercentage(gstPercentage)
+                .gstAmount(gstAmount)
+                .totalWithGst(totalWithGst)
                 .build();
     }
 
@@ -180,7 +212,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         DeliveryChallan dc = deliveryChallanRepository.findByIdWithItems(id)
                 .orElseThrow(() -> new RuntimeException("Delivery Challan not found"));
 
-        return DeliveryChallanMapper.toResponse(dc);
+        return deliveryChallanMapper.toResponse(dc);
     }
 
     //------------------------------------------------
@@ -191,10 +223,9 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
     @Transactional(readOnly = true)
     public List<DeliveryChallanResponse> getAllDeliveryChallans() {
 
-        return deliveryChallanRepository.findAll()
-                .stream()
-                .map(DeliveryChallanMapper::toResponse)
-                .collect(Collectors.toList());
+        return deliveryChallanMapper.toResponseList(
+                deliveryChallanRepository.findAll()
+        );
     }
 
     //------------------------------------------------
@@ -212,7 +243,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         deliveryChallanRepository.save(dc);
 
-        return DeliveryChallanMapper.toResponse(dc);
+        return deliveryChallanMapper.toResponse(dc);
     }
 
     //------------------------------------------------
@@ -225,10 +256,9 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         var page = deliveryChallanRepository.findAll(pageable);
 
-        List<DeliveryChallanResponse> content = page.getContent()
-                .stream()
-                .map(DeliveryChallanMapper::toResponse)
-                .collect(Collectors.toList());
+        List<DeliveryChallanResponse> content = deliveryChallanMapper.toResponseList(
+                page.getContent()
+        );
 
         return PageResponse.<DeliveryChallanResponse>builder()
                 .content(content)

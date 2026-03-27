@@ -29,6 +29,11 @@ public class OrderItemResponse {
     private BigDecimal unitPrice;
     private BigDecimal lineTotal;
 
+    // GST per item
+    private BigDecimal gstPercentage;
+    private BigDecimal gstAmount;
+    private BigDecimal totalWithGst;
+
     private Boolean patternProvidedByCustomer;
     private String patternNumber;
     private String patternName;

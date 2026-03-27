@@ -29,10 +29,21 @@ CREATE TABLE IF NOT EXISTS orders (
 
     status VARCHAR(30) NOT NULL DEFAULT 'CREATED',
 
+    -- PAYMENT TERMS
+    payment_terms VARCHAR(30),
+    custom_payment_terms VARCHAR(500),
+
     -- AMOUNTS
     sub_total NUMERIC(19,2) DEFAULT 0,
-    discount NUMERIC(19,2) DEFAULT 0,
-    tax NUMERIC(19,2) DEFAULT 0,
+
+    -- GST FIELDS
+    gst_type VARCHAR(20),
+    gst_percentage NUMERIC(5,2) DEFAULT 18,
+    cgst NUMERIC(19,2) DEFAULT 0,
+    sgst NUMERIC(19,2) DEFAULT 0,
+    igst NUMERIC(19,2) DEFAULT 0,
+    total_gst NUMERIC(19,2) DEFAULT 0,
+
     total_amount NUMERIC(19,2) DEFAULT 0,
 
     -- AUDIT FIELDS
@@ -51,7 +62,19 @@ CREATE TABLE IF NOT EXISTS orders (
            'PARTIALLY_PRODUCED', 'PRODUCED',
            'PARTIALLY_DISPATCHED', 'DISPATCHED',
            'COMPLETED', 'CANCELLED', 'ON_HOLD'
-                     ))
+                     )),
+
+    CONSTRAINT chk_gst_type
+    CHECK (gst_type IS NULL OR gst_type IN ('CGST_SGST', 'IGST')),
+
+    CONSTRAINT chk_payment_terms
+    CHECK (payment_terms IS NULL OR payment_terms IN (
+           'ADVANCE', 'PARTIAL_ADVANCE',
+           'NET_7', 'NET_15', 'NET_30', 'NET_45', 'NET_60', 'NET_90',
+           'COD', 'AGAINST_DELIVERY', 'AGAINST_PI', 'LC',
+           'CREDIT_30', 'CREDIT_60', 'CREDIT_90',
+           'CUSTOM'
+                                                     ))
     );
 
 -- ============================================
@@ -68,7 +91,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     drawing_number VARCHAR(100),
     material_grade VARCHAR(100),
 
-    -- METAL & CASTING (NEW)
+    -- METAL & CASTING
     metal_type VARCHAR(50),
     casting_process VARCHAR(50),
 
@@ -85,6 +108,11 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price NUMERIC(19,2),
     line_total NUMERIC(19,2),
+
+    -- GST PER ITEM
+    gst_percentage NUMERIC(5,2) DEFAULT 18,
+    gst_amount NUMERIC(19,2) DEFAULT 0,
+    total_with_gst NUMERIC(19,2) DEFAULT 0,
 
     -- PRODUCTION TRACKING
     produced_quantity INTEGER DEFAULT 0,
@@ -208,6 +236,8 @@ CREATE INDEX IF NOT EXISTS idx_orders_order_type ON orders(order_type);
 CREATE INDEX IF NOT EXISTS idx_orders_order_date ON orders(order_date);
 CREATE INDEX IF NOT EXISTS idx_orders_delivery_date ON orders(delivery_date);
 CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_gst_type ON orders(gst_type);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_terms ON orders(payment_terms);
 
 -- ============================================
 -- INDEXES - ORDER ITEMS

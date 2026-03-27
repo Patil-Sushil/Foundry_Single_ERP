@@ -2,8 +2,10 @@ package com.kalibyte.foundry.order.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.customer.entity.Customer;
+import com.kalibyte.foundry.order.entity.enums.GstType;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
+import com.kalibyte.foundry.order.entity.enums.PaymentTerms;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import jakarta.persistence.*;
 import lombok.*;
@@ -59,11 +61,42 @@ public class Order extends BaseEntity {
     private OrderStatus status = OrderStatus.CREATED;
 
     //------------------------------------------------
+    // PAYMENT TERMS
+    //------------------------------------------------
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_terms")
+    private PaymentTerms paymentTerms;
+
+    @Column(name = "custom_payment_terms")
+    private String customPaymentTerms;
+
+    //------------------------------------------------
     // AMOUNTS
     //------------------------------------------------
     private BigDecimal subTotal = BigDecimal.ZERO;
-    private BigDecimal discount = BigDecimal.ZERO;
-    private BigDecimal tax = BigDecimal.ZERO;
+
+    //------------------------------------------------
+    // GST FIELDS
+    //------------------------------------------------
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gst_type")
+    private GstType gstType;
+
+    @Column(name = "gst_percentage", precision = 5, scale = 2)
+    private BigDecimal gstPercentage = BigDecimal.valueOf(18);
+
+    @Column(name = "cgst", precision = 19, scale = 2)
+    private BigDecimal cgst = BigDecimal.ZERO;
+
+    @Column(name = "sgst", precision = 19, scale = 2)
+    private BigDecimal sgst = BigDecimal.ZERO;
+
+    @Column(name = "igst", precision = 19, scale = 2)
+    private BigDecimal igst = BigDecimal.ZERO;
+
+    @Column(name = "total_gst", precision = 19, scale = 2)
+    private BigDecimal totalGst = BigDecimal.ZERO;
+
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
     //------------------------------------------------
@@ -87,5 +120,17 @@ public class Order extends BaseEntity {
     public void clearItems() {
         items.forEach(i -> i.setOrder(null));
         items.clear();
+    }
+
+    /**
+     * Returns the display-friendly payment terms string.
+     * If CUSTOM, returns the customPaymentTerms text.
+     */
+    public String getPaymentTermsDisplay() {
+        if (paymentTerms == null) return null;
+        if (paymentTerms == PaymentTerms.CUSTOM) {
+            return customPaymentTerms != null ? customPaymentTerms : "Custom Terms";
+        }
+        return paymentTerms.getDisplayName();
     }
 }

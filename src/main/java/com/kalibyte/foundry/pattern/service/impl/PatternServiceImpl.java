@@ -34,7 +34,7 @@ public class PatternServiceImpl implements PatternService {
 
         Pattern pattern = Pattern.builder()
                 .patternNumber(patternNumber)
-                .name(request.getName())
+                .patternName(request.getName())
                 .type(request.getType())
                 .material(request.getMaterial())
                 .rackNumber(request.getRackNumber())
@@ -86,7 +86,7 @@ public class PatternServiceImpl implements PatternService {
         Pattern pattern =  patternRepository.findById(id)
                 .orElseThrow(()-> new ResourceNotFoundException("Pattern not found"));
 
-        pattern.setName(request.getName());
+        pattern.setPatternName(request.getName());
         pattern.setType(request.getType());
         pattern.setMaterial(request.getMaterial());
         pattern.setRackNumber(request.getRackNumber());
@@ -118,7 +118,7 @@ public class PatternServiceImpl implements PatternService {
         return PatternResponse.builder()
                 .id(pattern.getId())
                 .patternNumber(pattern.getPatternNumber())
-                .name(pattern.getName())
+                .name(pattern.getPatternName())
                 .type(pattern.getType())
                 .material(pattern.getMaterial())
                 .status(pattern.getStatus())

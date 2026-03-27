@@ -1,12 +1,10 @@
-package com.kalibyte.foundry.accounts.util;
+package com.kalibyte.foundry.payment.util;
 
-import com.kalibyte.foundry.accounts.repository.PaymentRepository;
-import com.kalibyte.foundry.expenses.repository.ExpenseRepository;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Year;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor

@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.reports.account.service.ledger.impl;
 
-import com.kalibyte.foundry.accounts.entity.Payment;
-import com.kalibyte.foundry.accounts.repository.PaymentRepository;
+import com.kalibyte.foundry.payment.entity.Payment;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.billing.invoice.entity.Invoice;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.customer.entity.Customer;

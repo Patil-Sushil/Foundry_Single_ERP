@@ -23,7 +23,7 @@ CREATE SEQUENCE IF NOT EXISTS pattern_number_seq
 CREATE TABLE IF NOT EXISTS patterns (
                                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pattern_number VARCHAR(50) NOT NULL UNIQUE,
-    name VARCHAR(150) NOT NULL,
+    pattern_name VARCHAR(150) NOT NULL,  -- Changed from patternName to pattern_name (snake_case)
     type VARCHAR(50) NOT NULL,
     material VARCHAR(50) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE',
@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS patterns (
            'RESIN'))
     );
 
-CREATE INDEX IF NOT EXISTS idx_patterns_name ON patterns(name);
+-- Fixed: Changed from patterns(name) to patterns(pattern_name)
+CREATE INDEX IF NOT EXISTS idx_patterns_name ON patterns(pattern_name);
 CREATE INDEX IF NOT EXISTS idx_patterns_status ON patterns(status);
 CREATE INDEX IF NOT EXISTS idx_patterns_rack ON patterns(rack_number);
 

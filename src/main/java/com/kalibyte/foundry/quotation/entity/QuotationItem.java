@@ -49,9 +49,6 @@ public class QuotationItem extends BaseEntity {
     @Column(name = "net_weight_kg", precision = 10, scale = 3)
     private BigDecimal netWeightKg;
 
-    @Column(name = "gross_weight_kg", precision = 10, scale = 3)
-    private BigDecimal grossWeightKg;
-
     // ================= PATTERN =================
 
     @Enumerated(EnumType.STRING)
@@ -90,4 +87,6 @@ public class QuotationItem extends BaseEntity {
                     .multiply(BigDecimal.valueOf(quantity));
         }
     }
+
+
 }

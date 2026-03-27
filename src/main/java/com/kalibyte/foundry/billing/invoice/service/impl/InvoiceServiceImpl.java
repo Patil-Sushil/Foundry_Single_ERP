@@ -10,6 +10,7 @@ import com.kalibyte.foundry.billing.invoice.mapper.InvoiceMapper;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceItemRepository;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.billing.invoice.service.InvoiceService;
+import com.kalibyte.foundry.billing.util.GstCalculationResult;
 import com.kalibyte.foundry.billing.util.PdfGenerator;
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.response.PageResponse;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Year;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,6 +38,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceItemRepository invoiceItemRepository;
     private final DeliveryChallanItemRepository deliveryChallanItemRepository;
     private final OrderRepository orderRepository;
+    private final InvoiceMapper invoiceMapper;  // Injected MapStruct mapper
     private final PdfGenerator pdfGenerator;
     private final EmailService emailService;
 
@@ -91,21 +94,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         // GST CALCULATION
         //------------------------------------------------
 
-        BigDecimal cgst = BigDecimal.ZERO;
-        BigDecimal sgst = BigDecimal.ZERO;
-        BigDecimal igst = BigDecimal.ZERO;
+        BigDecimal gstPercentage = order.getGstPercentage() != null
+                ? order.getGstPercentage() : BigDecimal.valueOf(18);
 
-        if ("Maharashtra".equalsIgnoreCase(customer.getState())) {
-
-            cgst = subtotal.multiply(BigDecimal.valueOf(0.09));
-            sgst = subtotal.multiply(BigDecimal.valueOf(0.09));
-
-        } else {
-
-            igst = subtotal.multiply(BigDecimal.valueOf(0.18));
-        }
-
-        BigDecimal total = subtotal.add(cgst).add(sgst).add(igst);
+        GstCalculationResult gstResult = GstCalculationResult.calculate(
+                subtotal, gstPercentage, customer.getState());
 
         //------------------------------------------------
         // CREATE INVOICE
@@ -116,11 +109,13 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .order(order)
                 .vehicleNumber(request.getVehicleNumber())
                 .subtotal(subtotal)
-                .cgst(cgst)
-                .sgst(sgst)
-                .igst(igst)
-                .gstPercentage(BigDecimal.valueOf(18))
-                .totalAmount(total)
+                .gstType(gstResult.getGstType())
+                .gstPercentage(gstResult.getGstPercentage())
+                .cgst(gstResult.getCgst())
+                .sgst(gstResult.getSgst())
+                .igst(gstResult.getIgst())
+                .totalGst(gstResult.getTotalGst())
+                .totalAmount(gstResult.getGrandTotal())
                 .invoiceDate(request.getInvoiceDate())
                 .dueDate(request.getDueDate())
                 .billStatus(request.getBillStatus())
@@ -129,18 +124,32 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceRepository.save(invoice);
 
         //------------------------------------------------
-        // CREATE INVOICE ITEMS
+        // CREATE INVOICE ITEMS WITH GST
         //------------------------------------------------
 
         List<InvoiceItem> items = dcItems.stream()
-                .map(dcItem -> InvoiceItem.builder()
-                        .invoice(invoice)
-                        .orderItem(dcItem.getOrderItem())
-                        .quantity(dcItem.getQuantity())
-                        .weight(dcItem.getWeight())
-                        .rate(dcItem.getRate())
-                        .amount(dcItem.getAmount())
-                        .build())
+                .map(dcItem -> {
+                    BigDecimal itemGstPct = dcItem.getGstPercentage() != null
+                            ? dcItem.getGstPercentage() : gstPercentage;
+
+                    BigDecimal itemGstAmount = dcItem.getAmount()
+                            .multiply(itemGstPct)
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                    BigDecimal itemTotalWithGst = dcItem.getAmount().add(itemGstAmount);
+
+                    return InvoiceItem.builder()
+                            .invoice(invoice)
+                            .orderItem(dcItem.getOrderItem())
+                            .quantity(dcItem.getQuantity())
+                            .weight(dcItem.getWeight())
+                            .rate(dcItem.getRate())
+                            .amount(dcItem.getAmount())
+                            .gstPercentage(itemGstPct)
+                            .gstAmount(itemGstAmount)
+                            .totalWithGst(itemTotalWithGst)
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         invoiceItemRepository.saveAll(items);
@@ -172,7 +181,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         order.setStatus(OrderStatus.COMPLETED);
         orderRepository.save(order);
 
-        return InvoiceMapper.toResponse(invoice);
+        return invoiceMapper.toResponse(invoice);
     }
 
     //------------------------------------------------
@@ -230,7 +239,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Invoice not found"));
 
-        return InvoiceMapper.toResponse(invoice);
+        return invoiceMapper.toResponse(invoice);
     }
 
     //------------------------------------------------
@@ -256,10 +265,9 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         var page = invoiceRepository.findAll(pageable);
 
-        List<InvoiceResponse> content = page.getContent()
-                .stream()
-                .map(InvoiceMapper::toResponse)
-                .toList();
+        List<InvoiceResponse> content = invoiceMapper.toResponseList(
+                page.getContent()
+        );
 
         return PageResponse.<InvoiceResponse>builder()
                 .content(content)

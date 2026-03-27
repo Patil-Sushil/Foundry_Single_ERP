@@ -202,7 +202,6 @@ public class QuotationServiceImpl implements QuotationService {
         item.setCastingProcess(enquiryItem.getCastingProcess());
         item.setQuantity(enquiryItem.getRequiredQuantity());
         item.setNetWeightKg(enquiryItem.getApproxPieceWeightKg());
-        item.setGrossWeightKg(enquiryItem.getApproxPieceWeightKg());
 
         // ===== OVERRIDE WITH REQUEST IF PROVIDED =====
         if (itemReq != null) {
@@ -224,9 +223,7 @@ public class QuotationServiceImpl implements QuotationService {
             if (itemReq.getNetWeightKg() != null) {
                 item.setNetWeightKg(itemReq.getNetWeightKg());
             }
-            if (itemReq.getGrossWeightKg() != null) {
-                item.setGrossWeightKg(itemReq.getGrossWeightKg());
-            }
+
             if (itemReq.getDrawingNumber() != null) {
                 item.setDrawingNumber(itemReq.getDrawingNumber());
             }
@@ -259,7 +256,6 @@ public class QuotationServiceImpl implements QuotationService {
         item.setCastingProcess(itemReq.getCastingProcess());
         item.setDrawingNumber(itemReq.getDrawingNumber());
         item.setNetWeightKg(itemReq.getNetWeightKg());
-        item.setGrossWeightKg(itemReq.getGrossWeightKg());
         item.setPatternStatus(itemReq.getPatternStatus());
         item.setQuantity(itemReq.getQuantity());
         item.setUnitPrice(itemReq.getUnitPrice());

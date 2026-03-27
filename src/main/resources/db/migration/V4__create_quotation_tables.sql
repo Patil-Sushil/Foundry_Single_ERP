@@ -85,7 +85,6 @@ CREATE TABLE IF NOT EXISTS quotation_items (
 
     -- Weight
     net_weight_kg DECIMAL(10,3),
-    gross_weight_kg DECIMAL(10,3),
 
     -- Pattern Info
     pattern_status VARCHAR(20),

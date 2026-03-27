@@ -95,7 +95,6 @@ public class DataSeeder implements CommandLineRunner {
         req.setName(name);
         req.setEmail(email);
         req.setPhone(phone);
-        req.setPaymentTerms("NET30");
         req.setCreditLimit(new BigDecimal("100000"));
         customerService.createCustomer(req);
     }

@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.order.dto.request;
 
+import com.kalibyte.foundry.order.entity.enums.PaymentTerms;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -26,8 +27,12 @@ public class OrderCreateRequest {
     private String placeOfSupply;
     private String poReference;
 
-    private BigDecimal discount;
-    private BigDecimal tax;
+    // Payment Terms
+    private PaymentTerms paymentTerms;
+    private String customPaymentTerms;
+
+    // Default GST percentage for the order (can be overridden per item)
+    private BigDecimal gstPercentage;
 
     @Valid
     private List<OrderItemRequest> items;

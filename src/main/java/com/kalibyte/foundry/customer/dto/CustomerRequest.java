@@ -27,6 +27,5 @@ public class CustomerRequest {
     private String postalCode;        // Optional
     private String country;           // Optional, default: India
     private String gstNumber;         // Optional, validated format
-    private String paymentTerms;      // Optional: NET30, NET60, COD
     private BigDecimal creditLimit;   // Optional
 }

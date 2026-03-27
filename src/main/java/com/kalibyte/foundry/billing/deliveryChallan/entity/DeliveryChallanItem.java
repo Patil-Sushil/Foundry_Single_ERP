@@ -33,4 +33,13 @@ public class DeliveryChallanItem extends BaseEntity {
 
     private BigDecimal amount;
 
+    // GST per DC item (inherited from order item's GST%)
+    @Column(name = "gst_percentage", precision = 5, scale = 2)
+    private BigDecimal gstPercentage;
+
+    @Column(name = "gst_amount", precision = 19, scale = 2)
+    private BigDecimal gstAmount;
+
+    @Column(name = "total_with_gst", precision = 19, scale = 2)
+    private BigDecimal totalWithGst;
 }

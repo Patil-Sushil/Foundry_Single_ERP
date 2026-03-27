@@ -16,6 +16,7 @@ import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.*;
 import com.kalibyte.foundry.billing.invoice.entity.*;
+import com.kalibyte.foundry.order.entity.enums.GstType;
 
 import org.springframework.stereotype.Component;
 
@@ -62,7 +63,6 @@ public class PdfGenerator {
     private static final float RIGHT_MARGIN = 28;
     private static final float USABLE_HEIGHT = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN;
 
-    // Estimated heights for layout calculation
     private static final float TABLE_ROW_HEIGHT = 30f;
     private static final float TABLE_HEADER_HEIGHT = 35f;
 
@@ -77,10 +77,9 @@ public class PdfGenerator {
             Document doc = new Document(pdf, PageSize.A4);
             doc.setMargins(TOP_MARGIN, RIGHT_MARGIN, BOTTOM_MARGIN, LEFT_MARGIN);
 
-            // Add page border handler
             pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderHandler());
 
-            // ── ORIGINAL COPY (top half or full pages) ──
+            // ── ORIGINAL COPY ──
             addDcSection(doc, dc, items, "ORIGINAL COPY");
 
             // ── Calculate if cut copy fits on same page ──
@@ -94,7 +93,7 @@ public class PdfGenerator {
             // ── CUT LINE ──
             addCutHereLine(doc);
 
-            // ── CUSTOMER COPY (bottom half or new page) ──
+            // ── CUSTOMER COPY ──
             addDcSection(doc, dc, items, "CUSTOMER COPY");
 
             doc.close();
@@ -128,7 +127,7 @@ public class PdfGenerator {
         addCompactDcInfo(doc, dc);
         addThinRule(doc);
         addDcItemsTable(doc, items);
-        addDcTotalsRow(doc, items);
+        addDcTotalsRow(doc, dc, items);
         addCompactDcSignature(doc);
     }
 
@@ -194,8 +193,9 @@ public class PdfGenerator {
     }
 
     private void addDcItemsTable(Document doc, List<DeliveryChallanItem> items) {
-        float[] cols = {1.0f, 5.5f, 1.8f, 2.0f, 1.5f};
-        String[] headers = {"Sr No", "Description", "Grade", "Weight (Kg)", "Qty"};
+        float[] cols = {1.0f, 4.5f, 1.5f, 1.8f, 1.2f, 1.5f, 1.2f, 1.8f};
+        String[] headers = {"Sr No", "Description", "Grade", "Weight (Kg)", "Qty",
+                "Rate", "GST%", "Amount"};
 
         Table table = new Table(cols).useAllAvailableWidth();
         table.setMarginTop(4);
@@ -222,6 +222,17 @@ public class PdfGenerator {
                 table.addCell(bodyCell(
                         String.valueOf(item != null ? item.getQuantity() : 0),
                         TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        formatCurrency(item != null ? item.getRate() : null),
+                        TextAlignment.RIGHT, isEven));
+                table.addCell(bodyCell(
+                        (item != null && item.getGstPercentage() != null
+                                ? item.getGstPercentage().stripTrailingZeros().toPlainString() + "%"
+                                : "18%"),
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        formatCurrency(item != null ? item.getAmount() : null),
+                        TextAlignment.RIGHT, isEven));
             }
         }
 
@@ -230,7 +241,8 @@ public class PdfGenerator {
         doc.add(table);
     }
 
-    private void addDcTotalsRow(Document doc, List<DeliveryChallanItem> items) {
+    private void addDcTotalsRow(Document doc, DeliveryChallan dc,
+                                List<DeliveryChallanItem> items) {
         int totalQty = 0;
         BigDecimal totalWeight = BigDecimal.ZERO;
 
@@ -252,12 +264,37 @@ public class PdfGenerator {
         l.setPadding(6);
         l.add(new Paragraph("Total Quantity: " + totalQty)
                 .setBold().setFontSize(9).setFontColor(THEME_BLUE));
+        l.add(new Paragraph("Total Weight: " + formatWeight(totalWeight) + " Kg")
+                .setBold().setFontSize(9).setFontColor(THEME_BLUE));
 
         Cell r = noBorderCell();
         r.setPadding(6);
         r.setTextAlignment(TextAlignment.RIGHT);
-        r.add(new Paragraph("Total Weight: " + formatWeight(totalWeight) + " Kg")
-                .setBold().setFontSize(9).setFontColor(THEME_BLUE));
+
+        if (dc != null) {
+            r.add(new Paragraph("Subtotal: " + formatCurrency(dc.getSubtotal()))
+                    .setFontSize(9).setFontColor(THEME_BLUE));
+
+            if (dc.getGstType() == GstType.CGST_SGST) {
+                BigDecimal halfPct = dc.getGstPercentage() != null
+                        ? dc.getGstPercentage().divide(BigDecimal.valueOf(2)) : BigDecimal.valueOf(9);
+                r.add(new Paragraph("CGST @ " + halfPct.stripTrailingZeros().toPlainString()
+                        + "%: " + formatCurrency(dc.getCgst()))
+                        .setFontSize(8).setFontColor(THEME_BLUE));
+                r.add(new Paragraph("SGST @ " + halfPct.stripTrailingZeros().toPlainString()
+                        + "%: " + formatCurrency(dc.getSgst()))
+                        .setFontSize(8).setFontColor(THEME_BLUE));
+            } else {
+                r.add(new Paragraph("IGST @ "
+                        + (dc.getGstPercentage() != null
+                        ? dc.getGstPercentage().stripTrailingZeros().toPlainString() : "18")
+                        + "%: " + formatCurrency(dc.getIgst()))
+                        .setFontSize(8).setFontColor(THEME_BLUE));
+            }
+
+            r.add(new Paragraph("Total Amount: " + formatCurrency(dc.getTotalAmount()))
+                    .setBold().setFontSize(10).setFontColor(THEME_BLUE));
+        }
 
         totals.addCell(l);
         totals.addCell(r);
@@ -425,24 +462,27 @@ public class PdfGenerator {
     }
 
     private void addInvoiceItemsTable(Document doc, List<InvoiceItem> items) {
-        float[] cols = {0.8f, 4.0f, 1.5f, 1.6f, 1.5f, 0.8f, 2.0f};
+        float[] cols = {0.8f, 3.5f, 1.3f, 1.4f, 1.3f, 0.8f, 1.0f, 1.2f, 1.8f};
         String[] headers = {"Sr", "Description", "Grade",
-                "Weight(Kg)", "Rate", "Qty", "Amount"};
+                "Weight(Kg)", "Rate", "Qty", "GST%", "GST Amt", "Amount"};
 
         Table table = new Table(cols).useAllAvailableWidth();
         table.setMarginTop(6);
 
-        // Header row - repeats on every page
         for (String h : headers) {
             table.addHeaderCell(headerCell(h));
         }
 
-        // Footer row (totals) - appears on last page only
+        // Footer row (totals)
         if (items != null && !items.isEmpty()) {
             BigDecimal totalAmt = BigDecimal.ZERO;
+            BigDecimal totalGstAmt = BigDecimal.ZERO;
             for (InvoiceItem item : items) {
-                if (item != null && item.getAmount() != null) {
-                    totalAmt = totalAmt.add(item.getAmount());
+                if (item != null) {
+                    if (item.getAmount() != null)
+                        totalAmt = totalAmt.add(item.getAmount());
+                    if (item.getGstAmount() != null)
+                        totalGstAmt = totalGstAmt.add(item.getGstAmount());
                 }
             }
 
@@ -452,6 +492,9 @@ public class PdfGenerator {
             table.addFooterCell(footerCell("", TextAlignment.RIGHT));
             table.addFooterCell(footerCell("", TextAlignment.RIGHT));
             table.addFooterCell(footerCell("Total", TextAlignment.CENTER));
+            table.addFooterCell(footerCell("", TextAlignment.CENTER));
+            table.addFooterCell(footerCell(
+                    formatCurrency(totalGstAmt), TextAlignment.RIGHT));
             table.addFooterCell(footerCell(
                     formatCurrency(totalAmt), TextAlignment.RIGHT));
         }
@@ -480,6 +523,14 @@ public class PdfGenerator {
                         String.valueOf(item != null ? item.getQuantity() : 0),
                         TextAlignment.CENTER, isEven));
                 table.addCell(bodyCell(
+                        (item != null && item.getGstPercentage() != null
+                                ? item.getGstPercentage().stripTrailingZeros().toPlainString() + "%"
+                                : "18%"),
+                        TextAlignment.CENTER, isEven));
+                table.addCell(bodyCell(
+                        formatCurrency(item != null ? item.getGstAmount() : null),
+                        TextAlignment.RIGHT, isEven));
+                table.addCell(bodyCell(
                         formatCurrency(item != null ? item.getAmount() : null),
                         TextAlignment.RIGHT, isEven));
             }
@@ -498,13 +549,32 @@ public class PdfGenerator {
         t.addCell(totalValue(formatCurrency(
                 invoice != null ? invoice.getSubtotal() : null)));
 
-        t.addCell(totalLabel("CGST @ 9%"));
-        t.addCell(totalValue(formatCurrency(
-                invoice != null ? invoice.getCgst() : null)));
+        // Dynamic GST display based on type
+        if (invoice != null && invoice.getGstType() == GstType.CGST_SGST) {
+            BigDecimal halfPct = invoice.getGstPercentage() != null
+                    ? invoice.getGstPercentage().divide(BigDecimal.valueOf(2))
+                    : BigDecimal.valueOf(9);
 
-        t.addCell(totalLabel("SGST @ 9%"));
+            t.addCell(totalLabel("CGST @ " + halfPct.stripTrailingZeros().toPlainString() + "%"));
+            t.addCell(totalValue(formatCurrency(
+                    invoice != null ? invoice.getCgst() : null)));
+
+            t.addCell(totalLabel("SGST @ " + halfPct.stripTrailingZeros().toPlainString() + "%"));
+            t.addCell(totalValue(formatCurrency(
+                    invoice != null ? invoice.getSgst() : null)));
+        } else {
+            String igstPct = (invoice != null && invoice.getGstPercentage() != null)
+                    ? invoice.getGstPercentage().stripTrailingZeros().toPlainString()
+                    : "18";
+            t.addCell(totalLabel("IGST @ " + igstPct + "%"));
+            t.addCell(totalValue(formatCurrency(
+                    invoice != null ? invoice.getIgst() : null)));
+        }
+
+        // Total GST row
+        t.addCell(totalLabel("Total GST"));
         t.addCell(totalValue(formatCurrency(
-                invoice != null ? invoice.getSgst() : null)));
+                invoice != null ? invoice.getTotalGst() : null)));
 
         // Grand Total highlighted bar
         Cell grandL = noBorderCell();
@@ -603,7 +673,7 @@ public class PdfGenerator {
                 .setBold()
                 .setPadding(6)
                 .setBorder(new SolidBorder(ColorConstants.WHITE, 0.5f))
-                .add(new Paragraph(text).setFontSize(9));
+                .add(new Paragraph(text).setFontSize(8));
     }
 
     private Cell bodyCell(String text, TextAlignment align, boolean shaded) {
@@ -611,7 +681,7 @@ public class PdfGenerator {
                 .setTextAlignment(align)
                 .setPadding(5)
                 .setBorder(new SolidBorder(ROW_BORDER, 0.5f))
-                .add(new Paragraph(safe(text)).setFontSize(9));
+                .add(new Paragraph(safe(text)).setFontSize(8));
         if (shaded) {
             cell.setBackgroundColor(LIGHT_BG);
         }
@@ -625,7 +695,7 @@ public class PdfGenerator {
                 .setBold()
                 .setPadding(6)
                 .setBorder(new SolidBorder(THEME_BLUE, 0.8f))
-                .add(new Paragraph(text).setFontSize(9)
+                .add(new Paragraph(text).setFontSize(8)
                         .setFontColor(THEME_BLUE));
     }
 
@@ -698,20 +768,20 @@ public class PdfGenerator {
 
     private float calculateDcCutCopyHeight(List<DeliveryChallanItem> items) {
         float height = 0;
-        height += 20;   // copy label
-        height += 80;   // header
-        height += 30;   // title
-        height += 80;   // to block
+        height += 20;
+        height += 80;
+        height += 30;
+        height += 80;
         height += TABLE_HEADER_HEIGHT;
         height += (items != null ? items.size() : 0) * TABLE_ROW_HEIGHT;
-        height += 60;   // totals
-        height += 80;   // signature
-        height += 40;   // margins/rules
+        height += 80;   // totals (now larger with GST)
+        height += 80;
+        height += 40;
         return height;
     }
 
     // ════════════════════════════════════════════════════════════
-    //  DATA FORMATTING  *** FIX IS HERE ***
+    //  DATA FORMATTING
     // ════════════════════════════════════════════════════════════
 
     private String formatWeight(BigDecimal weight) {
@@ -719,11 +789,6 @@ public class PdfGenerator {
         return df.format(weight != null ? weight : BigDecimal.ZERO);
     }
 
-    /**
-     * FIX: "Rs." contains a dot which DecimalFormat treats as
-     * a second decimal separator.
-     * Solution: Format the number first, then prepend "Rs. "
-     */
     private String formatCurrency(BigDecimal amount) {
         DecimalFormat df = new DecimalFormat("#,##0.00");
         return "Rs. " + df.format(amount != null ? amount : BigDecimal.ZERO);
@@ -749,9 +814,6 @@ public class PdfGenerator {
         return String.valueOf(date);
     }
 
-    /**
-     * Number-to-words converter for Indian currency
-     */
     private String convertToWords(BigDecimal amount) {
         if (amount == null) return "-";
 
@@ -801,13 +863,9 @@ public class PdfGenerator {
     }
 
     // ════════════════════════════════════════════════════════════
-    //  PAGE BORDER + PAGE NUMBER HANDLER  *** FIX IS HERE ***
+    //  PAGE BORDER + PAGE NUMBER HANDLER
     // ════════════════════════════════════════════════════════════
 
-    /**
-     * FIX: Original code used PdfFontFactory.createRegisteredFont()
-     * which throws IOException. Using try-catch and standard font.
-     */
     private static class PageBorderHandler implements IEventHandler {
         @Override
         public void handleEvent(Event event) {
@@ -820,7 +878,6 @@ public class PdfGenerator {
                     page.newContentStreamBefore(),
                     page.getResources(), pdfDoc);
 
-            // Draw thin border around page
             canvas.setStrokeColor(LIGHT_LINE)
                     .setLineWidth(0.8f)
                     .rectangle(
@@ -830,7 +887,6 @@ public class PdfGenerator {
                             pageSize.getHeight() - 20)
                     .stroke();
 
-            // Page number at bottom center
             try {
                 PdfFont font = PdfFontFactory.createFont(
                         StandardFonts.HELVETICA);

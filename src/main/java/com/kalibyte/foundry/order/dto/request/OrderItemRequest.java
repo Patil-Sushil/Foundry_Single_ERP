@@ -35,9 +35,15 @@ public class OrderItemRequest {
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;
 
+//    private BigDecimal discount;
+
+
     @NotNull(message = "Unit price is required")
     @DecimalMin(value = "0.01", message = "Unit price must be greater than 0")
     private BigDecimal unitPrice;
+
+    // GST percentage per item (defaults to 18 if not provided)
+    private BigDecimal gstPercentage;
 
     @NotNull(message = "Pattern source is required")
     private Boolean patternProvidedByCustomer;

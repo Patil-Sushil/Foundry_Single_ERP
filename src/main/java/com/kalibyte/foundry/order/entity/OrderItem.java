@@ -64,6 +64,8 @@ public class OrderItem extends BaseEntity {
     private PatternReceipt patternReceipt;
 
     // ================= PRICING =================
+//    @Column(name = "discount", precision = 5, scale = 2)
+//    private BigDecimal discount = BigDecimal.ZERO;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
@@ -73,6 +75,17 @@ public class OrderItem extends BaseEntity {
 
     @Column(name = "line_total", precision = 19, scale = 2)
     private BigDecimal lineTotal;
+
+    // ================= GST PER ITEM =================
+
+    @Column(name = "gst_percentage", precision = 5, scale = 2)
+    private BigDecimal gstPercentage;
+
+    @Column(name = "gst_amount", precision = 19, scale = 2)
+    private BigDecimal gstAmount;
+
+    @Column(name = "total_with_gst", precision = 19, scale = 2)
+    private BigDecimal totalWithGst;
 
     // ================= PRODUCTION TRACKING =================
 
@@ -91,6 +104,15 @@ public class OrderItem extends BaseEntity {
             this.lineTotal = netWeightKg
                     .multiply(unitPrice)
                     .multiply(BigDecimal.valueOf(quantity));
+        }
+    }
+
+    public void calculateGst(BigDecimal gstPct) {
+        this.gstPercentage = gstPct;
+        if (lineTotal != null && gstPct != null) {
+            this.gstAmount = lineTotal.multiply(gstPct)
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            this.totalWithGst = lineTotal.add(this.gstAmount);
         }
     }
 

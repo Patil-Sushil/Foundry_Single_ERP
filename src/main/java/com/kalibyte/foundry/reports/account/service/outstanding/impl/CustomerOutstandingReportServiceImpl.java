@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.reports.account.service.outstanding.impl;
 
-import com.kalibyte.foundry.accounts.repository.PaymentRepository;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.reports.account.dto.response.outstanding.CustomerOutstandingItem;
 import com.kalibyte.foundry.reports.account.dto.response.outstanding.CustomerOutstandingReport;

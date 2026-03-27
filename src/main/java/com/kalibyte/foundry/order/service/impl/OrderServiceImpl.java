@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.order.service.impl;
 
+import com.kalibyte.foundry.billing.util.GstCalculationResult;
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.common.response.PageResponse;
@@ -14,6 +15,7 @@ import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
+import com.kalibyte.foundry.order.entity.enums.PaymentTerms;
 import com.kalibyte.foundry.order.mapper.OrderMapper;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.order.service.OrderService;
@@ -58,6 +60,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final EmailService emailService;
 
+    private static final String COMPANY_STATE = "Maharashtra";
+
     // =========================================================
     //  CREATE ORDER (ENTRY POINT)
     // =========================================================
@@ -65,12 +69,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse createOrder(OrderCreateRequest request) {
 
-        // Scenario 1: From Quotation
         if (request.getQuotationId() != null) {
             return createFromQuotation(request);
         }
 
-        // Scenario 2: Direct Order
         if (request.getCustomerId() != null) {
             return createDirectOrder(request);
         }
@@ -82,79 +84,77 @@ public class OrderServiceImpl implements OrderService {
 
     // =========================================================
     //  SCENARIO 1: CREATE FROM QUOTATION
-    //  Auto-populates all data from Quotation + Enquiry
     // =========================================================
 
     private OrderResponse createFromQuotation(OrderCreateRequest request) {
 
-        // 1. Fetch quotation
         Quotation quotation = quotationRepository.findById(request.getQuotationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Quotation not found"));
 
-        // 2. Validate quotation status
         if (!QuotationStatus.APPROVED.equals(quotation.getStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Quotation must be APPROVED. Current status: " + quotation.getStatus());
         }
 
-        // 3. Check duplicate
         if (orderRepository.existsByQuotationId(request.getQuotationId())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Order already exists for this quotation");
         }
 
-        // 4. Get enquiry if linked (for extra data)
         Enquiry enquiry = quotation.getEnquiry();
+        Customer customer = quotation.getCustomer();
 
-        // 5. Build order
+        BigDecimal gstPercentage = request.getGstPercentage() != null
+                ? request.getGstPercentage() : BigDecimal.valueOf(18);
+
+        // Validate payment terms
+        validatePaymentTerms(request);
+
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
-                .customer(quotation.getCustomer())
+                .customer(customer)
                 .quotation(quotation)
                 .orderType(OrderType.QUOTATION)
                 .orderDate(LocalDate.now())
                 .deliveryDate(request.getDeliveryDate())
                 .status(OrderStatus.CREATED)
-                .placeOfSupply(request.getPlaceOfSupply() != null ?
-                        request.getPlaceOfSupply() : quotation.getDeliveryLocation())
+                .placeOfSupply(request.getPlaceOfSupply() != null
+                        ? request.getPlaceOfSupply() : quotation.getDeliveryLocation())
                 .poReference(request.getPoReference())
+                .paymentTerms(request.getPaymentTerms())
+                .customPaymentTerms(resolveCustomPaymentTerms(request))
+                .gstPercentage(gstPercentage)
                 .subTotal(BigDecimal.ZERO)
-                .discount(BigDecimal.ZERO)
-                .tax(BigDecimal.ZERO)
+                .cgst(BigDecimal.ZERO)
+                .sgst(BigDecimal.ZERO)
+                .igst(BigDecimal.ZERO)
+                .totalGst(BigDecimal.ZERO)
                 .totalAmount(BigDecimal.ZERO)
                 .items(new ArrayList<>())
                 .build();
 
-        // 6. Process items from quotation
         List<QuotationItem> quotationItems = quotation.getItems();
         List<EnquiryItem> enquiryItems = (enquiry != null) ? enquiry.getEnquiryItems() : null;
 
         for (int i = 0; i < quotationItems.size(); i++) {
-
             QuotationItem qItem = quotationItems.get(i);
-
-            // Get corresponding enquiry item if available
             EnquiryItem eItem = null;
             if (enquiryItems != null && i < enquiryItems.size()) {
                 eItem = enquiryItems.get(i);
             }
-
-            OrderItem orderItem = buildOrderItemFromQuotation(order, qItem, eItem);
+            OrderItem orderItem = buildOrderItemFromQuotation(order, qItem, eItem, gstPercentage);
             order.addItem(orderItem);
         }
 
-        // 7. Calculate totals
-        recalculateTotals(order);
+        recalculateTotals(order, customer);
 
-        // 8. Save
         Order saved = orderRepository.save(order);
 
         log.info("Order created from quotation: {} -> Order: {}",
                 quotation.getQuotationNumber(), saved.getOrderNumber());
 
-        // 9. Send confirmation email
         sendOrderConfirmationEmail(saved);
 
         return orderMapper.toResponse(saved);
@@ -166,47 +166,47 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderItem buildOrderItemFromQuotation(Order order,
                                                   QuotationItem qItem,
-                                                  EnquiryItem eItem) {
+                                                  EnquiryItem eItem,
+                                                  BigDecimal defaultGstPercentage) {
+
+        BigDecimal lineTotal = qItem.getLineTotal();
+        if (lineTotal == null && qItem.getNetWeightKg() != null
+                && qItem.getUnitPrice() != null) {
+            lineTotal = qItem.getNetWeightKg()
+                    .multiply(qItem.getUnitPrice())
+                    .multiply(BigDecimal.valueOf(qItem.getQuantity()));
+        }
 
         OrderItem item = OrderItem.builder()
                 .order(order)
-                // Autopopulated from Quotation
                 .partName(qItem.getPartName())
                 .drawingNumber(qItem.getDrawingNumber())
                 .materialGrade(qItem.getMaterialGrade())
                 .metalType(qItem.getMetalType())
                 .castingProcess(qItem.getCastingProcess())
                 .netWeightKg(qItem.getNetWeightKg())
-                .grossWeightKg(qItem.getGrossWeightKg())
                 .quantity(qItem.getQuantity())
                 .unitPrice(qItem.getUnitPrice())
-                .lineTotal(qItem.getLineTotal())
+                .lineTotal(lineTotal)
                 .patternProvidedByCustomer(qItem.getPatternProvidedByCustomer())
-                // Production tracking defaults
                 .producedQuantity(0)
                 .dispatchedQuantity(0)
                 .build();
 
-        // Fill missing data from Enquiry if available
-        if (eItem != null) {
+        item.calculateGst(defaultGstPercentage);
 
+        if (eItem != null) {
             if (item.getMaterialGrade() == null || item.getMaterialGrade().isBlank()) {
                 item.setMaterialGrade(eItem.getMaterialGrade());
-                log.debug("MaterialGrade auto-filled from enquiry: {}", eItem.getMaterialGrade());
             }
-
             if (item.getMetalType() == null) {
                 item.setMetalType(eItem.getMetalType());
-                log.debug("MetalType auto-filled from enquiry: {}", eItem.getMetalType());
             }
-
             if (item.getCastingProcess() == null || item.getCastingProcess().isBlank()) {
                 item.setCastingProcess(eItem.getCastingProcess());
-                log.debug("CastingProcess auto-filled from enquiry: {}", eItem.getCastingProcess());
             }
         }
 
-        // Copy pattern info from quotation
         if (Boolean.TRUE.equals(qItem.getPatternProvidedByCustomer())) {
             item.setPatternReceipt(qItem.getPatternReceipt());
         } else {
@@ -218,23 +218,25 @@ public class OrderServiceImpl implements OrderService {
 
     // =========================================================
     //  SCENARIO 2: CREATE DIRECT ORDER
-    //  All fields required from request
     // =========================================================
 
     private OrderResponse createDirectOrder(OrderCreateRequest request) {
 
-        // 1. Fetch customer
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
-        // 2. Validate items
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Items are required for direct order");
         }
 
-        // 3. Build order
+        // Validate payment terms
+        validatePaymentTerms(request);
+
+        BigDecimal defaultGstPercentage = request.getGstPercentage() != null
+                ? request.getGstPercentage() : BigDecimal.valueOf(18);
+
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .customer(customer)
@@ -243,29 +245,30 @@ public class OrderServiceImpl implements OrderService {
                 .deliveryDate(request.getDeliveryDate())
                 .placeOfSupply(request.getPlaceOfSupply())
                 .poReference(request.getPoReference())
+                .paymentTerms(request.getPaymentTerms())
+                .customPaymentTerms(resolveCustomPaymentTerms(request))
                 .status(OrderStatus.CREATED)
+                .gstPercentage(defaultGstPercentage)
                 .subTotal(BigDecimal.ZERO)
-                .discount(BigDecimal.ZERO)
-                .tax(BigDecimal.ZERO)
+                .cgst(BigDecimal.ZERO)
+                .sgst(BigDecimal.ZERO)
+                .igst(BigDecimal.ZERO)
+                .totalGst(BigDecimal.ZERO)
                 .totalAmount(BigDecimal.ZERO)
                 .items(new ArrayList<>())
                 .build();
 
-        // 4. Process items from request
         for (OrderItemRequest itemReq : request.getItems()) {
-            OrderItem item = buildOrderItemFromRequest(order, itemReq);
+            OrderItem item = buildOrderItemFromRequest(order, itemReq, defaultGstPercentage);
             order.addItem(item);
         }
 
-        // 5. Calculate totals
-        recalculateTotals(order);
+        recalculateTotals(order, customer);
 
-        // 6. Save
         Order saved = orderRepository.save(order);
 
         log.info("Direct order created: {}", saved.getOrderNumber());
 
-        // 7. Send confirmation email
         sendOrderConfirmationEmail(saved);
 
         return orderMapper.toResponse(saved);
@@ -275,15 +278,17 @@ public class OrderServiceImpl implements OrderService {
     //  BUILD ORDER ITEM FROM REQUEST (DIRECT ORDER)
     // =========================================================
 
-    private OrderItem buildOrderItemFromRequest(Order order, OrderItemRequest req) {
-
-        // Validate
+    private OrderItem buildOrderItemFromRequest(Order order,
+                                                OrderItemRequest req,
+                                                BigDecimal defaultGstPercentage) {
         validateOrderItemRequest(req);
 
-        // Calculate line total
         BigDecimal lineTotal = req.getNetWeightKg()
                 .multiply(req.getUnitPrice())
                 .multiply(BigDecimal.valueOf(req.getQuantity()));
+
+        BigDecimal itemGstPercentage = req.getGstPercentage() != null
+                ? req.getGstPercentage() : defaultGstPercentage;
 
         OrderItem item = OrderItem.builder()
                 .order(order)
@@ -301,7 +306,8 @@ public class OrderServiceImpl implements OrderService {
                 .dispatchedQuantity(0)
                 .build();
 
-        // Handle pattern
+        item.calculateGst(itemGstPercentage);
+
         applyPatternLogic(item, req);
 
         return item;
@@ -313,17 +319,13 @@ public class OrderServiceImpl implements OrderService {
 
     private void applyPatternLogic(OrderItem item, OrderItemRequest req) {
 
-        // Customer provides pattern
         if (Boolean.TRUE.equals(req.getPatternProvidedByCustomer())) {
-
             if (req.getPatternReceipt() == null) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "Pattern receipt is required when pattern is provided by customer");
             }
-
             PatternReceiptRequest pr = req.getPatternReceipt();
-
             PatternReceipt receipt = PatternReceipt.builder()
                     .name(pr.getName())
                     .type(pr.getType())
@@ -331,22 +333,16 @@ public class OrderServiceImpl implements OrderService {
                     .inwardDate(pr.getInwardDate())
                     .outwardDate(pr.getOutwardDate())
                     .build();
-
             item.setPatternReceipt(receipt);
-
-            // Company provides pattern
         } else {
-
             if (req.getPatternId() == null) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "Pattern ID is required when using company pattern");
             }
-
             Pattern pattern = patternRepository.findById(req.getPatternId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Pattern not found: " + req.getPatternId()));
-
             item.setPattern(pattern);
         }
     }
@@ -354,6 +350,25 @@ public class OrderServiceImpl implements OrderService {
     // =========================================================
     //  VALIDATION
     // =========================================================
+
+    private void validatePaymentTerms(OrderCreateRequest request) {
+        if (request.getPaymentTerms() == PaymentTerms.CUSTOM) {
+            if (request.getCustomPaymentTerms() == null
+                    || request.getCustomPaymentTerms().isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Custom payment terms description is required when payment terms is CUSTOM");
+            }
+        }
+    }
+
+    private String resolveCustomPaymentTerms(OrderCreateRequest request) {
+        if (request.getPaymentTerms() == PaymentTerms.CUSTOM) {
+            return request.getCustomPaymentTerms();
+        }
+        // Clear custom terms if not CUSTOM type
+        return null;
+    }
 
     private void validateOrderItemRequest(OrderItemRequest req) {
 
@@ -383,10 +398,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // =========================================================
-    //  RECALCULATE TOTALS
+    //  RECALCULATE TOTALS WITH GST
     // =========================================================
 
-    private void recalculateTotals(Order order) {
+    private void recalculateTotals(Order order, Customer customer) {
 
         BigDecimal subTotal = order.getItems().stream()
                 .map(OrderItem::getLineTotal)
@@ -395,10 +410,20 @@ public class OrderServiceImpl implements OrderService {
 
         order.setSubTotal(subTotal);
 
-        BigDecimal discount = order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO;
-        BigDecimal tax = order.getTax() != null ? order.getTax() : BigDecimal.ZERO;
+        String customerState = customer.getState();
+        BigDecimal gstPercentage = order.getGstPercentage() != null
+                ? order.getGstPercentage() : BigDecimal.valueOf(18);
 
-        order.setTotalAmount(subTotal.subtract(discount).add(tax));
+        GstCalculationResult gstResult = GstCalculationResult.calculate(
+                subTotal, gstPercentage, customerState);
+
+        order.setGstType(gstResult.getGstType());
+        order.setGstPercentage(gstResult.getGstPercentage());
+        order.setCgst(gstResult.getCgst());
+        order.setSgst(gstResult.getSgst());
+        order.setIgst(gstResult.getIgst());
+        order.setTotalGst(gstResult.getTotalGst());
+        order.setTotalAmount(gstResult.getGrandTotal());
     }
 
     // =========================================================
@@ -466,7 +491,6 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        // Validate transition
         OrderStatusTransitionValidator.validate(order.getStatus(), newStatus);
 
         OrderStatus oldStatus = order.getStatus();
@@ -491,16 +515,37 @@ public class OrderServiceImpl implements OrderService {
 
             String subject = "Order Confirmation - " + order.getOrderNumber();
 
+            String gstInfo;
+            if (order.getIgst() != null && order.getIgst().compareTo(BigDecimal.ZERO) > 0) {
+                gstInfo = String.format("IGST (%.0f%%)  : ₹%s",
+                        order.getGstPercentage(), order.getIgst());
+            } else {
+                gstInfo = String.format(
+                        "CGST (%.0f%%)  : ₹%s\n    SGST (%.0f%%)  : ₹%s",
+                        order.getGstPercentage().divide(BigDecimal.valueOf(2)),
+                        order.getCgst(),
+                        order.getGstPercentage().divide(BigDecimal.valueOf(2)),
+                        order.getSgst());
+            }
+
+            String paymentInfo = order.getPaymentTermsDisplay() != null
+                    ? order.getPaymentTermsDisplay() : "Not specified";
+
             String body = String.format("""
                     Dear %s,
                     
                     Your order has been created successfully.
                     
-                    Order Number  : %s
-                    Order Type    : %s
-                    Order Date    : %s
-                    Delivery Date : %s
-                    Total Amount  : ₹%s
+                    Order Number   : %s
+                    Order Type     : %s
+                    Order Date     : %s
+                    Delivery Date  : %s
+                    Payment Terms  : %s
+                    
+                    Sub Total      : ₹%s
+                    %s
+                    Total GST      : ₹%s
+                    Grand Total    : ₹%s
                     
                     Items:
                     %s
@@ -515,6 +560,10 @@ public class OrderServiceImpl implements OrderService {
                     order.getOrderType(),
                     order.getOrderDate(),
                     order.getDeliveryDate() != null ? order.getDeliveryDate() : "To be confirmed",
+                    paymentInfo,
+                    order.getSubTotal(),
+                    gstInfo,
+                    order.getTotalGst(),
                     order.getTotalAmount(),
                     formatOrderItems(order.getItems()));
 
@@ -525,7 +574,6 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("Failed to send order confirmation email for: {}",
                     order.getOrderNumber(), e);
-            // Don't throw - email failure shouldn't fail order creation
         }
     }
 
@@ -536,7 +584,8 @@ public class OrderServiceImpl implements OrderService {
         for (int i = 0; i < items.size(); i++) {
             OrderItem item = items.get(i);
             sb.append(String.format(
-                    "  %d. %s | Grade: %s | Metal: %s | Process: %s | Qty: %d | Weight: %s kg | Total: ₹%s\n",
+                    "  %d. %s | Grade: %s | Metal: %s | Process: %s | Qty: %d | "
+                            + "Weight: %s kg | Base: ₹%s | GST(%s%%): ₹%s | Total: ₹%s\n",
                     i + 1,
                     item.getPartName(),
                     item.getMaterialGrade() != null ? item.getMaterialGrade() : "N/A",
@@ -544,7 +593,10 @@ public class OrderServiceImpl implements OrderService {
                     item.getCastingProcess() != null ? item.getCastingProcess() : "N/A",
                     item.getQuantity(),
                     item.getNetWeightKg(),
-                    item.getLineTotal()));
+                    item.getLineTotal(),
+                    item.getGstPercentage() != null ? item.getGstPercentage() : "18",
+                    item.getGstAmount() != null ? item.getGstAmount() : BigDecimal.ZERO,
+                    item.getTotalWithGst() != null ? item.getTotalWithGst() : item.getLineTotal()));
         }
 
         return sb.toString();
