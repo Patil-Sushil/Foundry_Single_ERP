@@ -54,12 +54,12 @@ public class GstCalculationResult {
             BigDecimal halfPercent = gstPercentage
                     .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
 
-            cgst = subtotal.multiply(halfPercent)
+            BigDecimal divide = subtotal.multiply(halfPercent)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            sgst = subtotal.multiply(halfPercent)
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            cgst = divide;
+            sgst = divide;
         } else {
-            // Inter-state: full IGST
+            // Interstate: full IGST
             gstType = GstType.IGST;
             igst = subtotal.multiply(gstPercentage)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);

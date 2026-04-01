@@ -1,9 +1,12 @@
 package com.kalibyte.foundry.enquiry.entity.enums;
 
+import lombok.Getter;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Getter
 public enum MetalCategory {
 
     FERROUS("Ferrous Metals"),
@@ -13,10 +16,6 @@ public enum MetalCategory {
 
     MetalCategory(String displayName) {
         this.displayName = displayName;
-    }
-
-    public String getDisplayName() {
-        return displayName;
     }
 
     // Get all metal types belonging to this category
