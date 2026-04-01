@@ -1,0 +1,79 @@
+package com.kalibyte.foundry.furnace.furnace_report.controller;
+
+import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
+import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponseDTO;
+import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequestDTO;
+import com.kalibyte.foundry.furnace.furnace_report.service.FurnaceService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/furnace/reports")
+public class FurnaceController {
+
+    private final FurnaceService furnaceService;
+
+	public FurnaceController(FurnaceService furnaceService) {
+		this.furnaceService = furnaceService;
+	}
+
+	@PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> createFurnace(@Valid @RequestBody FurnaceRequestDTO request) {
+        FurnaceResponseDTO response = furnaceService.createFurnace(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(true, "Furnace report created successfully", response));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<List<FurnaceResponseDTO>>> findAll() {
+        List<FurnaceResponseDTO> responses = furnaceService.findAll();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Furnace reports fetched successfully", responses));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> findById(@PathVariable long id) {
+        FurnaceResponseDTO response = furnaceService.findById(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report fetched successfully", response));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> updateFurnace(@PathVariable Long id, @Valid @RequestBody FurnaceRequestDTO request) {
+        FurnaceResponseDTO response = furnaceService.updateFurnace(id, request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report updated successfully", response));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<Void>> deleteFurnace(@PathVariable Long id) {
+        furnaceService.deleteFurnace(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report deleted successfully", null));
+    }
+
+    @GetMapping("/{id}/material-summary")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMaterialSummary(
+            @PathVariable Long id,
+            @RequestParam(required = false) HeatMaterialType type) {
+        List<Map<String, Object>> summary = furnaceService.getMaterialSummary(id, type);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Material summary fetched successfully", summary));
+    }
+
+    @GetMapping("/ref/{refNo}")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> findByRefNo(@PathVariable String refNo) {
+        FurnaceResponseDTO response = furnaceService.findByFurnaceRefNo(refNo);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report fetched successfully", response));
+    }
+}
