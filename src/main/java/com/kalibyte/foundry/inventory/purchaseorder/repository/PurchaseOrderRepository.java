@@ -39,6 +39,15 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, Lo
 
     boolean existsByPoNumber(String poNumber);
 
+    @Query("SELECT DISTINCT p FROM PurchaseOrder p " +
+           "LEFT JOIN FETCH p.vendor " +
+           "LEFT JOIN FETCH p.orderItems oi " +
+           "LEFT JOIN FETCH oi.item " +
+           "WHERE p.poDate BETWEEN :startDate AND :endDate " +
+           "ORDER BY p.poDate ASC")
+    List<PurchaseOrder> findByPoDateBetween(@Param("startDate") LocalDate startDate, 
+                                            @Param("endDate") LocalDate endDate);
+
     /**
      * Returns total raw material purchase cost (COGS).
      */

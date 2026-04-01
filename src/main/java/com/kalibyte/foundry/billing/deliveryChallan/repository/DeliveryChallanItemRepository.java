@@ -14,9 +14,10 @@ public interface DeliveryChallanItemRepository extends JpaRepository<DeliveryCha
     List<DeliveryChallanItem> findByDeliveryChallan_Order(Order order);
 
     @Query("""
-        SELECT SUM(i.quantity)
+        SELECT COALESCE(SUM(i.quantity), 0)
         FROM DeliveryChallanItem i
         WHERE i.orderItem.id = :orderItemId
+        AND i.deliveryChallan.isDeleted = false
     """)
     Integer getTotalDispatchedQuantity(UUID orderItemId);
 

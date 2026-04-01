@@ -34,6 +34,14 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
     """)
     int getTotalDispatched(@Param("orderItemId") UUID orderItemId);
 
+    @Query("""
+        SELECT COALESCE(SUM(pi.acceptedQuantity), 0)
+        FROM ProductionItem pi
+        WHERE pi.orderItem.id = :orderItemId
+        AND pi.isDeleted = false
+    """)
+    int getTotalAcceptedQuantity(@Param("orderItemId") UUID orderItemId);
+
     // ── Pipeline totals for an order item ──
     @Query("""
         SELECT

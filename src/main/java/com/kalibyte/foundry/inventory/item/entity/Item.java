@@ -80,17 +80,26 @@ public class Item extends BaseInventoryEntity {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    private String grade;
+
+    @Builder.Default
+    @Column(name = "is_scrap")
+    private Boolean isScrap = false;
+
     // --- DOMAIN METHODS ---
 
     public void receiveStock(BigDecimal incomingQuantity, BigDecimal purchaseRate) {
-        if (incomingQuantity.compareTo(BigDecimal.ZERO) <= 0 || purchaseRate.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException("Incoming quantity and purchase rate must be positive.");
+        if (incomingQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("Incoming quantity must be positive.");
+        }
+        if (purchaseRate.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("Purchase rate cannot be negative.");
         }
 
         BigDecimal existingValue = currentStock.multiply(avgRate);
         BigDecimal incomingValue = incomingQuantity.multiply(purchaseRate);
         BigDecimal newTotalQty = currentStock.add(incomingQuantity);
-        
+
         // Avoid division by zero (should not happen if incoming > 0)
         BigDecimal newAvgRate = existingValue.add(incomingValue)
                 .divide(newTotalQty, 2, RoundingMode.HALF_UP);
@@ -99,7 +108,6 @@ public class Item extends BaseInventoryEntity {
         this.avgRate = newAvgRate;
         this.lastPurchaseRate = purchaseRate;
     }
-
     public void issueStock(BigDecimal issueQuantity) {
         if (issueQuantity.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("Issue quantity must be positive.");

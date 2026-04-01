@@ -18,7 +18,9 @@ public record InwardResponse(
     String vendorChallanNumber,
     LocalDate inwardDate,
     List<ReceivedItemDetail> receivedItems,
-    BigDecimal totalAmount,
+    BigDecimal totalTaxableAmount,
+    BigDecimal totalTaxAmount,
+    BigDecimal grandTotal,
     LocalDateTime confirmedAt,
     LocalDateTime createdAt
 ) {}

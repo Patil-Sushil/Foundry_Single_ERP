@@ -26,8 +26,6 @@ public class ProductionItemRequest {
     @Min(value = 0, message = "Fettling quantity cannot be negative")
     private Integer fettlingQuantity;
 
-    @Min(value = 0, message = "Dispatched quantity cannot be negative")
-    private Integer dispatchedQuantity;
-
     private String itemRemark;
+    private Long heatOrderItemId;
 }

@@ -13,6 +13,10 @@ public record OrderItemDetail(
     BigDecimal receivedQuantity,
     BigDecimal pendingQuantity,
     BigDecimal unitRate,
+    BigDecimal taxableValue,
+    BigDecimal gstRate,
+    String hsnCode,
+    BigDecimal taxAmount,
     BigDecimal totalValue,
     String notes
 ) {}

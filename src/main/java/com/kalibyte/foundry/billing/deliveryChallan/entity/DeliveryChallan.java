@@ -73,6 +73,10 @@ public class DeliveryChallan extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private DCStatus status;
 
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private Boolean isDeleted = false;
+
     @OneToMany(
             mappedBy = "deliveryChallan",
             cascade = CascadeType.ALL,

@@ -18,25 +18,23 @@ public interface InwardMapper {
 
     @Mapping(source = "purchaseOrder.poNumber", target = "poNumber")
     @Mapping(source = "vendor.name", target = "vendorName")
-    @Mapping(target = "totalAmount", expression = "java(inward.getTotalAmount())")
     InwardResponse toResponse(MaterialInward inward);
 
     @Mapping(source = "item.id", target = "itemId")
     @Mapping(source = "item.name", target = "itemName")
     @Mapping(source = "item.code", target = "itemCode")
     @Mapping(target = "unit", expression = "java(item.getItem().getUnit().name())")
-    @Mapping(target = "amount", expression = "java(item.getAmount())")
+    @Mapping(target = "taxableAmount", expression = "java(item.getTaxableAmount())")
+    @Mapping(target = "grandTotal", expression = "java(item.getAmount())")
     ReceivedItemDetail toDetail(ReceivedItem item);
 
     @Mapping(source = "vendor.name", target = "vendorName")
     @Mapping(target = "totalItems", expression = "java(inward.getReceivedItems().size())")
-    @Mapping(target = "totalAmount", expression = "java(inward.getTotalAmount())")
     InwardSummary toSummary(MaterialInward inward);
 
     @Mapping(source = "id", target = "inwardId")
     @Mapping(source = "purchaseOrder.poNumber", target = "purchaseOrderNumber")
     @Mapping(source = "vendor.name", target = "vendorName")
-    @Mapping(target = "totalAmount", expression = "java(inward.getTotalAmount())")
     @Mapping(target = "hasShortage", expression = "java(hasShortage(inward))")
     @Mapping(target = "hasExcess", expression = "java(hasExcess(inward))")
     InwardReviewResponse toReviewResponse(MaterialInward inward);
@@ -47,7 +45,8 @@ public interface InwardMapper {
     @Mapping(target = "orderedQuantity", expression = "java(item.getPoQuantity() != null ? item.getPoQuantity() : BigDecimal.ZERO)")
     @Mapping(target = "quantityDifference", expression = "java(item.getQuantityDifference())")
     @Mapping(target = "receiptStatus", expression = "java(item.getReceiptStatus().name())")
-    @Mapping(target = "totalAmount", expression = "java(item.getAmount())")
+    @Mapping(target = "taxableAmount", expression = "java(item.getTaxableAmount())")
+    @Mapping(target = "grandTotal", expression = "java(item.getAmount())")
     ReceivedItemComparison toComparison(ReceivedItem item);
 
     default boolean hasShortage(MaterialInward inward) {

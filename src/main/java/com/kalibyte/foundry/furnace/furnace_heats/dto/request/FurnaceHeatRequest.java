@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.furnace.furnace_heats.dto.request;
 
+import com.kalibyte.foundry.furnace.furnace_heats.validation.ValidMetalBalance;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -8,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ValidMetalBalance
 public class FurnaceHeatRequest {
     private Long id;
 
@@ -27,7 +30,7 @@ public class FurnaceHeatRequest {
     @Max(value = 5, message = "the value is greater than 5 its unacceptable")
     private Double cpcpercentage;
 
-//    @Min(value = 0, message = "the mg percentaget too low it should be greater 0")
+//    @Min(value = 0, message = "the mg percentage too low it should be greater 0")
 //    @Max(value = 3, message = "the value is greater than 3 its unacceptable")
     private Double mgpercentage;
 
@@ -53,4 +56,23 @@ public class FurnaceHeatRequest {
     private LocalTime pouringEndTime;
 
     private UUID orderId;
+
+    private String grade;
+
+    private BigDecimal liquidMetalWeight;
+
+    private BigDecimal castingsPouredWeight;
+
+    private BigDecimal runnerWeight;
+
+    private BigDecimal riserWeight;
+
+    private BigDecimal skullWeight;
+
+    private BigDecimal spillageWeight;
+
+    private Boolean autoReturnScrap;
+
+    @Valid
+    private List<HeatOrderItemRequest> heatOrderItems;
 }

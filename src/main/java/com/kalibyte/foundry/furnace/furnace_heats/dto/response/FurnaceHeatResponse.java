@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
@@ -28,4 +29,24 @@ public class FurnaceHeatResponse {
     private LocalTime pouringStartTime;
     private LocalTime pouringEndTime;
     private UUID orderId;
+
+    private String grade;
+    private BigDecimal liquidMetalWeight;
+    private BigDecimal castingsPouredWeight;
+    private BigDecimal runnerWeight;
+    private BigDecimal riserWeight;
+    private BigDecimal skullWeight;
+    private BigDecimal spillageWeight;
+    private BigDecimal totalProcessScrap;
+    private Long processScrapEntryId;
+    private Boolean autoReturnScrap;
+    private BigDecimal furnaceYieldPercentage;
+    private BigDecimal pouringYieldPercentage;
+
+    // Calculated fields
+    private BigDecimal metalLoss;
+    private BigDecimal yieldPercentage;
+    private BigDecimal remainingCapacity;
+
+    private List<HeatOrderItemResponse> heatOrderItems;
 }

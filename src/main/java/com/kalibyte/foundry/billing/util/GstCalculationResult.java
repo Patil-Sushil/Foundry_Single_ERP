@@ -23,28 +23,30 @@ public class GstCalculationResult {
     private BigDecimal grandTotal;
 
     /**
-     * Calculate GST based on customer state.
-     * Company state is assumed to be "Maharashtra".
+     * Calculate GST based on customer/vendor state and company's base state.
      *
      * @param subtotal      base amount before GST
      * @param gstPercentage total GST percentage (e.g. 18)
-     * @param customerState customer's state
+     * @param partyState    customer/vendor's state
+     * @param companyState  company's home state (e.g. "Maharashtra")
      * @return GstCalculationResult with all breakdowns
      */
     public static GstCalculationResult calculate(BigDecimal subtotal,
                                                  BigDecimal gstPercentage,
-                                                 String customerState) {
+                                                 String partyState,
+                                                 String companyState) {
 
         if (subtotal == null) subtotal = BigDecimal.ZERO;
         if (gstPercentage == null) gstPercentage = BigDecimal.valueOf(18);
+        if (companyState == null || companyState.isEmpty()) companyState = "Maharashtra";
 
         BigDecimal cgst = BigDecimal.ZERO;
         BigDecimal sgst = BigDecimal.ZERO;
         BigDecimal igst = BigDecimal.ZERO;
         GstType gstType;
 
-        boolean isSameState = "Maharashtra".equalsIgnoreCase(
-                customerState != null ? customerState.trim() : "");
+        boolean isSameState = companyState.equalsIgnoreCase(
+                partyState != null ? partyState.trim() : "");
 
         if (isSameState) {
             // Intra-state: split into CGST + SGST
@@ -76,5 +78,20 @@ public class GstCalculationResult {
                 .totalGst(totalGst)
                 .grandTotal(grandTotal)
                 .build();
+    }
+
+    /**
+     * Calculate GST based on customer state.
+     * Company state is assumed to be "Maharashtra".
+     *
+     * @param subtotal      base amount before GST
+     * @param gstPercentage total GST percentage (e.g. 18)
+     * @param customerState customer's state
+     * @return GstCalculationResult with all breakdowns
+     */
+    public static GstCalculationResult calculate(BigDecimal subtotal,
+                                                 BigDecimal gstPercentage,
+                                                 String customerState) {
+        return calculate(subtotal, gstPercentage, customerState, "Maharashtra");
     }
 }

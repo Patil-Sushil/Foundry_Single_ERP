@@ -27,5 +27,6 @@ public record ItemResponse(
     String hsnCode,
     BigDecimal gstRate,
     Boolean isActive,
+    Boolean isScrap,
     LocalDateTime createdAt
 ) {}

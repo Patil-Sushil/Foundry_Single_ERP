@@ -2,6 +2,7 @@ package com.kalibyte.foundry.billing.deliveryChallan.controller;
 
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.response.DeliveryChallanResponse;
+import com.kalibyte.foundry.billing.deliveryChallan.dto.response.DispatchAvailableResponse;
 import com.kalibyte.foundry.billing.deliveryChallan.service.DeliveryChallanService;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.common.response.PageResponse;
@@ -106,6 +107,17 @@ public class DeliveryChallanController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=delivery-challan-" + id + ".pdf")
-                .body(pdf);
-    }
-}
+                        .body(pdf);
+                        }
+
+                        @GetMapping("/dispatch-available/{orderItemId}")
+                        public ResponseEntity<ApiResponse<DispatchAvailableResponse>> getDispatchAvailable(
+                        @PathVariable UUID orderItemId
+                        ) {
+                        return ResponseEntity.ok(
+                        ApiResponse.success(
+                        deliveryChallanService.getDispatchAvailable(orderItemId)
+                        )
+                        );
+                        }
+                        }

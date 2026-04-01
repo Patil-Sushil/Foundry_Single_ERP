@@ -40,5 +40,6 @@ public record UpdateItemRequest(
     @DecimalMin(value = "0.0", message = "GST rate must be >= 0")
     BigDecimal gstRate,
 
-    Boolean isActive
+    Boolean isActive,
+    Boolean isScrap
 ) implements Serializable {}

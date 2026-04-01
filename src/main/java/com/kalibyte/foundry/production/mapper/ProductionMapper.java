@@ -27,6 +27,7 @@ public interface ProductionMapper {
     //------------------------------------------------
 
     @Mapping(source = "orderItem.id", target = "orderItemId")
+    @Mapping(source = "heatOrderItem.id", target = "heatOrderItemId")
     ProductionItemResponse toItemResponse(ProductionItem item);
 
     List<ProductionItemResponse> toItemResponseList(List<ProductionItem> items);

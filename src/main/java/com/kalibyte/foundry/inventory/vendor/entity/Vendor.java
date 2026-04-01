@@ -21,6 +21,8 @@ public class Vendor extends BaseInventoryEntity {
     @Column(name = "gst_number")
     private String gstNumber;
 
+    private String state;
+
     @Column(columnDefinition = "TEXT")
     private String address;
 

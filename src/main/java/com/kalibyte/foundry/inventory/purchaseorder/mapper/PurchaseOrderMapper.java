@@ -23,7 +23,6 @@ public interface PurchaseOrderMapper {
     @Mapping(source = "vendor.name", target = "vendorName")
     @Mapping(source = "vendor.id", target = "vendorId")
     @Mapping(source = "orderItems", target = "items")
-    @Mapping(target = "totalOrderValue", expression = "java(po.getTotalOrderValue())")
     PurchaseOrderResponse toResponse(PurchaseOrder po);
 
     @Mapping(source = "item.id", target = "itemId")
@@ -31,12 +30,12 @@ public interface PurchaseOrderMapper {
     @Mapping(source = "item.code", target = "itemCode")
     @Mapping(source = "item.unit", target = "unit")
     @Mapping(target = "pendingQuantity", expression = "java(item.getPendingQuantity())")
+    @Mapping(target = "taxableValue", expression = "java(item.getTaxableValue())")
     @Mapping(target = "totalValue", expression = "java(item.getTotalValue())")
     OrderItemDetail toItemDetail(PurchaseOrderItem item);
 
     @Mapping(source = "vendor.name", target = "vendorName")
     @Mapping(target = "totalItems", expression = "java(po.getOrderItems().size())")
-    @Mapping(target = "totalOrderValue", expression = "java(po.getTotalOrderValue())")
     PurchaseOrderSummary toSummary(PurchaseOrder po);
 
     @BeanMapping(builder = @Builder(disableBuilder = true))

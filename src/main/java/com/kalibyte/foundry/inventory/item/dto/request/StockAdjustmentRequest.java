@@ -3,7 +3,7 @@ package com.kalibyte.foundry.inventory.item.dto.request;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -16,7 +16,7 @@ public record StockAdjustmentRequest(
     @NotNull(message = "Quantity is required")
     BigDecimal quantity,
 
-    @Positive(message = "Unit rate must be positive")
+    @PositiveOrZero(message = "Unit rate must be positive or zero")
     BigDecimal unitRate,
 
     @NotBlank(message = "Reason is required")

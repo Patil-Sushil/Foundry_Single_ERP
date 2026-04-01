@@ -10,7 +10,13 @@ public record PurchaseOrderSummary(
     String vendorName,
     POStatus status,
     int totalItems,
-    BigDecimal totalOrderValue,
+    BigDecimal totalTaxableAmount,
+    BigDecimal totalTaxAmount,
+    BigDecimal cgst,
+    BigDecimal sgst,
+    BigDecimal igst,
+    com.kalibyte.foundry.order.entity.enums.GstType gstType,
+    BigDecimal grandTotal,
     LocalDate poDate,
     LocalDate expectedDeliveryDate
 ) {}

@@ -43,12 +43,25 @@ public class ReceivedItem {
     @Column(name = "unit_rate", nullable = false)
     private BigDecimal unitRate;
 
+    @Column(name = "gst_rate")
+    private BigDecimal gstRate;
+
+    @Column(name = "tax_amount")
+    private BigDecimal taxAmount;
+
+    @Column(name = "amount")
+    private BigDecimal amount;
+
     private String notes;
 
     // --- DOMAIN METHODS ---
 
-    public BigDecimal getAmount() {
+    public BigDecimal getTaxableAmount() {
         return receivedQuantity.multiply(unitRate).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getAmount() {
+        return amount != null ? amount : getTaxableAmount().add(taxAmount != null ? taxAmount : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
     }
 
     public BigDecimal getQuantityDifference() {

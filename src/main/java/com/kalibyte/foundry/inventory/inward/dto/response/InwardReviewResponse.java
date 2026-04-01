@@ -13,7 +13,9 @@ public record InwardReviewResponse(
     String vendorChallanNumber,
     LocalDate inwardDate,
     List<ReceivedItemComparison> receivedItems,
-    BigDecimal totalAmount,
+    BigDecimal totalTaxableAmount,
+    BigDecimal totalTaxAmount,
+    BigDecimal grandTotal,
     boolean hasShortage,
     boolean hasExcess
 ) {}

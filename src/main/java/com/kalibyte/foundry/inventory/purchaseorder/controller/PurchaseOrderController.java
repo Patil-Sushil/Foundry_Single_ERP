@@ -7,17 +7,24 @@ import com.kalibyte.foundry.inventory.purchaseorder.dto.response.LastPurchaseRat
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.PurchaseOrderResponse;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.PurchaseOrderSummary;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.enums.POStatus;
+import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseExportService;
 import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseOrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/purchase-orders")
@@ -25,10 +32,34 @@ import java.util.Optional;
 public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
+    private final PurchaseExportService purchaseExportService;
 
-	public PurchaseOrderController(PurchaseOrderService purchaseOrderService) {
-		this.purchaseOrderService = purchaseOrderService;
-	}
+    public PurchaseOrderController(PurchaseOrderService purchaseOrderService, PurchaseExportService purchaseExportService) {
+        this.purchaseOrderService = purchaseOrderService;
+        this.purchaseExportService = purchaseExportService;
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<Resource> exportPurchaseReport(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) throws IOException {
+
+        if (startDate == null) {
+            startDate = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth());
+        }
+        if (endDate == null) {
+            endDate = LocalDate.now().with(TemporalAdjusters.lastDayOfMonth());
+        }
+
+        byte[] data = purchaseExportService.exportPurchaseReport(startDate, endDate);
+        ByteArrayResource resource = new ByteArrayResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Purchase_Report_CA.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(data.length)
+                .body(resource);
+    }
 
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)
