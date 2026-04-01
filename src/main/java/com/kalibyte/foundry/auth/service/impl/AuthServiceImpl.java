@@ -209,10 +209,5 @@ public class AuthServiceImpl implements AuthService {
                         .toList())
                 .build());
     }
-
-
-
-
-
 }
 
