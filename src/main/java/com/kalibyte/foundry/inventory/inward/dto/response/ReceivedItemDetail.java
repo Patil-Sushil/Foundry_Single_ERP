@@ -11,6 +11,9 @@ public record ReceivedItemDetail(
     BigDecimal poQuantity,
     BigDecimal receivedQuantity,
     BigDecimal unitRate,
-    BigDecimal amount,
+    BigDecimal taxableAmount,
+    BigDecimal gstRate,
+    BigDecimal taxAmount,
+    BigDecimal grandTotal,
     String notes
 ) {}

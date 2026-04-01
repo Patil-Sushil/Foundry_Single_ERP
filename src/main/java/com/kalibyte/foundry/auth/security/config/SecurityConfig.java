@@ -56,6 +56,8 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
+                        .requestMatchers("/actuator/**").permitAll()
+
                         // Reports
                         .requestMatchers("/api/reports/**")
                         .hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT")
@@ -85,6 +87,27 @@ public class SecurityConfig {
                                 "/api/material-issues/**",
                                 "/api/inventory/reports/**"
                         ).hasAnyRole("ADMIN", "STORE", "FINANCE")
+
+                        // QA
+                        .requestMatchers("/api/qa/**")
+                        .hasAnyRole("ADMIN", "QUALITY", "PRODUCTION")
+
+                        // Labor Management
+                        .requestMatchers(
+                                "/api/labors/**",
+                                "/api/attendance/**",
+                                "/api/advances/**",
+                                "/api/labor-reports/**",
+                                "/api/payouts/**"
+                        ).hasRole("ADMIN")
+
+                        // Scrap Management
+                        .requestMatchers("/api/scrap/**")
+                        .hasAnyRole("ADMIN", "PRODUCTION", "QUALITY", "METALLURGIST")
+
+                        // Furnace Management
+                        .requestMatchers("/api/furnace/**", "/api/electricity-rate/**")
+                        .hasAnyRole("ADMIN", "PRODUCTION")
 
                         .anyRequest().authenticated()
                 )

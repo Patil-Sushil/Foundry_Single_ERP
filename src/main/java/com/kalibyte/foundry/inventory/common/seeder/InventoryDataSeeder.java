@@ -29,6 +29,7 @@ import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderItem
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
+import com.kalibyte.foundry.config.AppConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -59,6 +61,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
     private final VendorLedgerRepository vendorLedgerRepository;
     private final ItemVendorRateRepository itemVendorRateRepository;
     private final UserRepository userRepository;
+    private final AppConfig appConfig;
 
     private User adminUser;
 
@@ -117,20 +120,26 @@ public class InventoryDataSeeder implements CommandLineRunner {
     private List<Vendor> seedVendors() {
         log.info("Seeding Vendors...");
         List<Vendor> vendors = new ArrayList<>();
-        vendors.add(createVendor("Industrial Solutions Ltd", "9876543210", "27AAAAA0000A1Z5", "Industrial Estate, Pune"));
-        vendors.add(createVendor("Elite Packaging Systems", "9876543211", "27BBBBB1111B1Z5", "Chakan MIDC, Pune"));
-        vendors.add(createVendor("Global Raw Materials", "9876543212", "27CCCCC2222C1Z5", "Narhe, Pune"));
-        vendors.add(createVendor("Precision Tools & Spares", "9876543213", "27DDDDD3333D1Z5", "Bhosari, Pune"));
-        vendors.add(createVendor("Quality Chemicals", "9876543214", "27EEEEE4444E1Z5", "Hadapsar, Pune"));
+        vendors.add(createVendor("Industrial Solutions Ltd", "9876543210", "27AAAAA0000A1Z5", "Industrial Estate, Pune", "Maharashtra"));
+        vendors.add(createVendor("Elite Packaging Systems", "9876543211", "27BBBBB1111B1Z5", "Chakan MIDC, Pune", "Maharashtra"));
+        vendors.add(createVendor("Global Raw Materials", "9876543212", "27CCCCC2222C1Z5", "Narhe, Pune", "Maharashtra"));
+        vendors.add(createVendor("Precision Tools & Spares", "9876543213", "27DDDDD3333D1Z5", "Bhosari, Pune", "Maharashtra"));
+        vendors.add(createVendor("Quality Chemicals", "9876543214", "27EEEEE4444E1Z5", "Hadapsar, Pune", "Maharashtra"));
+        
+        // Add some out-of-state vendors
+        vendors.add(createVendor("Gujarat Steel Hub", "9876543215", "24GGGGG5555G1Z5", "Ahmedabad, Gujarat", "Gujarat"));
+        vendors.add(createVendor("Karnataka Spares", "9876543216", "29KKKKK6666K1Z5", "Bangalore, Karnataka", "Karnataka"));
+        
         return vendorRepository.saveAll(vendors);
     }
 
-    private Vendor createVendor(String name, String phone, String gst, String address) {
+    private Vendor createVendor(String name, String phone, String gst, String address, String state) {
         return Vendor.builder()
                 .name(name)
                 .phone(phone)
                 .gstNumber(gst)
                 .address(address)
+                .state(state)
                 .isActive(true)
                 .build();
     }
@@ -163,6 +172,15 @@ public class InventoryDataSeeder implements CommandLineRunner {
         items.add(createItem("Wooden Pallets", "PKG-001", ItemCategory.PACKING_MATERIAL, ItemSubCategory.GENERAL, store, ItemUnit.PCS, 50, 20));
         items.add(createItem("Stretch Film Roll", "PKG-002", ItemCategory.PACKING_MATERIAL, ItemSubCategory.GENERAL, store, ItemUnit.BAG, 30, 10));
 
+        // Process Scrap Items
+        items.add(createScrapItem("FG200 Process Scrap", "SCR-FG200", production, "FG200"));
+        items.add(createScrapItem("FG260 Process Scrap", "SCR-FG260", production, "FG260"));
+        items.add(createScrapItem("FG300 Process Scrap", "SCR-FG300", production, "FG300"));
+        items.add(createScrapItem("SG400 Process Scrap", "SCR-SG400", production, "SG400"));
+        items.add(createScrapItem("SG500 Process Scrap", "SCR-SG500", production, "SG500"));
+        items.add(createScrapItem("SG600 Process Scrap", "SCR-SG600", production, "SG600"));
+        items.add(createScrapItem("SG700 Process Scrap", "SCR-SG700", production, "SG700"));
+
         return itemRepository.saveAll(items);
     }
 
@@ -179,6 +197,25 @@ public class InventoryDataSeeder implements CommandLineRunner {
                 .currentStock(BigDecimal.ZERO)
                 .avgRate(BigDecimal.ZERO)
                 .isActive(true)
+                .isScrap(false)
+                .build();
+    }
+
+    private Item createScrapItem(String name, String code, Department dept, String grade) {
+        return Item.builder()
+                .name(name)
+                .code(code)
+                .category(ItemCategory.RAW_MATERIAL)
+                .subCategory(ItemSubCategory.FERROUS)
+                .department(dept)
+                .unit(ItemUnit.KG)
+                .reorderLevel(BigDecimal.ZERO)
+                .minStockLevel(BigDecimal.ZERO)
+                .currentStock(BigDecimal.ZERO)
+                .avgRate(BigDecimal.ZERO)
+                .isActive(true)
+                .isScrap(true)
+                .grade(grade)
                 .build();
     }
 
@@ -186,24 +223,24 @@ public class InventoryDataSeeder implements CommandLineRunner {
         log.info("Seeding Transactions (POs, Inwards, Issues)...");
         LocalDate now = LocalDate.now();
 
-        // 1. PO for Raw Materials - Fully Received
+        // 1. PO for Raw Materials - Fully Received (In-state)
         PurchaseOrder po1 = createPO(vendors.get(2), now.minusDays(60), POStatus.RECEIVED);
-        addOrderItem(po1, items.get(0), 5000, 45.00); // Pig Iron
-        addOrderItem(po1, items.get(1), 10000, 32.00); // Scrap Steel
+        addOrderItem(po1, items.get(0), 5000, 45.00, 18.0, "7201"); // Pig Iron
+        addOrderItem(po1, items.get(1), 10000, 32.00, 18.0, "7204"); // Scrap Steel
         
         MaterialInward mi1 = createInward(po1, vendors.get(2), now.minusDays(55));
-        receiveItem(mi1, items.get(0), 5000, 45.00, po1.getOrderItems().get(0));
-        receiveItem(mi1, items.get(1), 10000, 32.00, po1.getOrderItems().get(1));
+        receiveItem(mi1, items.get(0), 5000, 45.00, 18.0, po1.getOrderItems().get(0));
+        receiveItem(mi1, items.get(1), 10000, 32.00, 18.0, po1.getOrderItems().get(1));
         confirmInward(mi1);
 
         // 2. PO for Consumables - Partially Received
         PurchaseOrder po2 = createPO(vendors.get(0), now.minusDays(45), POStatus.PARTIALLY_RECEIVED);
-        addOrderItem(po2, items.get(3), 100, 150.00); // Grinding Wheels
-        addOrderItem(po2, items.get(4), 200, 80.00); // Oxygen
+        addOrderItem(po2, items.get(3), 100, 150.00, 18.0, "6804"); // Grinding Wheels
+        addOrderItem(po2, items.get(4), 200, 80.00, 12.0, "2804"); // Oxygen
         
         MaterialInward mi2 = createInward(po2, vendors.get(0), now.minusDays(40));
-        receiveItem(mi2, items.get(3), 50, 150.00, po2.getOrderItems().get(0));
-        receiveItem(mi2, items.get(4), 100, 80.00, po2.getOrderItems().get(1));
+        receiveItem(mi2, items.get(3), 50, 150.00, 18.0, po2.getOrderItems().get(0));
+        receiveItem(mi2, items.get(4), 100, 80.00, 12.0, po2.getOrderItems().get(1));
         confirmInward(mi2);
 
         // 3. Issue some items
@@ -213,20 +250,20 @@ public class InventoryDataSeeder implements CommandLineRunner {
 
         // 4. Another Inward for po2
         MaterialInward mi3 = createInward(po2, vendors.get(0), now.minusDays(30));
-        receiveItem(mi3, items.get(3), 50, 155.00, po2.getOrderItems().get(0)); // Rate changed
-        receiveItem(mi3, items.get(4), 100, 80.00, po2.getOrderItems().get(1));
+        receiveItem(mi3, items.get(3), 50, 155.00, 18.0, po2.getOrderItems().get(0)); // Rate changed
+        receiveItem(mi3, items.get(4), 100, 80.00, 12.0, po2.getOrderItems().get(1));
         confirmInward(mi3);
         po2.setStatus(POStatus.RECEIVED);
         purchaseOrderRepository.save(po2);
 
         // 5. PO for Spare Parts - Open
         PurchaseOrder po3 = createPO(vendors.get(3), now.minusDays(20), POStatus.OPEN);
-        addOrderItem(po3, items.get(6), 20, 450.00); // Ball Bearing
-        addOrderItem(po3, items.get(8), 5, 12000.00); // Motor
+        addOrderItem(po3, items.get(6), 20, 450.00, 18.0, "8482"); // Ball Bearing
+        addOrderItem(po3, items.get(8), 5, 12000.00, 18.0, "8501"); // Motor
 
         // 6. Direct Inward (no PO) for Packaging
         MaterialInward mi4 = createInward(null, vendors.get(1), now.minusDays(15));
-        receiveItem(mi4, items.get(9), 100, 1200.00, null); // Wooden Pallets
+        receiveItem(mi4, items.get(9), 100, 1200.00, 12.0, null); // Wooden Pallets
         confirmInward(mi4);
 
         // 7. More Issues
@@ -234,7 +271,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         
         // Add stock for Hydraulic Oil
         MaterialInward mi5 = createInward(null, vendors.get(4), now.minusDays(12));
-        receiveItem(mi5, items.get(5), 50, 250.00, null);
+        receiveItem(mi5, items.get(5), 50, 250.00, 18.0, null);
         confirmInward(mi5);
         
         issueItem(iss2, items.get(5), 10);
@@ -247,6 +284,11 @@ public class InventoryDataSeeder implements CommandLineRunner {
         // 9. Issue that brings stock to critical
         MaterialIssue iss4 = createIssue(departments.stream().filter(d -> d.getCode().equals("MELT")).findFirst().get(), now.minusDays(1));
         issueItem(iss4, items.get(0), 400); // Pig Iron: 500 - 400 = 100 (Min stock 2000, so CRITICAL)
+
+        // 10. Out-of-state PO (IGST)
+        PurchaseOrder poKarnataka = createPO(vendors.get(6), now, POStatus.OPEN); // Karnataka Spares
+        poKarnataka.setNotes("Inter-state PO for Karnataka Vendor (IGST testing)");
+        addOrderItem(poKarnataka, items.get(7), 50, 1800.00, 18.0, "4010"); // Conveyor Belt
     }
 
     private PurchaseOrder createPO(Vendor vendor, LocalDate date, POStatus status) {
@@ -257,20 +299,38 @@ public class InventoryDataSeeder implements CommandLineRunner {
                 .status(status)
                 .createdByUserId(adminUser != null ? adminUser.getId() : null)
                 .orderItems(new ArrayList<>())
+                .totalTaxableAmount(BigDecimal.ZERO)
+                .cgst(BigDecimal.ZERO)
+                .sgst(BigDecimal.ZERO)
+                .igst(BigDecimal.ZERO)
+                .totalTaxAmount(BigDecimal.ZERO)
+                .grandTotal(BigDecimal.ZERO)
                 .build();
         return purchaseOrderRepository.save(po);
     }
 
-    private void addOrderItem(PurchaseOrder po, Item item, double qty, double rate) {
+    private void addOrderItem(PurchaseOrder po, Item item, double qty, double rate, double gstRate, String hsn) {
+        BigDecimal quantity = BigDecimal.valueOf(qty);
+        BigDecimal unitRate = BigDecimal.valueOf(rate);
+        BigDecimal gst = BigDecimal.valueOf(gstRate);
+        BigDecimal taxableValue = quantity.multiply(unitRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = taxableValue.multiply(gst).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
         PurchaseOrderItem oi = PurchaseOrderItem.builder()
                 .purchaseOrder(po)
                 .item(item)
-                .orderedQuantity(BigDecimal.valueOf(qty))
+                .orderedQuantity(quantity)
                 .receivedQuantity(BigDecimal.ZERO)
-                .unitRate(BigDecimal.valueOf(rate))
+                .unitRate(unitRate)
+                .gstRate(gst)
+                .hsnCode(hsn)
+                .taxAmount(taxAmount)
                 .build();
-        po.getOrderItems().add(oi);
+        po.addOrderItem(oi);
         orderItemRepository.save(oi);
+        
+        po.calculateTotals(appConfig.getCompanyState());
+        purchaseOrderRepository.save(po);
     }
 
     private MaterialInward createInward(PurchaseOrder po, Vendor vendor, LocalDate date) {
@@ -282,26 +342,41 @@ public class InventoryDataSeeder implements CommandLineRunner {
                 .status(InwardStatus.DRAFT)
                 .createdByUserId(adminUser != null ? adminUser.getId() : null)
                 .receivedItems(new ArrayList<>())
+                .totalTaxableAmount(BigDecimal.ZERO)
+                .totalTaxAmount(BigDecimal.ZERO)
+                .grandTotal(BigDecimal.ZERO)
                 .build();
         return materialInwardRepository.save(mi);
     }
 
-    private void receiveItem(MaterialInward mi, Item item, double qty, double rate, PurchaseOrderItem oi) {
+    private void receiveItem(MaterialInward mi, Item item, double qty, double rate, double gstRate, PurchaseOrderItem oi) {
+        BigDecimal quantity = BigDecimal.valueOf(qty);
+        BigDecimal unitRate = BigDecimal.valueOf(rate);
+        BigDecimal gst = BigDecimal.valueOf(gstRate);
+        BigDecimal taxableAmount = quantity.multiply(unitRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = taxableAmount.multiply(gst).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
         ReceivedItem ri = ReceivedItem.builder()
                 .materialInward(mi)
                 .item(item)
                 .orderItem(oi)
                 .poQuantity(oi != null ? oi.getOrderedQuantity() : null)
-                .receivedQuantity(BigDecimal.valueOf(qty))
-                .unitRate(BigDecimal.valueOf(rate))
+                .receivedQuantity(quantity)
+                .unitRate(unitRate)
+                .gstRate(gst)
+                .taxAmount(taxAmount)
+                .amount(taxableAmount.add(taxAmount))
                 .build();
-        mi.getReceivedItems().add(ri);
+        mi.addReceivedItem(ri);
         receivedItemRepository.save(ri);
         
         if (oi != null) {
-            oi.setReceivedQuantity(oi.getReceivedQuantity().add(BigDecimal.valueOf(qty)));
+            oi.addReceivedQuantity(quantity);
             orderItemRepository.save(oi);
         }
+
+        mi.calculateTotals();
+        materialInwardRepository.save(mi);
     }
 
     private void confirmInward(MaterialInward mi) {
@@ -310,13 +385,10 @@ public class InventoryDataSeeder implements CommandLineRunner {
         mi.setConfirmedByUserId(adminUser != null ? adminUser.getId() : null);
         materialInwardRepository.save(mi);
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
         for (ReceivedItem ri : mi.getReceivedItems()) {
             Item item = ri.getItem();
             item.receiveStock(ri.getReceivedQuantity(), ri.getUnitRate());
             itemRepository.save(item);
-            
-            totalAmount = totalAmount.add(ri.getReceivedQuantity().multiply(ri.getUnitRate()));
             
             // Update Rate History
             ItemVendorRate rateHistory = itemVendorRateRepository.findByItemIdAndVendorId(item.getId(), mi.getVendor().getId())
@@ -333,7 +405,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         ledger.setVendor(mi.getVendor());
         ledger.setMaterialInward(mi);
         ledger.setEntryType(LedgerEntryType.CREDIT);
-        ledger.setAmount(totalAmount);
+        ledger.setAmount(mi.getGrandTotal()); // Use Grand Total including tax
         ledger.setEntryDate(mi.getInwardDate());
         ledger.setDescription("Material Inward: " + mi.getInwardNumber());
         vendorLedgerRepository.save(ledger);

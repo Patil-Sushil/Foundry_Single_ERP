@@ -23,6 +23,10 @@ public class ProductionItem extends BaseEntity {
     @JoinColumn(name = "order_item_id", nullable = false)
     private OrderItem orderItem;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "heat_order_item_id")
+    private com.kalibyte.foundry.furnace.furnace_heats.entity.HeatOrderItem heatOrderItem;
+
     @Column(nullable = false)
     private String itemName;
 
@@ -48,6 +52,22 @@ public class ProductionItem extends BaseEntity {
 
     @Builder.Default
     private Integer dispatchedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "inspected_quantity", nullable = false)
+    private Integer inspectedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "accepted_quantity", nullable = false)
+    private Integer acceptedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "rejected_quantity", nullable = false)
+    private Integer rejectedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "rework_quantity", nullable = false)
+    private Integer reworkQuantity = 0;
 
     private String itemRemark;
 

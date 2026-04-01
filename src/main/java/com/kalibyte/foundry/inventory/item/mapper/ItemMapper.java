@@ -19,13 +19,17 @@ public interface ItemMapper {
      * Automatically handles null-checks for department.
      */
     @Mapping(source = "department.name", target = "departmentName")
+    @Mapping(source = "isScrap", target = "isScrap")
     ItemResponse toResponse(Item item);
 
     /**
      * Maps Item entity to ItemSummary DTO for lists and search results.
      */
+    @Mapping(source = "unit", target = "unit")
+    @Mapping(source = "isScrap", target = "isScrap")
     ItemSummary toSummary(Item item);
 
+    @Mapping(source = "isScrap", target = "isScrap")
     Item toItem(CreateItemRequest itemRequest);
 
 }

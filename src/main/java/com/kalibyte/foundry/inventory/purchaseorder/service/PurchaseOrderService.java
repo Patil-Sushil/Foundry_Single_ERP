@@ -17,11 +17,13 @@ import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRep
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.vendor.entity.Vendor;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
+import com.kalibyte.foundry.config.AppConfig;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -35,19 +37,22 @@ public class PurchaseOrderService {
     private final ItemVendorRateRepository itemVendorRateRepository;
     private final PONumberGenerator poNumberGenerator;
     private final PurchaseOrderMapper purchaseOrderMapper;
+    private final AppConfig appConfig;
 
 	public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository, 
                                 VendorRepository vendorRepository, 
                                 ItemRepository itemRepository, 
                                 ItemVendorRateRepository itemVendorRateRepository, 
                                 PONumberGenerator poNumberGenerator,
-                                PurchaseOrderMapper purchaseOrderMapper) {
+                                PurchaseOrderMapper purchaseOrderMapper,
+                                AppConfig appConfig) {
 		this.purchaseOrderRepository = purchaseOrderRepository;
 		this.vendorRepository = vendorRepository;
 		this.itemRepository = itemRepository;
 		this.itemVendorRateRepository = itemVendorRateRepository;
 		this.poNumberGenerator = poNumberGenerator;
         this.purchaseOrderMapper = purchaseOrderMapper;
+        this.appConfig = appConfig;
 	}
 
 	@Transactional
@@ -66,15 +71,23 @@ public class PurchaseOrderService {
             Item item = itemRepository.findById(itemRequest.itemId())
                     .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemRequest.itemId()));
 
+            BigDecimal taxableValue = itemRequest.quantity().multiply(itemRequest.unitRate());
+            BigDecimal taxAmount = taxableValue.multiply(item.getGstRate())
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+
             PurchaseOrderItem orderItem = PurchaseOrderItem.builder()
                     .item(item)
                     .orderedQuantity(itemRequest.quantity())
                     .unitRate(itemRequest.unitRate())
+                    .gstRate(item.getGstRate())
+                    .hsnCode(item.getHsnCode())
+                    .taxAmount(taxAmount)
                     .notes(itemRequest.notes())
                     .build();
             
             po.addOrderItem(orderItem);
         }
+        po.calculateTotals(appConfig.getCompanyState());
 
         return purchaseOrderMapper.toResponse(purchaseOrderRepository.save(po));
     }

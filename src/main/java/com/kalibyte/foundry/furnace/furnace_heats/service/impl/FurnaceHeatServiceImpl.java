@@ -1,13 +1,17 @@
 package com.kalibyte.foundry.furnace.furnace_heats.service.impl;
 
+import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.InsufficientStockException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.request.HeatOrderItemRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.request.HeatMaterialItemRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatsByOrderResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatMaterialItem;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.HeatOrderItem;
+import com.kalibyte.foundry.furnace.furnace_heats.mapper.HeatOrderItemMapper;
 import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsRepository;
 import com.kalibyte.foundry.furnace.furnace_heats.service.FurnaceHeatService;
 import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
@@ -18,12 +22,22 @@ import com.kalibyte.foundry.inventory.issue.dto.request.IssueItemRequest;
 import com.kalibyte.foundry.inventory.issue.dto.request.RecordIssueRequest;
 import com.kalibyte.foundry.inventory.issue.service.MaterialIssueService;
 import com.kalibyte.foundry.inventory.item.entity.Item;
+import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
+import com.kalibyte.foundry.inventory.item.entity.enums.ItemSubCategory;
+import com.kalibyte.foundry.inventory.item.entity.enums.ItemUnit;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.order.entity.Order;
+import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.repository.OrderRepository;
-import com.kalibyte.foundry.order.entity.Order;
-import com.kalibyte.foundry.order.repository.OrderRepository;
+import com.kalibyte.foundry.order.repository.OrderItemRepository;
 import com.kalibyte.foundry.furnace.furnace_heats.mapper.FurnaceHeatMapper;
+import com.kalibyte.foundry.scrap.entity.ScrapEntry;
+import com.kalibyte.foundry.scrap.entity.ScrapItem;
+import com.kalibyte.foundry.scrap.enums.ConfidenceLevel;
+import com.kalibyte.foundry.scrap.enums.ScrapSource;
+import com.kalibyte.foundry.scrap.enums.ScrapStatus;
+import com.kalibyte.foundry.scrap.enums.VerificationMethod;
+import com.kalibyte.foundry.scrap.repository.ScrapEntryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +47,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -48,6 +61,9 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
     private final DepartmentRepository departmentRepository;
     private final FurnaceHeatMapper furnaceHeatMapper;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final HeatOrderItemMapper heatOrderItemMapper;
+    private final ScrapEntryRepository scrapEntryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -93,7 +109,34 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
             processAndIssueMaterials(heat, request.getMaterialsUsed(), furnace.getFurnaceRefNo());
         }
 
+        // Handle HeatOrderItems
+        if (request.getHeatOrderItems() != null) {
+            for (HeatOrderItemRequest itemReq : request.getHeatOrderItems()) {
+                HeatOrderItem heatOrderItem = heatOrderItemMapper.toEntity(itemReq);
+                if (itemReq.getOrderItemId() != null) {
+                    OrderItem orderItem = orderItemRepository.findById(itemReq.getOrderItemId())
+                            .orElseThrow(() -> new ResourceNotFoundException("OrderItem not found with id: " + itemReq.getOrderItemId()));
+                    // Validate grade match
+                    if (!orderItem.getMaterialGrade().equals(heat.getGrade())) {
+                        throw new BusinessException(
+                            String.format("Grade mismatch! Heat grade: %s, Order item grade: %s", heat.getGrade(), orderItem.getMaterialGrade()));
+                    }
+                    heatOrderItem.setOrderItem(orderItem);
+                }
+                heat.addHeatOrderItem(heatOrderItem);
+            }
+        }
+
+        // Validate metal balance before saving
+        heat.validateMetalBalance();
+
         FurnaceHeats savedHeat = furnaceHeatsRepository.save(heat);
+
+        // Auto-create scrap entry if needed
+        if (Boolean.TRUE.equals(savedHeat.getAutoReturnScrap())) {
+            createProcessScrapEntry(savedHeat);
+        }
+
         return furnaceHeatMapper.toResponse(savedHeat);
     }
 
@@ -116,8 +159,144 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
 
         handleMaterialDelta(existingHeat, request.getMaterialsUsed(), existingHeat.getFurnace().getFurnaceRefNo());
 
+        // Handle HeatOrderItems delta
+        handleHeatOrderItemDelta(existingHeat, request.getHeatOrderItems());
+
+        // Validate metal balance before saving
+        existingHeat.validateMetalBalance();
+
         FurnaceHeats updatedHeat = furnaceHeatsRepository.save(existingHeat);
+
+        // Update scrap entry if it exists
+        if (updatedHeat.getProcessScrapEntryId() != null) {
+            updateProcessScrapEntry(updatedHeat);
+        }
+
         return furnaceHeatMapper.toResponse(updatedHeat);
+    }
+
+    private void handleHeatOrderItemDelta(FurnaceHeats existingHeat, List<HeatOrderItemRequest> newRequests) {
+        if (newRequests == null) newRequests = new ArrayList<>();
+
+        Map<Long, HeatOrderItem> existingMap = existingHeat.getHeatOrderItems().stream()
+                .filter(i -> i.getId() != null)
+                .collect(Collectors.toMap(HeatOrderItem::getId, i -> i));
+
+        for (HeatOrderItemRequest req : newRequests) {
+            if (req.getId() != null && existingMap.containsKey(req.getId())) {
+                HeatOrderItem existing = existingMap.remove(req.getId());
+                heatOrderItemMapper.updateEntity(req, existing);
+            } else {
+                HeatOrderItem newItem = heatOrderItemMapper.toEntity(req);
+                if (req.getOrderItemId() != null) {
+                    OrderItem orderItem = orderItemRepository.findById(req.getOrderItemId())
+                            .orElseThrow(() -> new ResourceNotFoundException("OrderItem not found"));
+                    newItem.setOrderItem(orderItem);
+                }
+                existingHeat.addHeatOrderItem(newItem);
+            }
+        }
+
+        for (HeatOrderItem removed : existingMap.values()) {
+            existingHeat.removeHeatOrderItem(removed);
+        }
+    }
+
+    private void createProcessScrapEntry(FurnaceHeats heat) {
+        BigDecimal totalScrapWeight = heat.getRunnerWeight()
+                .add(heat.getRiserWeight())
+                .add(heat.getSkullWeight())
+                .add(heat.getSpillageWeight());
+
+        if (totalScrapWeight.compareTo(BigDecimal.ZERO) <= 0) return;
+
+        ScrapEntry scrapEntry = ScrapEntry.builder()
+                .scrapNumber("SCR-H-" + heat.getId())
+                .scrapDate(LocalDate.now())
+                .scrapSource(ScrapSource.PROCESS_SCRAP)
+                .heatId(heat.getId())
+                .grade(heat.getGrade())
+                .totalWeight(totalScrapWeight)
+                .status(ScrapStatus.PENDING_VERIFICATION)
+                .confidenceLevel(ConfidenceLevel.HIGH)
+                .verificationMethod(VerificationMethod.AUTO_FROM_HEAT)
+                .remarks("Auto-generated from Furnace Heat " + heat.getId())
+                .build();
+
+        // Add line items - Get or Create the scrap item automatically
+        Item scrapItemEntity = getOrCreateScrapItem(heat.getGrade());
+        
+        addScrapItem(scrapEntry, "Runners", heat.getRunnerWeight(), scrapItemEntity);
+        addScrapItem(scrapEntry, "Risers", heat.getRiserWeight(), scrapItemEntity);
+        addScrapItem(scrapEntry, "Skull", heat.getSkullWeight(), scrapItemEntity);
+        addScrapItem(scrapEntry, "Spillage", heat.getSpillageWeight(), scrapItemEntity);
+
+        ScrapEntry savedEntry = scrapEntryRepository.save(scrapEntry);
+        heat.setProcessScrapEntryId(savedEntry.getId());
+    }
+
+    private Item getOrCreateScrapItem(String grade) {
+        return itemRepository.findByIsScrapTrueAndGrade(grade)
+                .orElseGet(() -> {
+                    Item newItem = Item.builder()
+                            .name(grade + " Process Scrap")
+                            .code("SCR-" + grade)
+                            .category(ItemCategory.RAW_MATERIAL)
+                            .subCategory(ItemSubCategory.FERROUS)
+                            .department(getFurnaceDepartment())
+                            .unit(ItemUnit.KG)
+                            .reorderLevel(BigDecimal.ZERO)
+                            .minStockLevel(BigDecimal.ZERO)
+                            .currentStock(BigDecimal.ZERO)
+                            .avgRate(BigDecimal.ZERO)
+                            .isActive(true)
+                            .isScrap(true)
+                            .grade(grade)
+                            .build();
+                    return itemRepository.save(newItem);
+                });
+    }
+
+    private void addScrapItem(ScrapEntry entry, String name, BigDecimal weight, Item item) {
+        if (weight.compareTo(BigDecimal.ZERO) > 0) {
+           ScrapItem.ScrapItemBuilder builder = ScrapItem.builder()
+                    .itemName(name)
+                    .weight(weight)
+                    .grade(entry.getGrade())
+                    .scrapType("PROCESS_SCRAP")
+                    .recyclability("HIGH");
+            
+            if (item != null) {
+                builder.itemId(item.getId())
+                       .itemCode(item.getCode())
+                       .inventoryItem(item);
+            }
+            
+            entry.addScrapItem(builder.build());
+        }
+    }
+
+    private void updateProcessScrapEntry(FurnaceHeats heat) {
+        scrapEntryRepository.findById(heat.getProcessScrapEntryId()).ifPresent(entry -> {
+            BigDecimal totalScrapWeight = heat.getRunnerWeight()
+                    .add(heat.getRiserWeight())
+                    .add(heat.getSkullWeight())
+                    .add(heat.getSpillageWeight());
+            
+            entry.setTotalWeight(totalScrapWeight);
+            entry.setGrade(heat.getGrade());
+            
+            // Simplified: Clear and re-add items
+            entry.getScrapItems().clear();
+            Item scrapItemEntity = getOrCreateScrapItem(heat.getGrade());
+            
+            addScrapItem(entry, "Runners", heat.getRunnerWeight(), scrapItemEntity);
+            addScrapItem(entry, "Risers", heat.getRiserWeight(), scrapItemEntity);
+            addScrapItem(entry, "Skull", heat.getSkullWeight(), scrapItemEntity);
+            addScrapItem(entry, "Spillage", heat.getSpillageWeight(), scrapItemEntity);
+            
+            scrapEntryRepository.save(entry);
+        });
     }
 
     @Override

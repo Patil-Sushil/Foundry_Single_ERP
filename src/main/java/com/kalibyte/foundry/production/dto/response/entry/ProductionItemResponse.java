@@ -46,4 +46,5 @@ public class ProductionItemResponse {
     private Integer pendingDispatch;
 
     private String itemRemark;
+    private Long heatOrderItemId;
 }

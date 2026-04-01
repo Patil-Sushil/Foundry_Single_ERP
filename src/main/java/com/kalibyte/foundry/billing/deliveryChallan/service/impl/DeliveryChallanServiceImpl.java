@@ -4,6 +4,7 @@ import com.kalibyte.foundry.billing.deliveryChallan.entity.enums.DCStatus;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanItemRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.request.DeliveryChallanRequest;
 import com.kalibyte.foundry.billing.deliveryChallan.dto.response.DeliveryChallanResponse;
+import com.kalibyte.foundry.billing.deliveryChallan.dto.response.DispatchAvailableResponse;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallan;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.DeliveryChallanItem;
 import com.kalibyte.foundry.billing.deliveryChallan.mapper.DeliveryChallanMapper;
@@ -25,6 +26,7 @@ import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.enums.PatternStatus;
 import com.kalibyte.foundry.pattern.repository.PatternRepository;
+import com.kalibyte.foundry.production.repository.ProductionItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +45,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
     private final DeliveryChallanRepository deliveryChallanRepository;
     private final DeliveryChallanItemRepository itemRepository;
+    private final ProductionItemRepository productionItemRepository;
     private final DCNumberGenerator dcNumberGenerator;
 
     private final CustomerRepository customerRepository;
@@ -165,17 +168,33 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         OrderItem orderItem = orderItemRepository.findById(request.getOrderItemId())
                 .orElseThrow(() -> new RuntimeException("Order item not found"));
 
-        int orderedQty = orderItem.getQuantity();
-
-        Integer alreadyDispatched =
-                itemRepository.getTotalDispatchedQuantity(orderItem.getId());
-
+        int orderedQuantity = orderItem.getQuantity();
+        int totalAccepted = productionItemRepository.getTotalAcceptedQuantity(orderItem.getId());
+        Integer alreadyDispatched = itemRepository.getTotalDispatchedQuantity(orderItem.getId());
         if (alreadyDispatched == null) alreadyDispatched = 0;
 
-        int remainingQty = orderedQty - alreadyDispatched;
+        int ceiling = Math.min(orderedQuantity, totalAccepted);
+        int availableForDispatch = ceiling - alreadyDispatched;
 
-        if (request.getQuantity() > remainingQty) {
-            throw new RuntimeException("Dispatch quantity exceeds remaining quantity for item");
+        if (totalAccepted == 0) {
+            throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
+                    "No items available for dispatch for [%s]. Nothing has been accepted by QA yet.",
+                    orderItem.getPartName()
+            ));
+        }
+
+        if (availableForDispatch <= 0) {
+            throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
+                    "No items available for dispatch for [%s]. Either nothing is produced/accepted by QA or everything is already dispatched. (Accepted: %d, Dispatched: %d)",
+                    orderItem.getPartName(), totalAccepted, alreadyDispatched
+            ));
+        }
+
+        if (request.getQuantity() > availableForDispatch) {
+            throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
+                    "Cannot dispatch %d pcs for [%s]. Only %d pcs available for dispatch (Accepted: %d, Already Dispatched: %d)",
+                    request.getQuantity(), orderItem.getPartName(), availableForDispatch, totalAccepted, alreadyDispatched
+            ));
         }
 
         BigDecimal amount = request.getWeight().multiply(request.getRate());
@@ -281,6 +300,29 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
                 .orElseThrow(() -> new RuntimeException("Delivery Challan not found"));
 
         return pdfGenerator.generateDeliveryChallanPdf(dc, dc.getItems());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DispatchAvailableResponse getDispatchAvailable(UUID orderItemId) {
+        OrderItem orderItem = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new RuntimeException("Order item not found"));
+
+        int orderedQuantity = orderItem.getQuantity();
+        int totalAccepted = productionItemRepository.getTotalAcceptedQuantity(orderItemId);
+        Integer alreadyDispatched = itemRepository.getTotalDispatchedQuantity(orderItemId);
+        if (alreadyDispatched == null) alreadyDispatched = 0;
+
+        int ceiling = Math.min(orderedQuantity, totalAccepted);
+        int availableForDispatch = Math.max(0, ceiling - alreadyDispatched);
+
+        return DispatchAvailableResponse.builder()
+                .orderItemId(orderItemId)
+                .orderedQuantity(orderedQuantity)
+                .totalAccepted(totalAccepted)
+                .alreadyDispatched(alreadyDispatched)
+                .availableForDispatch(availableForDispatch)
+                .build();
     }
 
     //------------------------------------------------

@@ -6,5 +6,6 @@ public enum RoleName {
     DESIGN,
     STORE,
     FINANCE,
-    PRODUCTION
+    PRODUCTION,
+    QUALITY
 }

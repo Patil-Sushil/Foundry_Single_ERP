@@ -56,6 +56,13 @@ public class MaterialInward extends BaseInventoryEntity {
     @Column(nullable = false)
     private InwardStatus status = InwardStatus.DRAFT;
 
+    @Column(name = "inward_type", nullable = false)
+    @Builder.Default
+    private String inwardType = "VENDOR_PURCHASE";
+
+    @Column(name = "scrap_entry_id")
+    private Long scrapEntryId;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -69,10 +76,34 @@ public class MaterialInward extends BaseInventoryEntity {
     private LocalDateTime confirmedAt;
 
     @Builder.Default
+    @Column(name = "total_taxable_amount")
+    private BigDecimal totalTaxableAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "total_tax_amount")
+    private BigDecimal totalTaxAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "grand_total")
+    private BigDecimal grandTotal = BigDecimal.ZERO;
+
+    @Builder.Default
     @OneToMany(mappedBy = "materialInward", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReceivedItem> receivedItems = new ArrayList<>();
 
     // --- DOMAIN METHODS ---
+
+    public void calculateTotals() {
+        this.totalTaxableAmount = receivedItems.stream()
+                .map(ReceivedItem::getTaxableAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        this.totalTaxAmount = receivedItems.stream()
+                .map(item -> item.getTaxAmount() != null ? item.getTaxAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        this.grandTotal = totalTaxableAmount.add(totalTaxAmount);
+    }
 
     public void addReceivedItem(ReceivedItem item) {
         if (this.status != InwardStatus.DRAFT) {
@@ -95,9 +126,7 @@ public class MaterialInward extends BaseInventoryEntity {
     }
 
     public BigDecimal getTotalAmount() {
-        return receivedItems.stream()
-                .map(ReceivedItem::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return grandTotal;
     }
 
     public boolean isDraft() {

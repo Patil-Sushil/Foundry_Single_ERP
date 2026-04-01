@@ -64,8 +64,9 @@ public class ItemController {
     public ApiResponse<Page<ItemResponse>> getAll(
             @RequestParam(required = false) ItemCategory category,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) Boolean isScrap,
             Pageable pageable) {
-        return ApiResponse.success("Items retrieved successfully", itemService.getAll(category, isActive, pageable));
+        return ApiResponse.success("Items retrieved successfully", itemService.getAll(category, isActive, isScrap, pageable));
     }
 
     @GetMapping("/{id}")
@@ -86,8 +87,10 @@ public class ItemController {
     }
 
     @GetMapping("/search")
-    public ApiResponse<List<ItemSummary>> search(@RequestParam String q) {
-        return ApiResponse.success("Items searched successfully", itemService.search(q));
+    public ApiResponse<List<ItemSummary>> search(
+            @RequestParam String q,
+            @RequestParam(required = false) Boolean isScrap) {
+        return ApiResponse.success("Items searched successfully", itemService.search(q, isScrap));
     }
 
     @GetMapping("/low-stock")

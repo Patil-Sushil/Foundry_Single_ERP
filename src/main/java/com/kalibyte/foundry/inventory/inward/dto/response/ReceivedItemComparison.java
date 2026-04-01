@@ -12,5 +12,8 @@ public record ReceivedItemComparison(
     BigDecimal quantityDifference,
     String receiptStatus,
     BigDecimal unitRate,
-    BigDecimal totalAmount
+    BigDecimal taxableAmount,
+    BigDecimal gstRate,
+    BigDecimal taxAmount,
+    BigDecimal grandTotal
 ) {}

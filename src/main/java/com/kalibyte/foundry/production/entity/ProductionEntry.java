@@ -55,6 +55,22 @@ public class ProductionEntry extends BaseEntity {
     @Builder.Default
     private Integer totalDispatchedQuantity = 0;
 
+    @Builder.Default
+    @Column(name = "total_inspected_quantity", nullable = false)
+    private Integer totalInspectedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "total_accepted_quantity", nullable = false)
+    private Integer totalAcceptedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "total_rejected_quantity", nullable = false)
+    private Integer totalRejectedQuantity = 0;
+
+    @Builder.Default
+    @Column(name = "total_rework_quantity", nullable = false)
+    private Integer totalReworkQuantity = 0;
+
     @Column(name = "is_deleted")
     @Builder.Default
     private Boolean isDeleted = false;
@@ -64,4 +80,17 @@ public class ProductionEntry extends BaseEntity {
             orphanRemoval = true)
     @Builder.Default
     private List<ProductionItem> productionItems = new ArrayList<>();
+
+    public void recalculateTotals() {
+        this.totalReadyCores = productionItems.stream().mapToInt(ProductionItem::getReadyCores).sum();
+        this.totalPouredMoulds = productionItems.stream().mapToInt(ProductionItem::getPouredMoulds).sum();
+        this.totalShotBlastingQuantity = productionItems.stream().mapToInt(ProductionItem::getShotBlastingQuantity).sum();
+        this.totalFettlingQuantity = productionItems.stream().mapToInt(ProductionItem::getFettlingQuantity).sum();
+        this.totalDispatchedQuantity = productionItems.stream().mapToInt(ProductionItem::getDispatchedQuantity).sum();
+        
+        this.totalInspectedQuantity = productionItems.stream().mapToInt(ProductionItem::getInspectedQuantity).sum();
+        this.totalAcceptedQuantity = productionItems.stream().mapToInt(ProductionItem::getAcceptedQuantity).sum();
+        this.totalRejectedQuantity = productionItems.stream().mapToInt(ProductionItem::getRejectedQuantity).sum();
+        this.totalReworkQuantity = productionItems.stream().mapToInt(ProductionItem::getReworkQuantity).sum();
+    }
 }

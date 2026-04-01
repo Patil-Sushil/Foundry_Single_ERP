@@ -26,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +47,7 @@ public class MaterialInwardService {
     private final VendorLedgerService vendorLedgerService;
     private final InwardNumberGenerator inwardNumberGenerator;
     private final InwardMapper inwardMapper;
+    private final com.kalibyte.foundry.inventory.vendor.repository.VendorRepository vendorRepository;
 
 	public MaterialInwardService(MaterialInwardRepository materialInwardRepository, 
                                  ReceivedItemRepository receivedItemRepository, 
@@ -55,7 +57,8 @@ public class MaterialInwardService {
                                  ItemVendorRateRepository itemVendorRateRepository, 
                                  VendorLedgerService vendorLedgerService, 
                                  InwardNumberGenerator inwardNumberGenerator,
-                                 InwardMapper inwardMapper) {
+                                 InwardMapper inwardMapper,
+                                 com.kalibyte.foundry.inventory.vendor.repository.VendorRepository vendorRepository) {
 		this.materialInwardRepository = materialInwardRepository;
 		this.receivedItemRepository = receivedItemRepository;
 		this.purchaseOrderRepository = purchaseOrderRepository;
@@ -65,6 +68,7 @@ public class MaterialInwardService {
 		this.vendorLedgerService = vendorLedgerService;
 		this.inwardNumberGenerator = inwardNumberGenerator;
         this.inwardMapper = inwardMapper;
+        this.vendorRepository = vendorRepository;
 	}
 
 	@Transactional
@@ -90,15 +94,25 @@ public class MaterialInwardService {
                 .build();
 
         for (PurchaseOrderItem orderItem : po.getOrderItems()) {
+            BigDecimal taxableAmount = orderItem.getOrderedQuantity().multiply(orderItem.getUnitRate());
+            BigDecimal gstRate = orderItem.getGstRate() != null ? orderItem.getGstRate() : BigDecimal.ZERO;
+            BigDecimal taxAmount = taxableAmount.multiply(gstRate)
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal amount = taxableAmount.add(taxAmount).setScale(2, java.math.RoundingMode.HALF_UP);
+
             ReceivedItem receivedItem = ReceivedItem.builder()
                     .item(orderItem.getItem())
                     .orderItem(orderItem)
                     .poQuantity(orderItem.getOrderedQuantity())
                     .receivedQuantity(orderItem.getOrderedQuantity()) // Default to ordered
                     .unitRate(orderItem.getUnitRate())
+                    .gstRate(gstRate)
+                    .taxAmount(taxAmount)
+                    .amount(amount)
                     .build();
             inward.addReceivedItem(receivedItem);
         }
+        inward.calculateTotals();
 
         return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
@@ -122,8 +136,17 @@ public class MaterialInwardService {
                 if (req.unitRate() != null) {
                     item.setUnitRate(req.unitRate());
                 }
+                
+                // Recalculate tax and amount
+                BigDecimal taxableAmount = item.getReceivedQuantity().multiply(item.getUnitRate());
+                BigDecimal gstRate = item.getGstRate() != null ? item.getGstRate() : BigDecimal.ZERO;
+                BigDecimal taxAmount = taxableAmount.multiply(gstRate)
+                        .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                item.setTaxAmount(taxAmount);
+                item.setAmount(taxableAmount.add(taxAmount).setScale(2, java.math.RoundingMode.HALF_UP));
             }
         }
+        inward.calculateTotals();
 
         return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
@@ -141,6 +164,13 @@ public class MaterialInwardService {
         MaterialInward inward = materialInwardRepository.findWithFullDetails(inwardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + inwardId));
 
+        processConfirmation(inward);
+
+        return inwardMapper.toResponse(materialInwardRepository.save(inward));
+    }
+
+    private void processConfirmation(MaterialInward inward) {
+        inward.calculateTotals();
         inward.confirm(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId()); // Updates status and confirmedBy
 
         for (ReceivedItem receivedItem : inward.getReceivedItems()) {
@@ -157,28 +187,30 @@ public class MaterialInwardService {
             }
 
             // Update Item Vendor Rate
-            Optional<ItemVendorRate> existingRate = itemVendorRateRepository
-                    .findByItemIdAndVendorId(item.getId(), inward.getVendor().getId());
+            if (inward.getVendor() != null) {
+                Optional<ItemVendorRate> existingRate = itemVendorRateRepository
+                        .findByItemIdAndVendorId(item.getId(), inward.getVendor().getId());
 
-            ItemVendorRate rate = existingRate.orElseGet(() -> ItemVendorRate.builder()
-                    .item(item)
-                    .vendor(inward.getVendor())
-                    .build());
-            
-            rate.setLastRate(receivedItem.getUnitRate());
-            rate.setLastPurchasedOn(LocalDate.now());
-            itemVendorRateRepository.save(rate);
+                ItemVendorRate rate = existingRate.orElseGet(() -> ItemVendorRate.builder()
+                        .item(item)
+                        .vendor(inward.getVendor())
+                        .build());
+                
+                rate.setLastRate(receivedItem.getUnitRate());
+                rate.setLastPurchasedOn(LocalDate.now());
+                itemVendorRateRepository.save(rate);
+            }
         }
 
         // Create Ledger Entry
-        vendorLedgerService.recordInwardEntry(inward);
+        if (inward.getVendor() != null) {
+            vendorLedgerService.recordInwardEntry(inward);
+        }
 
         // Update PO Status
         if (inward.getPurchaseOrder() != null) {
             purchaseOrderService.updateStatusAfterInward(inward.getPurchaseOrder());
         }
-
-        return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 
     @Transactional(readOnly = true)
@@ -192,5 +224,54 @@ public class MaterialInwardService {
     public Page<InwardSummary> getAll(InwardStatus status, Long vendorId, LocalDate from, LocalDate to, Pageable pageable) {
         return materialInwardRepository.findAllFiltered(status, vendorId, from, to, pageable)
                 .map(inwardMapper::toSummary);
+    }
+
+    @Transactional
+    public InwardResponse createInternalReturnInward(com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest request) {
+        com.kalibyte.foundry.inventory.vendor.entity.Vendor internalVendor = vendorRepository.findByName("INTERNAL")
+                .orElseGet(() -> {
+                    com.kalibyte.foundry.inventory.vendor.entity.Vendor v = new com.kalibyte.foundry.inventory.vendor.entity.Vendor();
+                    v.setName("INTERNAL");
+                    return vendorRepository.save(v);
+                });
+
+        MaterialInward inward = MaterialInward.builder()
+                .inwardNumber(inwardNumberGenerator.generate())
+                .inwardType("INTERNAL_RETURN")
+                .vendor(internalVendor)
+                .scrapEntryId(request.getScrapEntryId())
+                .vehicleNumber(request.getVehicleNumber())
+                .driverName(request.getDriverName())
+                .inwardDate(request.getReturnDate() != null ? request.getReturnDate() : LocalDate.now())
+                .status(InwardStatus.DRAFT)
+                .notes(request.getRemarks())
+                .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
+                .build();
+
+        // I'll add the received items
+        if (request.getItems() != null) {
+            for (com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest.InternalReturnItemRequest itemReq : request.getItems()) {
+                Item item = itemRepository.findById(itemReq.itemId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemReq.itemId()));
+                
+                BigDecimal unitRate = itemReq.unitRate() != null ? itemReq.unitRate() : item.getAvgRate();
+                BigDecimal taxableAmount = itemReq.quantity().multiply(unitRate);
+
+                ReceivedItem receivedItem = ReceivedItem.builder()
+                        .item(item)
+                        .receivedQuantity(itemReq.quantity())
+                        .unitRate(unitRate)
+                        .gstRate(BigDecimal.ZERO)
+                        .taxAmount(BigDecimal.ZERO)
+                        .amount(taxableAmount)
+                        .build();
+                inward.addReceivedItem(receivedItem);
+            }
+        }
+        inward.calculateTotals();
+
+        processConfirmation(inward);
+
+        return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 }

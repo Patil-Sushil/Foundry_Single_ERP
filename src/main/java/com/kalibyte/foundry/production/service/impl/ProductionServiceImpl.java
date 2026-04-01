@@ -24,6 +24,7 @@ import com.kalibyte.foundry.production.repository.ProductionItemRepository;
 import com.kalibyte.foundry.production.service.ProductionService;
 import com.kalibyte.foundry.production.specification.ProductionSpecification;
 import com.kalibyte.foundry.production.util.ProductionNumberGenerator;
+import com.kalibyte.foundry.qa.inspection.service.QaInspectionService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,7 @@ public class ProductionServiceImpl implements ProductionService {
     private final OrderRepository orderRepo;
     private final PatternRepository patternRepository;
     private final ProductionNumberGenerator numberGenerator;
+    private final QaInspectionService qaInspectionService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -64,7 +66,6 @@ public class ProductionServiceImpl implements ProductionService {
 
     // ── Max days in past for report date ────────────
     private static final int MAX_BACKDATE_DAYS = 7;
-
 
     // ================================================================
     //  CREATE ENTRY
@@ -114,17 +115,16 @@ public class ProductionServiceImpl implements ProductionService {
             int poured   = safe(itemReq.getPouredMoulds());
             int shot     = safe(itemReq.getShotBlastingQuantity());
             int fettling = safe(itemReq.getFettlingQuantity());
-            int dispatch = safe(itemReq.getDispatchedQuantity());
 
             // validate at least one positive value
-            validateAtLeastOnePositive(cores, poured, shot, fettling, dispatch, orderItem.getPartName());
+            validateAtLeastOnePositive(cores, poured, shot, fettling, orderItem.getPartName());
 
             // capture cumulative BEFORE this entry
             PipelineTotals beforeTotals = getCumulativeTotals(orderItem.getId());
             preSaveTotals.add(beforeTotals);
 
             // validate pipeline constraints
-            validatePipeline(cores, poured, shot, fettling, dispatch, orderItem, beforeTotals);
+            validatePipeline(cores, poured, shot, fettling, orderItem, beforeTotals);
 
             // resolve pattern
             Pattern pattern = resolvePattern(itemReq.getPatternNumber());
@@ -139,7 +139,7 @@ public class ProductionServiceImpl implements ProductionService {
                     .pouredMoulds(poured)
                     .shotBlastingQuantity(shot)
                     .fettlingQuantity(fettling)
-                    .dispatchedQuantity(dispatch)
+                    .dispatchedQuantity(0) // Initialized to 0, ONLY QA can update this
                     .itemRemark(itemReq.getItemRemark())
                     .build();
 
@@ -158,6 +158,13 @@ public class ProductionServiceImpl implements ProductionService {
             throw new BusinessException(
                     "Production entry already exists for this order, date & shift (concurrent creation detected)"
             );
+        }
+
+        // ── 5a. Auto-create QA Drafts for items that have fettling quantity ──
+        for (ProductionItem item : entry.getProductionItems()) {
+            if (item.getFettlingQuantity() > 0) {
+                qaInspectionService.createDraftFromProduction(item);
+            }
         }
 
         log.info("Created production entry {} for order {}", entry.getEntryNumber(), order.getOrderNumber());
@@ -253,6 +260,10 @@ public class ProductionServiceImpl implements ProductionService {
         Order order = orderRepo.findWithDetailsById(entry.getOrder().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
+        // ── Keep track of old QA fields to preserve them ──
+        Map<UUID, ProductionItem> oldItemsMap = new HashMap<>();
+        entry.getProductionItems().forEach(i -> oldItemsMap.put(i.getOrderItem().getId(), i));
+
         // ── Check if date/shift changed and new combo already exists ──
         boolean dateOrShiftChanged = !entry.getReportDate().equals(request.getReportDate())
                 || entry.getShift() != request.getShift();
@@ -282,15 +293,18 @@ public class ProductionServiceImpl implements ProductionService {
             int poured   = safe(itemReq.getPouredMoulds());
             int shot     = safe(itemReq.getShotBlastingQuantity());
             int fettling = safe(itemReq.getFettlingQuantity());
-            int dispatch = safe(itemReq.getDispatchedQuantity());
 
-            validateAtLeastOnePositive(cores, poured, shot, fettling, dispatch, orderItem.getPartName());
+            // ── QA Data Preservation ──
+            ProductionItem oldItem = oldItemsMap.get(orderItem.getId());
+            int existingDispatch = (oldItem != null) ? oldItem.getDispatchedQuantity() : 0;
+
+            validateAtLeastOnePositive(cores, poured, shot, fettling, orderItem.getPartName());
 
             // cumulative EXCLUDING this entry's old values
             PipelineTotals beforeTotals = getCumulativeTotalsExcluding(orderItem.getId(), entry.getId());
             preSaveTotals.add(beforeTotals);
 
-            validatePipeline(cores, poured, shot, fettling, dispatch, orderItem, beforeTotals);
+            validatePipeline(cores, poured, shot, fettling, orderItem, beforeTotals);
 
             Pattern pattern = resolvePattern(itemReq.getPatternNumber());
 
@@ -304,9 +318,17 @@ public class ProductionServiceImpl implements ProductionService {
                     .pouredMoulds(poured)
                     .shotBlastingQuantity(shot)
                     .fettlingQuantity(fettling)
-                    .dispatchedQuantity(dispatch)
+                    .dispatchedQuantity(existingDispatch) // Preserve QA-controlled value
                     .itemRemark(itemReq.getItemRemark())
                     .build();
+
+            // preserve QA fields if they existed
+            if (oldItem != null) {
+                item.setInspectedQuantity(oldItem.getInspectedQuantity());
+                item.setAcceptedQuantity(oldItem.getAcceptedQuantity());
+                item.setRejectedQuantity(oldItem.getRejectedQuantity());
+                item.setReworkQuantity(oldItem.getReworkQuantity());
+            }
 
             entry.getProductionItems().add(item);
         }
@@ -392,10 +414,10 @@ public class ProductionServiceImpl implements ProductionService {
     // ================================================================
 
     private void validateAtLeastOnePositive(
-            int cores, int poured, int shot, int fettling, int dispatch,
+            int cores, int poured, int shot, int fettling,
             String itemName
     ) {
-        if (cores == 0 && poured == 0 && shot == 0 && fettling == 0 && dispatch == 0) {
+        if (cores == 0 && poured == 0 && shot == 0 && fettling == 0) {
             throw new BusinessException(
                     "At least one production quantity must be greater than zero for item: " + itemName
             );
@@ -429,7 +451,7 @@ public class ProductionServiceImpl implements ProductionService {
     // ================================================================
 
     private void validatePipeline(
-            int cores, int poured, int shot, int fettling, int dispatch,
+            int cores, int poured, int shot, int fettling,
             OrderItem orderItem, PipelineTotals cumulative
     ) {
         int ordered = orderItem.getQuantity();
@@ -439,7 +461,6 @@ public class ProductionServiceImpl implements ProductionService {
         int cumPoured   = cumulative.totalPouredMoulds();
         int cumShot     = cumulative.totalShotBlasting();
         int cumFettling = cumulative.totalFettling();
-        int cumDispatch = cumulative.totalDispatched();
 
         // ── Cumulative + today must not exceed ordered quantity ──
         if (cumCores + cores > ordered) {
@@ -468,13 +489,6 @@ public class ProductionServiceImpl implements ProductionService {
             throw new BusinessException(String.format(
                     "[%s] Cumulative fettling (%d + %d = %d) cannot exceed cumulative shot blasting (%d + %d = %d)",
                     itemName, cumFettling, fettling, cumFettling + fettling, cumShot, shot, cumShot + shot
-            ));
-        }
-
-        if (cumDispatch + dispatch > cumFettling + fettling) {
-            throw new BusinessException(String.format(
-                    "[%s] Cumulative dispatched (%d + %d = %d) cannot exceed cumulative fettling (%d + %d = %d)",
-                    itemName, cumDispatch, dispatch, cumDispatch + dispatch, cumFettling, fettling, cumFettling + fettling
             ));
         }
 

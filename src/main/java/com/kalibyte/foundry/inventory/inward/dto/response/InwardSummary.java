@@ -11,5 +11,5 @@ public record InwardSummary(
     InwardStatus status,
     LocalDate inwardDate,
     int totalItems,
-    BigDecimal totalAmount
+    BigDecimal grandTotal
 ) {}

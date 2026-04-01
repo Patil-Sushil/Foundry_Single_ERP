@@ -38,12 +38,26 @@ public class PurchaseOrderItem {
     @Column(name = "unit_rate", nullable = false)
     private BigDecimal unitRate;
 
+    @Column(name = "gst_rate")
+    private BigDecimal gstRate;
+
+    @Column(name = "hsn_code")
+    private String hsnCode;
+
+    @Column(name = "tax_amount")
+    private BigDecimal taxAmount;
+
     private String notes;
 
     // --- DOMAIN METHODS ---
 
-    public BigDecimal getTotalValue() {
+    public BigDecimal getTaxableValue() {
         return orderedQuantity.multiply(unitRate).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getTotalValue() {
+        BigDecimal tax = taxAmount != null ? taxAmount : BigDecimal.ZERO;
+        return getTaxableValue().add(tax).setScale(2, RoundingMode.HALF_UP);
     }
 
     public BigDecimal getPendingQuantity() {

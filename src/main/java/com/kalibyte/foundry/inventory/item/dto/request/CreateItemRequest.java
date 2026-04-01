@@ -42,5 +42,7 @@ public record CreateItemRequest(
 
     BigDecimal currentStock,
 
-    BigDecimal avgRate
+    BigDecimal avgRate,
+
+    Boolean isScrap
 ) implements Serializable {}

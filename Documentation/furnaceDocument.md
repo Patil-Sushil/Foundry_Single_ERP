@@ -2,7 +2,8 @@
 
 ## Overview
 
-The **Furnace Module** is a critical part of the production tracking system in the Foundry ERP. It manages daily furnace operation reports, individual melting cycles (heats), chemical composition tracking, energy consumption analysis, and automatic material issuance from inventory.
+The **Furnace Module** is a critical part of the production tracking system in the Foundry ERP. 
+It manages daily furnace operation reports, individual melting cycles (heats), chemical composition tracking, energy consumption analysis, and automatic material issuance from inventory.
 
 This module ensures that every kilogram of metal melted is accounted for, both in terms of energy and raw material consumption.
 
@@ -37,58 +38,90 @@ A **Furnace Heat** represents a single melting cycle. It captures technical data
 - **Production Data**:
     - `totalWeight`: Total weight of the metal melted in the heat.
     - `powerToWeight`: Efficiency metric calculated as `differenceReading / totalWeight`.
+    - `liquidMetalWeight`: Actual tapped liquid metal weight.
+    - `castingsPouredWeight`: Total weight of castings poured (excluding gating).
+- **Process Scrap Breakdown**:
+    - `runnerWeight`: Weight of runners (gating system).
+    - `riserWeight`: Weight of risers/feeders.
+    - `skullWeight`: Weight of furnace residue.
+    - `spillageWeight`: Weight of metal spillage during pouring.
+    - `totalProcessScrap`: Auto-calculated sum of the above scrap types.
+- **Yield Calculations**:
+    - **Furnace Yield %**: `(Liquid Metal Weight / Total Charge Weight) * 100`. Measures melting efficiency.
+    - **Pouring Yield %**: `(Castings Poured Weight / Liquid Metal Weight) * 100`. Measures pouring efficiency.
 - **Temperature & Timing**:
     - `pouringTemp`: The temperature of the metal when poured.
     - `pouringStartTime` & `pouringEndTime`: Duration of the pouring process.
 
-### Reference to Orders
-A heat can be optionally linked to a specific **Customer Order** (`order_id`). This allows tracking which production batches (heats) were used to fulfill which customer requirements.
+### Reference to Orders & Items
+A heat is linked to a **Customer Order** and specific **Order Items** via the `heat_order_items` junction table. 
+- **Grade Validation**: The system ensures the heat's material grade (e.g., FG260) matches the grade of all linked order items.
+- **Production Tracking**: Tracks exactly how many pieces and what weight was produced for each order item within a specific heat.
 
 ---
 
-## 3. Heat Material Items
+## 3. Service Layer & Business Logic
+
+The Furnace module employs a dual-service architecture to manage the complexity of reports and individual melting cycles.
+
+### Furnace Report Service (`FurnaceService`)
+- **Orchestration**: Manages the lifecycle of daily reports and ensures that all associated heats are correctly initialized through the `FurnaceHeatService`.
+- **Reference Numbering**: Automatically generates unique, sequence-based reference numbers (e.g., `FUR-2026-0001`).
+- **Reporting & Analytics**: Aggregates material consumption and cost data across all heats in a shift to provide operator-level efficiency summaries.
+
+### Furnace Heat Service (`FurnaceHeatService`)
+- **Melting Efficiency Calculations**: Automatically computes energy consumption (`differenceReading`) and energy efficiency (`powerToWeight`) during heat creation and updates.
+- **Automated Material Issuance**:
+    - Validates available inventory stock before allowing a heat to be saved.
+    - Triggers the `MaterialIssueService` to deduct raw materials (Pig Iron, Scrap, Alloys) from the **FURNACE** department.
+- **Grade & Order Validation**: Enforces metallurgical integrity by ensuring the heat's material grade matches the `material_grade` specified in the customer's `OrderItem`.
+- **Heat Update Logic (Delta Handling)**: When a heat is modified, the service calculates the difference (delta) in material usage, either issuing more stock or returning unused material to the inventory.
+- **Scrap Synchronization**: Automatically synchronizes the associated `ScrapEntry` weights whenever a heat's process scrap breakdown is updated.
+
+---
+
+## 4. Heat Material Items
 
 Every heat consumes raw materials (Pig Iron, Scrap, Ferro-Alloys, etc.). These are tracked in the `heat_material_items` table.
 
 ### Fields
 - **Item ID & Name**: Reference to the inventory item.
-- **Material Type**: Classified as `RAW_MATERIAL`, `INOCULANT`, `NODULIZER`, etc.
+- **Material Type**: Classified as `PIG_IRON`, `SCRAP`, `ADDITIVE`, etc.
 - **Quantity Used**: The amount of material consumed.
 - **Unit Rate & Total Cost**: Captured at the time of usage based on the inventory's **Weighted Average Cost (WAC)**.
 
 ---
 
-## 4. Inventory Integration (Automatic Issuance)
+## 5. Inventory & Scrap Integration
 
-The Furnace module is tightly integrated with the **Inventory Module**.
-
-### The Issuance Workflow
+### Automatic Material Issuance
 1. When a Heat is saved, the system identifies all materials used.
 2. It validates if enough stock is available in the inventory.
 3. It automatically records a **Material Issue** in the inventory system for the `FURNACE` department.
-4. The `Item.currentStock` is decreased, and the consumption value is recorded.
 
-### Updates and Reversals
-- **Updates**: If a heat is updated with different material quantities, the system calculates the "delta" and adjusts the inventory (either issuing more or returning stock).
-- **Deletions**: If a heat or report is deleted, all material issuances are reversed, and stock is returned to the inventory.
+### Automatic Scrap Generation
+1. If `autoReturnScrap` is enabled, saving a heat automatically creates a **Scrap Entry**.
+2. This entry captures the runner, riser, skull, and spillage weights.
+3. The scrap is categorized by the heat's grade to ensure metallurgical integrity when remelted.
+4. **Just-in-Time Linking**: The system automatically links the scrap to a "Scrap Item" in the inventory. If an item for that specific grade doesn't exist, it is created automatically (e.g., "FG260 Process Scrap").
 
 ---
 
-## 5. API Endpoints
+## 6. API Endpoints
 
 ### Furnace Reports
-- `POST /api/furnace-reports`: Create a new daily report with multiple heats.
-- `GET /api/furnace-reports/{id}`: Get report details.
-- `PUT /api/furnace-reports/{id}`: Update report and its heats.
-- `GET /api/furnace-reports/ref/{refNo}`: Find by reference number.
+- `POST /api/furnace/reports`: Create a new daily report with multiple heats.
+- `GET /api/furnace/reports/{id}`: Get report details.
+- `PUT /api/furnace/reports/{id}`: Update report and its heats.
 
 ### Furnace Heats
-- `GET /api/furnace-heats/report/{reportId}`: List all heats for a specific report.
-- `GET /api/furnace-heats/order/{orderId}`: List all heats associated with a specific customer order.
+- `GET /api/furnace/reports/{reportId}/heats`: List all heats for a specific report.
+- `GET /api/furnace/heats/by-order/{orderId}`: List all heats associated with a specific customer order.
+- `POST /api/furnace/reports/{reportId}/heats`: Create a heat manually within a report.
 
 ---
 
-## 6. Business Logic & Calculations
+## 7. Business Logic & Calculations
 
 ### Power Consumption
 ```
@@ -103,7 +136,7 @@ Total Cost = Quantity Used × Avg Unit Rate (from Inventory)
 
 ---
 
-## 7. Database Schema
+## 8. Database Schema
 
 The following tables define the structure of the Furnace module and its integration with orders and inventory.
 
