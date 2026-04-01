@@ -63,5 +63,7 @@ INSERT INTO role (name, description) VALUES
     ('SALES', 'Handles enquiry and quotations'),
     ('DESIGN', 'Costing and technical review'),
     ('FINANCE', 'Approves quotations'),
-    ('PRODUCTION', 'Production planning and tracking')
+    ('PRODUCTION', 'Production planning and tracking'),
+    ('CA', 'Chartered Accountant - GST report access only')
+
 ON CONFLICT (name) DO NOTHING;
