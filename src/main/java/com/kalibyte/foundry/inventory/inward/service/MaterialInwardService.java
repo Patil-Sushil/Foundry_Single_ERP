@@ -5,6 +5,7 @@ import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.inventory.common.InwardNumberGenerator;
 import com.kalibyte.foundry.inventory.inward.dto.request.ConfirmInwardRequest;
+import com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.StartInwardRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.UpdateReceivedQuantityRequest;
 import com.kalibyte.foundry.inventory.inward.dto.response.*;
@@ -54,31 +55,31 @@ public class MaterialInwardService {
     private final com.kalibyte.foundry.inventory.vendor.repository.VendorRepository vendorRepository;
     private final PurchaseInvoiceRepository purchaseInvoiceRepository;
 
-	public MaterialInwardService(MaterialInwardRepository materialInwardRepository, 
-                                 ReceivedItemRepository receivedItemRepository, 
-                                 PurchaseOrderRepository purchaseOrderRepository, 
-                                 PurchaseOrderService purchaseOrderService, 
-                                 ItemRepository itemRepository, 
-                                 ItemVendorRateRepository itemVendorRateRepository, 
-                                 VendorLedgerService vendorLedgerService, 
+    public MaterialInwardService(MaterialInwardRepository materialInwardRepository,
+                                 ReceivedItemRepository receivedItemRepository,
+                                 PurchaseOrderRepository purchaseOrderRepository,
+                                 PurchaseOrderService purchaseOrderService,
+                                 ItemRepository itemRepository,
+                                 ItemVendorRateRepository itemVendorRateRepository,
+                                 VendorLedgerService vendorLedgerService,
                                  InwardNumberGenerator inwardNumberGenerator,
                                  InwardMapper inwardMapper,
                                  com.kalibyte.foundry.inventory.vendor.repository.VendorRepository vendorRepository,
                                  PurchaseInvoiceRepository purchaseInvoiceRepository) {
-		this.materialInwardRepository = materialInwardRepository;
-		this.receivedItemRepository = receivedItemRepository;
-		this.purchaseOrderRepository = purchaseOrderRepository;
-		this.purchaseOrderService = purchaseOrderService;
-		this.itemRepository = itemRepository;
-		this.itemVendorRateRepository = itemVendorRateRepository;
-		this.vendorLedgerService = vendorLedgerService;
-		this.inwardNumberGenerator = inwardNumberGenerator;
+        this.materialInwardRepository = materialInwardRepository;
+        this.receivedItemRepository = receivedItemRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
+        this.purchaseOrderService = purchaseOrderService;
+        this.itemRepository = itemRepository;
+        this.itemVendorRateRepository = itemVendorRateRepository;
+        this.vendorLedgerService = vendorLedgerService;
+        this.inwardNumberGenerator = inwardNumberGenerator;
         this.inwardMapper = inwardMapper;
         this.vendorRepository = vendorRepository;
         this.purchaseInvoiceRepository = purchaseInvoiceRepository;
-	}
+    }
 
-	@Transactional
+    @Transactional
     public InwardResponse startFromPO(Long poId, StartInwardRequest request) {
         PurchaseOrder po = purchaseOrderRepository.findWithDetails(poId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase Order not found with id: " + poId));
@@ -145,7 +146,7 @@ public class MaterialInwardService {
                 if (req.unitRate() != null) {
                     item.setUnitRate(req.unitRate());
                 }
-                
+
                 // Recalculate tax and amount
                 BigDecimal taxableAmount = item.getReceivedQuantity().multiply(item.getUnitRate());
                 BigDecimal gstRate = item.getGstRate() != null ? item.getGstRate() : BigDecimal.ZERO;
@@ -213,7 +214,7 @@ public class MaterialInwardService {
 
         for (ReceivedItem receivedItem : inward.getReceivedItems()) {
             Item item = receivedItem.getItem();
-            
+
             // Update Item Stock and Avg Rate
             item.receiveStock(receivedItem.getReceivedQuantity(), receivedItem.getUnitRate());
             itemRepository.save(item);
@@ -233,7 +234,7 @@ public class MaterialInwardService {
                         .item(item)
                         .vendor(inward.getVendor())
                         .build());
-                
+
                 rate.setLastRate(receivedItem.getUnitRate());
                 rate.setLastPurchasedOn(LocalDate.now());
                 itemVendorRateRepository.save(rate);
@@ -281,9 +282,9 @@ public class MaterialInwardService {
         if (purchaseInvoiceRepository.existsByVendorIdAndVendorInvoiceNumber(
                 inward.getVendor().getId(), invoiceNumber)) {
             throw new BusinessException(
-                "Invoice number '" + invoiceNumber + "' already exists for vendor '"
-                + inward.getVendor().getName()
-                + "'. Please use a different invoice number or add it manually via Purchase Invoice API.");
+                    "Invoice number '" + invoiceNumber + "' already exists for vendor '"
+                            + inward.getVendor().getName()
+                            + "'. Please use a different invoice number or add it manually via Purchase Invoice API.");
         }
 
         BigDecimal finalAmount = invoiceAmount != null ? invoiceAmount : inward.getTotalAmount();
@@ -315,7 +316,7 @@ public class MaterialInwardService {
     }
 
     @Transactional
-    public InwardResponse createInternalReturnInward(com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest request) {
+    public InwardResponse createInternalReturnInward(InternalReturnRequest request) {
         com.kalibyte.foundry.inventory.vendor.entity.Vendor internalVendor = vendorRepository.findByName("INTERNAL")
                 .orElseGet(() -> {
                     com.kalibyte.foundry.inventory.vendor.entity.Vendor v = new com.kalibyte.foundry.inventory.vendor.entity.Vendor();
@@ -341,56 +342,7 @@ public class MaterialInwardService {
             for (com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest.InternalReturnItemRequest itemReq : request.getItems()) {
                 Item item = itemRepository.findById(itemReq.itemId())
                         .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemReq.itemId()));
-                
-                BigDecimal unitRate = itemReq.unitRate() != null ? itemReq.unitRate() : item.getAvgRate();
-                BigDecimal taxableAmount = itemReq.quantity().multiply(unitRate);
 
-                ReceivedItem receivedItem = ReceivedItem.builder()
-                        .item(item)
-                        .receivedQuantity(itemReq.quantity())
-                        .unitRate(unitRate)
-                        .gstRate(BigDecimal.ZERO)
-                        .taxAmount(BigDecimal.ZERO)
-                        .amount(taxableAmount)
-                        .build();
-                inward.addReceivedItem(receivedItem);
-            }
-        }
-        inward.calculateTotals();
-
-        processConfirmation(inward);
-
-        return inwardMapper.toResponse(materialInwardRepository.save(inward));
-    }
-
-    @Transactional
-    public InwardResponse createInternalReturnInward(com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest request) {
-        com.kalibyte.foundry.inventory.vendor.entity.Vendor internalVendor = vendorRepository.findByName("INTERNAL")
-                .orElseGet(() -> {
-                    com.kalibyte.foundry.inventory.vendor.entity.Vendor v = new com.kalibyte.foundry.inventory.vendor.entity.Vendor();
-                    v.setName("INTERNAL");
-                    return vendorRepository.save(v);
-                });
-
-        MaterialInward inward = MaterialInward.builder()
-                .inwardNumber(inwardNumberGenerator.generate())
-                .inwardType("INTERNAL_RETURN")
-                .vendor(internalVendor)
-                .scrapEntryId(request.getScrapEntryId())
-                .vehicleNumber(request.getVehicleNumber())
-                .driverName(request.getDriverName())
-                .inwardDate(request.getReturnDate() != null ? request.getReturnDate() : LocalDate.now())
-                .status(InwardStatus.DRAFT)
-                .notes(request.getRemarks())
-                .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
-                .build();
-
-        // I'll add the received items
-        if (request.getItems() != null) {
-            for (com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest.InternalReturnItemRequest itemReq : request.getItems()) {
-                Item item = itemRepository.findById(itemReq.itemId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemReq.itemId()));
-                
                 BigDecimal unitRate = itemReq.unitRate() != null ? itemReq.unitRate() : item.getAvgRate();
                 BigDecimal taxableAmount = itemReq.quantity().multiply(unitRate);
 
