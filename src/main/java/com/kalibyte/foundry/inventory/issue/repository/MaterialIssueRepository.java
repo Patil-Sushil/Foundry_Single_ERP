@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,15 @@ public interface MaterialIssueRepository extends JpaRepository<MaterialIssue, Lo
     List<MaterialIssue> findByDepartmentAndDateRange(@Param("deptId") Long deptId,
                                                      @Param("from") LocalDate from,
                                                      @Param("to") LocalDate to);
+
+    @Query("SELECT COALESCE(SUM(ii.issuedQuantity * ii.unitRate), 0) " +
+           "FROM IssuedItem ii " +
+           "JOIN ii.materialIssue m " +
+           "WHERE m.issueDate BETWEEN :from AND :to " +
+           "AND m.department.code != :excludedDeptCode")
+    BigDecimal getTotalNonFurnaceIssue(@Param("from") LocalDate from,
+                                       @Param("to") LocalDate to,
+                                       @Param("excludedDeptCode") String excludedDeptCode);
 
     @Query("SELECT COUNT(m) FROM MaterialIssue m WHERE YEAR(m.issueDate) = :year")
     long countByYear(@Param("year") int year);

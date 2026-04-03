@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.issue.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.security.UserPrincipal;
 import com.kalibyte.foundry.inventory.issue.dto.request.RecordIssueRequest;
 import com.kalibyte.foundry.inventory.issue.dto.response.DepartmentConsumptionReport;
@@ -42,12 +43,12 @@ public class MaterialIssueController {
     }
 
     @GetMapping
-    public ApiResponse<Page<MaterialIssueSummary>> getAll(
+    public ApiResponse<PageResponse<MaterialIssueSummary>> getAll(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             Pageable pageable) {
-        return ApiResponse.success("Material Issues retrieved successfully", 
+        return ApiResponse.success("Material Issues retrieved successfully",
                 materialIssueService.getAll(departmentId, from, to, pageable));
     }
 

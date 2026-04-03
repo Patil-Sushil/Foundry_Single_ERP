@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -289,4 +290,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         WHERE i.invoiceDate BETWEEN :from AND :to
         """)
     Object[] getOutputTaxSummary(LocalDate from, LocalDate to);
+
+    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED")
+    BigDecimal sumTotalReceivables();
+
+    @Query("SELECT COUNT(i) FROM Invoice i WHERE i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED AND i.dueDate < :today")
+    Long countOverdueInvoices(@Param("today") LocalDate today);
+
+    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED AND i.dueDate < :today")
+    BigDecimal sumOverdueInvoicesValue(@Param("today") LocalDate today);
 }

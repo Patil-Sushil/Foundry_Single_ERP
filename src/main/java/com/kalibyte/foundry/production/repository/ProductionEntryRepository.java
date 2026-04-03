@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -98,6 +99,17 @@ public interface ProductionEntryRepository
     // ── DASHBOARD HELPERS ───────────────────────────
 
     @Query("""
+        SELECT COALESCE(SUM(CAST(pi.acceptedQuantity AS bigdecimal) * oi.unitPrice * oi.netWeightKg), 0)
+        FROM ProductionItem pi
+        JOIN pi.productionEntry pe
+        JOIN pi.orderItem oi
+        WHERE pe.reportDate BETWEEN :from AND :to
+        AND pe.isDeleted = false
+        AND pi.isDeleted = false
+    """)
+    BigDecimal getProductionValue(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("""
         SELECT COUNT(DISTINCT pe.order.id)
         FROM ProductionEntry pe
         WHERE pe.status = :status
@@ -114,6 +126,34 @@ public interface ProductionEntryRepository
 """)
     int calculateTotalPendingDispatch();
 
+
+    @Query("""
+        SELECT 
+            COALESCE(SUM(pe.totalReadyCores), 0),
+            COALESCE(SUM(pe.totalPouredMoulds), 0),
+            COALESCE(SUM(pe.totalShotBlastingQuantity), 0),
+            COALESCE(SUM(pe.totalFettlingQuantity), 0)
+        FROM ProductionEntry pe
+        WHERE pe.reportDate = :date AND pe.isDeleted = false
+    """)
+    Object[] sumStageQuantities(@Param("date") LocalDate date);
+
+    @Query("""
+        SELECT 
+            COALESCE(SUM(pe.totalReadyCores), 0),
+            COALESCE(SUM(pe.totalPouredMoulds), 0),
+            COALESCE(SUM(pe.totalShotBlastingQuantity), 0),
+            COALESCE(SUM(pe.totalFettlingQuantity), 0)
+        FROM ProductionEntry pe
+        WHERE pe.reportDate BETWEEN :start AND :end AND pe.isDeleted = false
+    """)
+    Object[] sumStageQuantitiesBetweenDates(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
+    @Query("SELECT COALESCE(SUM(pe.totalDispatchedQuantity), 0) FROM ProductionEntry pe WHERE pe.reportDate = :date AND pe.isDeleted = false")
+    java.math.BigDecimal sumDispatchedQuantityByDate(@Param("date") LocalDate date);
+
+    @Query("SELECT COALESCE(SUM(pe.totalDispatchedQuantity), 0) FROM ProductionEntry pe WHERE pe.reportDate BETWEEN :start AND :end AND pe.isDeleted = false")
+    java.math.BigDecimal sumDispatchedQuantityBetweenDates(@Param("start") LocalDate start, @Param("end") LocalDate end);
 
 //    ── ENTRY NUMBER SEQUENCE HELPERS ─────────────────
     long countByEntryNumberStartingWith(String prefix);

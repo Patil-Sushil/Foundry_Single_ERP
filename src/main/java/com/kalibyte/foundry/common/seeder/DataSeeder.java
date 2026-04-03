@@ -7,11 +7,17 @@ import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.customer.service.CustomerService;
+import com.kalibyte.foundry.expenses.entity.Expense;
+import com.kalibyte.foundry.expenses.entity.ExpenseHead;
+import com.kalibyte.foundry.expenses.entity.enums.ExpenseCategory;
+import com.kalibyte.foundry.expenses.repository.ExpenseHeadRepository;
+import com.kalibyte.foundry.expenses.repository.ExpenseRepository;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
 import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsRepository;
 import com.kalibyte.foundry.furnace.furnace_report.entity.Enum.Shift;
 import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
 import com.kalibyte.foundry.furnace.furnace_report.repository.FurnaceRepository;
+import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
 import com.kalibyte.foundry.order.entity.Order;
@@ -29,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -45,6 +52,8 @@ public class DataSeeder implements CommandLineRunner {
     private final QuotationRepository quotationRepository;
     private final FurnaceRepository furnaceRepository;
     private final FurnaceHeatsRepository furnaceHeatsRepository;
+    private final ExpenseHeadRepository expenseHeadRepository;
+    private final ExpenseRepository expenseRepository;
 
     @Override
     @Transactional
@@ -55,8 +64,52 @@ public class DataSeeder implements CommandLineRunner {
         seedCustomers();
         seedOrders();
         seedFurnaceReports();
+        seedExpenses();
 
         log.info("===== DATA SEEDING COMPLETE =====");
+    }
+    
+    /* ---------------- EXPENSES ---------------- */
+
+    private void seedExpenses() {
+        if (expenseRepository.count() > 0) {
+            log.info("Expenses already exist. Skipping.");
+            return;
+        }
+
+        log.info("Seeding expenses...");
+
+        ExpenseHead rentHead = expenseHeadRepository.findByNameIgnoreCase("Factory Rent")
+                .orElseGet(() -> expenseHeadRepository.save(ExpenseHead.builder()
+                        .name("Factory Rent")
+                        .category(ExpenseCategory.FACTORY_OVERHEAD)
+                        .description("Monthly rent for factory premises")
+                        .build()));
+
+        ExpenseHead salaryHead = expenseHeadRepository.findByNameIgnoreCase("Staff Salaries")
+                .orElseGet(() -> expenseHeadRepository.save(ExpenseHead.builder()
+                        .name("Staff Salaries")
+                        .category(ExpenseCategory.ADMIN)
+                        .description("Salaries for office staff")
+                        .build()));
+
+        expenseRepository.save(Expense.builder()
+                .expenseNumber("EXP-2024-001")
+                .expenseHead(rentHead)
+                .amount(new BigDecimal("50000.00"))
+                .expenseDate(LocalDate.now().minusDays(10))
+                .remarks("April Rent")
+                .build());
+
+        expenseRepository.save(Expense.builder()
+                .expenseNumber("EXP-2024-002")
+                .expenseHead(salaryHead)
+                .amount(new BigDecimal("75000.00"))
+                .expenseDate(LocalDate.now().minusDays(2))
+                .remarks("March Salaries")
+                .build());
+
+        log.info("Expenses seeded.");
     }
 
     /* ---------------- ROLES ---------------- */
@@ -135,7 +188,18 @@ public class DataSeeder implements CommandLineRunner {
                 .deliveryDate(LocalDate.now().plusDays(20))
                 .status(OrderStatus.IN_PRODUCTION)
                 .totalAmount(new BigDecimal("5000.00"))
+                .items(new ArrayList<>())
                 .build();
+
+        o1.addItem(OrderItem.builder()
+                .partName("Engine Block")
+                .quantity(10)
+                        .materialGrade("FG260")
+                .netWeightKg(new BigDecimal("25.500"))
+                .unitPrice(new BigDecimal("150.00"))
+                .lineTotal(new BigDecimal("38250.00")) // 25.5 * 150 * 10
+                .build());
+
         orderRepository.save(o1);
 
         // Order 2 (Direct)
@@ -143,12 +207,23 @@ public class DataSeeder implements CommandLineRunner {
                 .orderNumber("ORD-2024-002")
                 .customer(acme)
                 .orderType(OrderType.DIRECT)
-                .quotation(null) // Possible now because we fixed Order.java
+                .quotation(null) 
                 .orderDate(LocalDate.now())
                 .deliveryDate(LocalDate.now().plusDays(30))
                 .status(OrderStatus.CREATED)
                 .totalAmount(new BigDecimal("2500.00"))
+                .items(new ArrayList<>())
                 .build();
+
+        o2.addItem(OrderItem.builder()
+                .partName("Transmission Case")
+                .quantity(5)
+                        .materialGrade("SG400")
+                .netWeightKg(new BigDecimal("12.000"))
+                .unitPrice(new BigDecimal("200.00"))
+                .lineTotal(new BigDecimal("12000.00")) // 12 * 200 * 5
+                .build());
+
         orderRepository.save(o2);
 
         log.info("Orders and quotations seeded.");

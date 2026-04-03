@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -39,4 +40,19 @@ public interface MaterialInwardRepository extends JpaRepository<MaterialInward, 
     long countByYear(@Param("year") int year);
 
     boolean existsByInwardNumber(String inwardNumber);
+
+    @Query("SELECT COALESCE(SUM(m.grandTotal), 0) FROM MaterialInward m WHERE m.inwardDate BETWEEN :start AND :end AND m.status = com.kalibyte.foundry.inventory.inward.entity.enums.InwardStatus.CONFIRMED")
+    java.math.BigDecimal sumProcurementValueBetweenDates(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
+    @Query("SELECT m.vendor.id as vendorId, m.vendor.name as vendorName, SUM(m.grandTotal) as totalProcurementValue " +
+           "FROM MaterialInward m WHERE m.inwardDate BETWEEN :start AND :end AND m.status = com.kalibyte.foundry.inventory.inward.entity.enums.InwardStatus.CONFIRMED " +
+           "GROUP BY m.vendor.id, m.vendor.name " +
+           "ORDER BY SUM(m.grandTotal) DESC")
+    List<Object[]> findTopVendorsByProcurementValueBetweenDates(@Param("start") LocalDate start, @Param("end") LocalDate end, Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(m.grandTotal), 0) FROM MaterialInward m WHERE m.inwardDate = :date AND m.inwardType = 'INTERNAL_RETURN'")
+    java.math.BigDecimal sumScrapReturnedByDate(@Param("date") LocalDate date);
+
+    @Query("SELECT COALESCE(SUM(m.grandTotal), 0) FROM MaterialInward m WHERE m.inwardDate BETWEEN :start AND :end AND m.inwardType = 'INTERNAL_RETURN'")
+    java.math.BigDecimal sumScrapReturnedBetweenDates(@Param("start") LocalDate start, @Param("end") LocalDate end);
 }

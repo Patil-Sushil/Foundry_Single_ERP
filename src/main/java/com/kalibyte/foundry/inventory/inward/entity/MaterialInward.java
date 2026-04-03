@@ -47,6 +47,12 @@ public class MaterialInward extends BaseInventoryEntity {
     @Column(name = "vendor_challan_number")
     private String vendorChallanNumber;
 
+    @Column(name = "vendor_invoice_number", length = 50)
+    private String vendorInvoiceNumber;
+
+    @Column(name = "vendor_invoice_date")
+    private LocalDate vendorInvoiceDate;
+
     @Builder.Default
     @Column(name = "inward_date", nullable = false)
     private LocalDate inwardDate = LocalDate.now();

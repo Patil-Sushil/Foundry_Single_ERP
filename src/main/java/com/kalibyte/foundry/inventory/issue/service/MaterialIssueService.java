@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.issue.service;
 
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.inventory.common.IssueNumberGenerator;
 import com.kalibyte.foundry.inventory.department.entity.Department;
 import com.kalibyte.foundry.inventory.department.repository.DepartmentRepository;
@@ -86,13 +87,12 @@ public class MaterialIssueService {
 
 
     @Transactional(readOnly = true)
-    public Page<MaterialIssueSummary> getAll(Long departmentId, LocalDate from, LocalDate to, Pageable pageable) {
+    public PageResponse<MaterialIssueSummary> getAll(Long departmentId, LocalDate from, LocalDate to, Pageable pageable) {
         if (departmentId != null) {
             departmentRepository.findById(departmentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + departmentId));
         }
-        return materialIssueRepository.findAllFiltered(departmentId, from, to, pageable)
-                .map(materialIssueMapper::toSummary);
+        return PageResponse.from(materialIssueRepository.findAllFiltered(departmentId, from, to, pageable),materialIssueMapper::toSummary);
     }
 
     @Transactional(readOnly = true)

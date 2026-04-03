@@ -12,7 +12,9 @@ The module ensures full traceability by linking quality data directly to product
 
 ### 1.1 In-Process & Final Inspection
 Inspections are performed on production items at various stages (e.g., after fettling).
-1.  **Draft Creation**: An inspector creates a `QaInspection` for a specific `ProductionItem`.
+1.  **Draft Creation**: 
+    - **Manual**: An inspector creates a `QaInspection` for a specific `ProductionItem`.
+    - **Automated**: The system automatically creates a `DRAFT` inspection for any `ProductionItem` with a `fettling_quantity > 0` during the saving of a `ProductionEntry`.
 2.  **Recording Findings**: Specific defects are recorded as `InspectionFindings` from the `DefectCatalog`.
 3.  **Completion**: Upon completion, the system:
     *   Updates the `ProductionItem` with inspected, accepted, rejected, and rework quantities.
@@ -75,6 +77,7 @@ The QA module directly modifies `production_items` and `production_entries` duri
 *   `rejected_quantity`
 *   `rework_quantity`
 *   **Dispatch Control**: `ProductionItem.dispatched_quantity` is auto-set by QA to ensure only accepted pieces are billed.
+*   **Automatic Trigger**: Saving a production entry with fettling quantities automatically generates QA inspection drafts.
 
 ### Scrap & Inventory Integration
 When a `QaRejection` or `CustomerReturn` is dispositioned as `SCRAP_FOR_REMELT`:
@@ -93,7 +96,7 @@ The "Golden Chain" of traceability in the QA module:
 ### Inspection Stages
 *   `AFTER_POURING`: Initial check for obvious pouring defects.
 *   `AFTER_SHOT_BLASTING`: Check for surface defects after initial cleaning.
-*   `AFTER_FETTLING`: Pre-dispatch check after grinding/finishing.
+*   `AFTER_FETTLING`: Pre-dispatch check after grinding/finishing (Primary automated stage).
 *   `FINAL_INSPECTION`: Final check before packing.
 
 ### Root Cause Categories (for Returns)
@@ -111,6 +114,20 @@ QA endpoints are protected by Role-Based Access Control (RBAC):
 *   `QUALITY`: Primary role for inspectors and QA managers. Can create inspections, record findings, and assess returns.
 *   `ADMIN`: Full access, including configuring the defect catalog and performing final dispositions.
 *   `PRODUCTION`: Read-only access to quality results to monitor performance.
+
+---
+
+## 6. Future Integration Points
+
+### Billing & Financials
+*   **Credit Notes**: Automatic generation of credit notes in the billing module when a `CustomerReturn` is dispositioned with a `credit_amount`.
+
+### Order Management
+*   **Replacement Orders**: Automated creation of a new Sales Order when a customer return is marked for `REPLACE`.
+
+### Analytics & Reporting
+*   **Cost of Quality**: Aggregating scrap weights and rework hours to calculate real-time cost-of-quality metrics.
+*   **Root Cause Dashboard**: Visual analysis of defects by category and furnace heat to identify systemic production issues.
 
 ---
 

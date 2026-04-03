@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public record UpdateReceivedQuantityRequest(
     @NotNull(message = "Received Item ID is required")
@@ -14,5 +15,8 @@ public record UpdateReceivedQuantityRequest(
     BigDecimal receivedQuantity,
 
     @DecimalMin(value = "0.01", message = "Unit Rate must be > 0")
-    BigDecimal unitRate
+    BigDecimal unitRate,
+
+    String vendorInvoiceNumber,
+    LocalDate vendorInvoiceDate
 ) implements Serializable {}

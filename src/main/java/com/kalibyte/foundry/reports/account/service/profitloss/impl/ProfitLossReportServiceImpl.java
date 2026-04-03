@@ -1,13 +1,21 @@
 package com.kalibyte.foundry.reports.account.service.profitloss.impl;
 
-import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.expenses.entity.enums.ExpenseCategory;
 import com.kalibyte.foundry.expenses.repository.ExpenseRepository;
-import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.ElectricityRate;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
+import com.kalibyte.foundry.furnace.furnace_heats.repository.ElectricityRateRepository;
+import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsRepository;
+import com.kalibyte.foundry.inventory.issue.repository.MaterialIssueRepository;
+import com.kalibyte.foundry.labors.attendance.repository.AttendanceRepository;
+import com.kalibyte.foundry.labors.payout.repository.WeeklyPayoutRepository;
+import com.kalibyte.foundry.payment.repository.PaymentRepository;
+import com.kalibyte.foundry.production.repository.ProductionEntryRepository;
 import com.kalibyte.foundry.reports.account.dto.response.profitloss.*;
 import com.kalibyte.foundry.reports.account.service.profitloss.ProfitLossReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,34 +35,63 @@ public class ProfitLossReportServiceImpl implements ProfitLossReportService {
 
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
-    private final PurchaseOrderRepository purchaseOrderRepository;
     private final ExpenseRepository expenseRepository;
+    private final ProductionEntryRepository productionEntryRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final MaterialIssueRepository materialIssueRepository;
+    private final FurnaceHeatsRepository furnaceHeatsRepository;
+    private final ElectricityRateRepository electricityRateRepository;
+    private final WeeklyPayoutRepository weeklyPayoutRepository;
 
     //--------------------------------------------------
     // MAIN REPORT
     //--------------------------------------------------
     @Override
-    @Cacheable(value = "report_profit_loss")
+    @Cacheable(value = "report_profit_loss", key = "#from + '_' + #to")
     public ProfitLossReport generateReport(LocalDate from, LocalDate to) {
 
-        BigDecimal revenue = safe(invoiceRepository.getRevenue(from, to));
+        // 1. REVENUE (Realized + Unrealized WIP)
+        BigDecimal totalRevenue = safe(invoiceRepository.getRevenue(from, to));
         BigDecimal collections = safe(paymentRepository.getCollections(from, to));
-        BigDecimal cogs = safe(purchaseOrderRepository.getCOGS(from, to));
-        BigDecimal expenses = safe(expenseRepository.getTotalExpenses(from, to));
+        BigDecimal wipValue = safe(productionEntryRepository.getProductionValue(from, to));
 
-        BigDecimal grossProfit = revenue.subtract(cogs);
-        BigDecimal netProfit = grossProfit.subtract(expenses);
+        // 2. MANUFACTURING COSTS (Direct)
+        BigDecimal furnaceMaterialCost = safe(furnaceHeatsRepository.getTotalMaterialCost(from, to));
+        
+        // Labor Logic: Use Attendance for real-time cost, but cross-reference Payouts if they exist.
+        // For a daily P&L, Attendance is the only available data.
+        BigDecimal laborCost = safe(attendanceRepository.getTotalLaborCost(from, to));
+        
+        BigDecimal electricityCost = calculateElectricityCost(from, to);
 
-        BigDecimal grossMargin = percent(grossProfit, revenue);
-        BigDecimal netMargin = percent(netProfit, revenue);
-        BigDecimal expenseRatio = percent(expenses, revenue);
+        // 3. OTHER OPERATIONAL COSTS
+        BigDecimal generalMaterialIssueCost = safe(materialIssueRepository.getTotalNonFurnaceIssue(from, to, "FUR"));
+        BigDecimal generalExpenses = safe(expenseRepository.getTotalExpenses(from, to));
+
+        // 4. AGGREGATED PROFIT CALCULATION
+        // Total Income = Invoiced + WIP Value Added
+        BigDecimal totalIncome = totalRevenue.add(wipValue);
+
+        // Total COGS = Direct manufacturing costs
+        BigDecimal cogs = furnaceMaterialCost.add(electricityCost).add(laborCost).add(generalMaterialIssueCost);
+
+        BigDecimal grossProfit = totalIncome.subtract(cogs);
+        BigDecimal netProfit = grossProfit.subtract(generalExpenses);
+
+        BigDecimal grossMargin = percent(grossProfit, totalIncome);
+        BigDecimal netMargin = percent(netProfit, totalIncome);
+        BigDecimal expenseRatio = percent(generalExpenses, totalIncome);
 
         ProfitLossSummary summary = new ProfitLossSummary(
-                revenue,
+                totalRevenue,
                 collections,
-                cogs,
+                wipValue,
+                furnaceMaterialCost,
+                electricityCost,
+                laborCost,
+                generalMaterialIssueCost,
                 grossProfit,
-                expenses,
+                generalExpenses,
                 netProfit,
                 grossMargin,
                 netMargin,
@@ -62,7 +99,7 @@ public class ProfitLossReportServiceImpl implements ProfitLossReportService {
         );
 
         List<ProfitLossExpenseItem> expenseItems =
-                buildExpenseBreakdown(revenue, from, to);
+                buildExpenseBreakdown(totalIncome, from, to);
 
         List<ProfitLossMonthlyItem> monthlyTrend =
                 buildMonthlyTrend(from, to);
@@ -74,6 +111,23 @@ public class ProfitLossReportServiceImpl implements ProfitLossReportService {
                 LocalDateTime.now(),
                 "SYSTEM"
         );
+    }
+
+    private BigDecimal calculateElectricityCost(LocalDate from, LocalDate to) {
+        List<FurnaceHeats> heats = furnaceHeatsRepository.findHeatsInDateRange(from, to);
+        if (heats.isEmpty()) return BigDecimal.ZERO;
+
+        // For simplicity, we use the currently active rate. 
+        // A more advanced version would match the heat date with historical rates.
+        Double rate = electricityRateRepository.findByActiveTrue()
+                .map(ElectricityRate::getRatePerUnit)
+                .orElse(0.0);
+
+        double totalUnits = heats.stream()
+                .mapToDouble(FurnaceHeats::getDifferenceReading)
+                .sum();
+
+        return BigDecimal.valueOf(totalUnits * rate).setScale(2, RoundingMode.HALF_UP);
     }
 
     //--------------------------------------------------
@@ -146,53 +200,54 @@ public class ProfitLossReportServiceImpl implements ProfitLossReportService {
             LocalDate from,
             LocalDate to) {
 
-        List<Object[]> rows = invoiceRepository.getMonthlyRevenue(from, to);
-
         List<ProfitLossMonthlyItem> result = new ArrayList<>();
+        
+        YearMonth startMonth = YearMonth.from(from);
+        YearMonth endMonth = YearMonth.from(to);
 
-        BigDecimal previous = BigDecimal.ZERO;
+        BigDecimal previousIncome = BigDecimal.ZERO;
 
-        for (Object[] r : rows) {
+        for (YearMonth month = startMonth; !month.isAfter(endMonth); month = month.plusMonths(1)) {
+            
+            LocalDate start = month.atDay(1);
+            LocalDate end = month.atEndOfMonth();
+            
+            // Adjust start/end to be within the 'from/to' range
+            LocalDate calculationStart = start.isBefore(from) ? from : start;
+            LocalDate calculationEnd = end.isAfter(to) ? to : end;
 
-            Object dateObj = r[0];
-            YearMonth month;
-
-            // HANDLE ALL POSSIBLE TYPES
-            if (dateObj instanceof java.sql.Timestamp ts) {
-                month = YearMonth.from(ts.toLocalDateTime());
-            } else if (dateObj instanceof LocalDate ld) {
-                month = YearMonth.from(ld);
-            } else if (dateObj instanceof LocalDateTime ldt) {
-                month = YearMonth.from(ldt);
-            } else {
-                throw new RuntimeException("Unsupported date type: " + dateObj.getClass());
-            }
-
-            BigDecimal revenue = safe((BigDecimal) r[1]);
-
-            // temporary logic
-            BigDecimal netProfit = revenue.multiply(BigDecimal.valueOf(0.25));
+            BigDecimal revenue = safe(invoiceRepository.getRevenue(calculationStart, calculationEnd));
+            BigDecimal monthlyWip = safe(productionEntryRepository.getProductionValue(calculationStart, calculationEnd));
+            BigDecimal monthlyIncome = revenue.add(monthlyWip);
+            
+            BigDecimal monthlyCogs = safe(furnaceHeatsRepository.getTotalMaterialCost(calculationStart, calculationEnd))
+                    .add(calculateElectricityCost(calculationStart, calculationEnd))
+                    .add(safe(attendanceRepository.getTotalLaborCost(calculationStart, calculationEnd)))
+                    .add(safe(materialIssueRepository.getTotalNonFurnaceIssue(calculationStart, calculationEnd, "FUR")));
+            
+            BigDecimal monthlyExp = safe(expenseRepository.getTotalExpenses(calculationStart, calculationEnd));
+            BigDecimal netProfit = monthlyIncome.subtract(monthlyCogs).subtract(monthlyExp);
 
             BigDecimal growth = BigDecimal.ZERO;
 
-            if (previous.compareTo(BigDecimal.ZERO) > 0) {
-                growth = revenue.subtract(previous)
-                        .divide(previous, 4, RoundingMode.HALF_UP)
+            if (previousIncome.compareTo(BigDecimal.ZERO) > 0) {
+                growth = monthlyIncome.subtract(previousIncome)
+                        .divide(previousIncome, 4, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100));
             }
 
             result.add(
                     new ProfitLossMonthlyItem(
                             month,
-                            revenue,
-                            BigDecimal.ZERO,
-                            BigDecimal.ZERO,
+                            monthlyIncome,
+                            monthlyCogs,
+                            monthlyExp,
                             netProfit,
                             growth
                     )
             );
 
-            previous = revenue;
+            previousIncome = monthlyIncome;
         }
 
         return result;

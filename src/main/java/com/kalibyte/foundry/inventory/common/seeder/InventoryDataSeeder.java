@@ -20,6 +20,8 @@ import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.ledger.entity.VendorLedger;
 import com.kalibyte.foundry.inventory.ledger.entity.enums.LedgerEntryType;
 import com.kalibyte.foundry.inventory.ledger.repository.VendorLedgerRepository;
+import com.kalibyte.foundry.inventory.purchaseinvoice.entity.PurchaseInvoice;
+import com.kalibyte.foundry.inventory.purchaseinvoice.repository.PurchaseInvoiceRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.ItemVendorRate;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrderItem;
 import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
@@ -61,6 +63,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
     private final VendorLedgerRepository vendorLedgerRepository;
     private final ItemVendorRateRepository itemVendorRateRepository;
     private final UserRepository userRepository;
+    private final PurchaseInvoiceRepository purchaseInvoiceRepository;
     private final AppConfig appConfig;
 
     private User adminUser;
@@ -82,6 +85,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         List<Item> items = seedItems(departments);
         
         seedTransactions(vendors, items, departments);
+        seedPurchaseInvoices();
 
         log.info("Inventory data seeded successfully.");
     }
@@ -158,7 +162,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         items.add(createItem("Silica Sand", "RM-003", ItemCategory.RAW_MATERIAL, ItemSubCategory.SAND, production, ItemUnit.KG, 2000, 1000));
 
         // Consumables
-        items.add(createItem("Grinding Wheels 4\"", "CON-001", ItemCategory.CONSUMABLE, ItemSubCategory.ABRASIVE, production, ItemUnit.PCS, 100, 50));
+        items.add(createItem("Grinding Wheels 4", "CON-001", ItemCategory.CONSUMABLE, ItemSubCategory.ABRASIVE, production, ItemUnit.PCS, 100, 50));
         items.add(createItem("Industrial Oxygen", "CON-002", ItemCategory.CONSUMABLE, ItemSubCategory.GENERAL, production, ItemUnit.LITRE, 200, 100));
         items.add(createItem("Hydraulic Oil VG 68", "CON-003", ItemCategory.CONSUMABLE, ItemSubCategory.GENERAL, maint, ItemUnit.LITRE, 50, 20));
         items.add(createItem("CORES", "CORE-001", ItemCategory.RAW_MATERIAL, ItemSubCategory.CORE, production, ItemUnit.PCS, 30, 10));
@@ -234,7 +238,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         confirmInward(mi1);
 
         // 2. PO for Consumables - Partially Received
-        PurchaseOrder po2 = createPO(vendors.get(0), now.minusDays(45), POStatus.PARTIALLY_RECEIVED);
+        PurchaseOrder po2 = createPO(vendors.getFirst(), now.minusDays(45), POStatus.PARTIALLY_RECEIVED);
         addOrderItem(po2, items.get(3), 100, 150.00, 18.0, "6804"); // Grinding Wheels
         addOrderItem(po2, items.get(4), 200, 80.00, 12.0, "2804"); // Oxygen
         
@@ -249,7 +253,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
         issueItem(iss1, items.get(3), 20); // Issue 20 Grinding Wheels
 
         // 4. Another Inward for po2
-        MaterialInward mi3 = createInward(po2, vendors.get(0), now.minusDays(30));
+        MaterialInward mi3 = createInward(po2, vendors.getFirst(), now.minusDays(30));
         receiveItem(mi3, items.get(3), 50, 155.00, 18.0, po2.getOrderItems().get(0)); // Rate changed
         receiveItem(mi3, items.get(4), 100, 80.00, 12.0, po2.getOrderItems().get(1));
         confirmInward(mi3);
@@ -289,6 +293,48 @@ public class InventoryDataSeeder implements CommandLineRunner {
         PurchaseOrder poKarnataka = createPO(vendors.get(6), now, POStatus.OPEN); // Karnataka Spares
         poKarnataka.setNotes("Inter-state PO for Karnataka Vendor (IGST testing)");
         addOrderItem(poKarnataka, items.get(7), 50, 1800.00, 18.0, "4010"); // Conveyor Belt
+    }
+
+    private void seedPurchaseInvoices() {
+        if (purchaseInvoiceRepository.count() > 0) {
+            log.info("Purchase invoices already exist. Skipping.");
+            return;
+        }
+
+        log.info("Seeding purchase invoices...");
+        List<PurchaseOrder> seededPOs = purchaseOrderRepository.findAll();
+        List<MaterialInward> seededInwards = materialInwardRepository.findAll();
+
+        for (int i = 0; i < seededPOs.size(); i++) {
+            PurchaseOrder po = seededPOs.get(i);
+            
+            if (po.getVendor() == null) continue;
+            
+            String invoiceNumber = "INV/" + po.getVendor().getName().substring(0, Math.min(3, po.getVendor().getName().length())).toUpperCase() 
+                                 + "/2025/" + String.format("%04d", i + 1);
+            
+            LocalDate invoiceDate = po.getPoDate().plusDays(1 + (i % 3));
+            
+            MaterialInward matchingInward = seededInwards.stream()
+                    .filter(inw -> inw.getPurchaseOrder() != null && inw.getPurchaseOrder().getId().equals(po.getId()))
+                    .findFirst()
+                    .orElse(null);
+            
+            PurchaseInvoice purchaseInvoice = PurchaseInvoice.builder()
+                    .vendorInvoiceNumber(invoiceNumber)
+                    .vendorInvoiceDate(invoiceDate)
+                    .invoiceAmount(po.getGrandTotal())
+                    .vendor(po.getVendor())
+                    .purchaseOrder(po)
+                    .materialInward(matchingInward)
+                    .source("AUTO")
+                    .isVerified(i % 2 == 0)
+                    .createdByUserId(adminUser != null ? Long.valueOf(adminUser.getId().getMostSignificantBits()) : 1L)
+                    .build();
+            
+            purchaseInvoiceRepository.save(purchaseInvoice);
+        }
+        log.info("Purchase invoices seeded.");
     }
 
     private PurchaseOrder createPO(Vendor vendor, LocalDate date, POStatus status) {

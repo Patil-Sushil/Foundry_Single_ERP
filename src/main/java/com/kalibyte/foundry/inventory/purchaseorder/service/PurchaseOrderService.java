@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.purchaseorder.service;
 
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.inventory.common.PONumberGenerator;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
@@ -100,9 +101,9 @@ public class PurchaseOrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<PurchaseOrderSummary> getAll(POStatus status, Long vendorId, Pageable pageable) {
-        return purchaseOrderRepository.findAllFiltered(status, vendorId, pageable)
-                .map(purchaseOrderMapper::toSummary);
+    public PageResponse<PurchaseOrderSummary> getAll(POStatus status, Long vendorId, Pageable pageable) {
+        return PageResponse.from(purchaseOrderRepository.findAllFiltered(status, vendorId, pageable)
+                .map(purchaseOrderMapper::toSummary));
     }
 
     @Transactional(readOnly = true)

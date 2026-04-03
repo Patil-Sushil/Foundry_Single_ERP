@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.purchaseorder.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.security.UserPrincipal;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.request.CreatePurchaseOrderRequest;
 import com.kalibyte.foundry.inventory.purchaseorder.dto.response.LastPurchaseRate;
@@ -70,7 +71,7 @@ public class PurchaseOrderController {
     }
 
     @GetMapping
-    public ApiResponse<Page<PurchaseOrderSummary>> getAll(
+    public ApiResponse<PageResponse<PurchaseOrderSummary>> getAll(
             @RequestParam(required = false) POStatus status,
             @RequestParam(required = false) Long vendorId,
             Pageable pageable) {

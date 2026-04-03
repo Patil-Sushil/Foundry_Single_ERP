@@ -10,14 +10,19 @@ import java.math.BigDecimal;
  */
 public record ProfitLossSummary(
 
-        BigDecimal totalRevenue,
+        BigDecimal totalRevenue,        // Realized (Invoices)
         BigDecimal totalCollections,
 
-        BigDecimal cogs,
+        BigDecimal wipProductionValue,  // Unrealized (Accepted Production)
+        
+        BigDecimal furnaceMaterialCost,
+        BigDecimal furnaceElectricityCost,
+        BigDecimal laborCost,
+        BigDecimal generalMaterialIssueCost,
 
         BigDecimal grossProfit,
 
-        BigDecimal operatingExpenses,
+        BigDecimal operatingExpenses,   // General expenses (Admin, etc.)
 
         BigDecimal netProfit,
 

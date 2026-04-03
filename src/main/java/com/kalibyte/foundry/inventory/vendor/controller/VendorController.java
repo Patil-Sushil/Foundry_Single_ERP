@@ -40,7 +40,7 @@ public class VendorController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','STORE')")
-    public ApiResponse<Page<VendorResponse>> getAll(
+    public ApiResponse<PageResponse<VendorResponse>> getAll(
             @RequestParam(required = false) Boolean isActive,
             Pageable pageable) {
         return ApiResponse.success("Vendors retrieved successfully", vendorService.getAll(isActive, pageable));

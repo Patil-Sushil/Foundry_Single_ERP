@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.vendor.service;
 
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.inventory.vendor.dto.request.CreateVendorRequest;
 import com.kalibyte.foundry.inventory.vendor.dto.request.UpdateVendorRequest;
 import com.kalibyte.foundry.inventory.vendor.dto.response.VendorResponse;
@@ -53,14 +54,14 @@ public class VendorService {
     }
 
     @Transactional(readOnly = true)
-    public Page<VendorResponse> getAll(Boolean isActive, Pageable pageable) {
+    public PageResponse<VendorResponse> getAll(Boolean isActive, Pageable pageable) {
         Page<Vendor> vendors;
         if (isActive != null) {
             vendors = vendorRepository.findByIsActive(isActive, pageable);
         } else {
             vendors = vendorRepository.findAll(pageable);
         }
-        return vendors.map(vendorMapper::toResponse);
+        return PageResponse.from(vendors.map(vendorMapper::toResponse));
     }
 
     @Transactional

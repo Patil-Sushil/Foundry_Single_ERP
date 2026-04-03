@@ -7,6 +7,7 @@ import com.kalibyte.foundry.labors.labor.service.LaborerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,7 +27,7 @@ public class LaborerController {
     @PostMapping
     @Operation(summary = "Create a new laborer", description = "Only accessible by ADMIN")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<LaborerResponseDTO>> createLaborer(@RequestBody LaborerRequestDTO request) {
+    public ResponseEntity<ApiResponse<LaborerResponseDTO>> createLaborer(@Valid @RequestBody LaborerRequestDTO request) {
         return ResponseEntity.ok(ApiResponse.success("Laborer created successfully", laborerService.createLaborer(request)));
     }
 
@@ -42,6 +43,13 @@ public class LaborerController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<LaborerResponseDTO>> getLaborerById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(laborerService.getLaborerById(id)));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update laborer by ID", description = "Only accessible by ADMIN")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<LaborerResponseDTO>> updateLaborer(@PathVariable Long id, @Valid @RequestBody LaborerRequestDTO request) {
+        return ResponseEntity.ok(ApiResponse.success("Laborer updated successfully", laborerService.updateLaborer(id, request)));
     }
 
     @DeleteMapping("/{id}")

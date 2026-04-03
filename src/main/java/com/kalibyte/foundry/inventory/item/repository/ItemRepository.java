@@ -31,4 +31,10 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
     java.util.Optional<Item> findByIsScrapTrueAndGrade(String grade);
 
     Page<Item> findByIsScrap(Boolean isScrap, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT COUNT(i) FROM Item i WHERE i.isActive = true AND i.isScrap = false AND i.currentStock <= i.reorderLevel")
+    Long countLowStockItems();
+
+    @Query("SELECT i FROM Item i WHERE i.isActive = true AND i.isScrap = false AND i.currentStock <= i.reorderLevel")
+    List<Item> findLowStockItems(org.springframework.data.domain.Pageable pageable);
 }

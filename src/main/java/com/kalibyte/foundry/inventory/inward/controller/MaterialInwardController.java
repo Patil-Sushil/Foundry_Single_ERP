@@ -1,7 +1,9 @@
 package com.kalibyte.foundry.inventory.inward.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.security.UserPrincipal;
+import com.kalibyte.foundry.inventory.inward.dto.request.ConfirmInwardRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.StartInwardRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.UpdateReceivedQuantityRequest;
 import com.kalibyte.foundry.inventory.inward.dto.response.InwardResponse;
@@ -56,9 +58,10 @@ public class MaterialInwardController {
 
     @PostMapping("/{id}/confirm")
     public ApiResponse<InwardResponse> confirm(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @RequestBody(required = false) ConfirmInwardRequest request) {
         return ApiResponse.success("Inward confirmed successfully", 
-                materialInwardService.confirm(id));
+                materialInwardService.confirm(id, request));
     }
 
     @GetMapping("/{id}")
@@ -68,7 +71,7 @@ public class MaterialInwardController {
     }
 
     @GetMapping
-    public ApiResponse<Page<InwardSummary>> getAll(
+    public ApiResponse<PageResponse<InwardSummary>> getAll(
             @RequestParam(required = false) InwardStatus status,
             @RequestParam(required = false) Long vendorId,
             @RequestParam(required = false) LocalDate from,

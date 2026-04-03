@@ -33,3 +33,9 @@ logging:
 jwt:
   secret: ${JWT_SECRET_KEY}
   expiration: ${JWT_EXP_TIME}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
