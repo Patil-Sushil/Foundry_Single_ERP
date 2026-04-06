@@ -3,6 +3,7 @@ package com.kalibyte.foundry.inventory.inward.service;
 import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.common.response.PageResponse;
+import com.kalibyte.foundry.common.util.SecurityUtils;
 import com.kalibyte.foundry.inventory.common.InwardNumberGenerator;
 import com.kalibyte.foundry.inventory.inward.dto.request.ConfirmInwardRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest;
@@ -26,6 +27,7 @@ import com.kalibyte.foundry.inventory.purchaseorder.entity.PurchaseOrder;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseOrderService;
+import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,7 +65,7 @@ public class MaterialInwardService {
                                  VendorLedgerService vendorLedgerService,
                                  InwardNumberGenerator inwardNumberGenerator,
                                  InwardMapper inwardMapper,
-                                 com.kalibyte.foundry.inventory.vendor.repository.VendorRepository vendorRepository,
+                                 VendorRepository vendorRepository,
                                  PurchaseInvoiceRepository purchaseInvoiceRepository) {
         this.materialInwardRepository = materialInwardRepository;
         this.receivedItemRepository = receivedItemRepository;
@@ -100,7 +101,7 @@ public class MaterialInwardService {
                 .vendorInvoiceDate(request.vendorInvoiceDate())
                 .inwardDate(LocalDate.now())
                 .status(InwardStatus.DRAFT)
-                .createdByUserId(com.kalibyte.foundry.common.util.SecurityUtils.getCurrentUserId())
+                .createdByUserId(SecurityUtils.getCurrentUserId())
                 .build();
 
         for (PurchaseOrderItem orderItem : po.getOrderItems()) {
@@ -124,6 +125,7 @@ public class MaterialInwardService {
         }
         inward.calculateTotals();
 
+        // Just save and return — invoice will be created at confirmation time
         return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 
@@ -176,6 +178,7 @@ public class MaterialInwardService {
 
         inward.calculateTotals();
 
+        // Just save and return — invoice will be created at confirmation time
         return inwardMapper.toResponse(materialInwardRepository.save(inward));
     }
 
@@ -192,13 +195,19 @@ public class MaterialInwardService {
         MaterialInward inward = materialInwardRepository.findWithFullDetails(inwardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + inwardId));
 
+        // Check if already confirmed
+        if (!inward.isDraft()) {
+            throw new BusinessException("Inward is already confirmed.");
+        }
+
+        // Step 1: Process confirmation (stock, ledger, PO status)
         processConfirmation(inward);
 
-        // Resolve invoice details from all possible sources
+        // Step 2: Resolve invoice details from all possible sources
         String invoiceNumber = resolveInvoiceNumber(inward, request);
         LocalDate invoiceDate = resolveInvoiceDate(inward, request);
 
-        // Auto-create purchase invoice if details available
+        // Step 3: Create purchase invoice ONLY if details available
         if (invoiceNumber != null && !invoiceNumber.isBlank()) {
             BigDecimal invoiceAmount = request != null ? request.vendorInvoiceAmount() : null;
             String remarks = request != null ? request.remarks() : null;
@@ -272,6 +281,19 @@ public class MaterialInwardService {
         return inward.getInwardDate();
     }
 
+    /**
+     * Creates a PurchaseInvoice record when inward is confirmed.
+     * 
+     * This is called ONLY from confirm() method, never from draft stages.
+     * Each confirmed inward gets its own PurchaseInvoice — no updates.
+     * 
+     * For partial deliveries:
+     * - PO: 100kg
+     * - Inward 1 (60kg) → Invoice #1 (ABC/INV/001)
+     * - Inward 2 (40kg) → Invoice #2 (ABC/INV/002)
+     * 
+     * Both invoices link to the same PO but different inwards.
+     */
     private void createPurchaseInvoiceFromInward(
             MaterialInward inward,
             String invoiceNumber,
@@ -279,6 +301,7 @@ public class MaterialInwardService {
             BigDecimal invoiceAmount,
             String remarks) {
 
+        // Duplicate check: same vendor cannot have same invoice number
         if (purchaseInvoiceRepository.existsByVendorIdAndVendorInvoiceNumber(
                 inward.getVendor().getId(), invoiceNumber)) {
             throw new BusinessException(
@@ -287,6 +310,7 @@ public class MaterialInwardService {
                             + "'. Please use a different invoice number or add it manually via Purchase Invoice API.");
         }
 
+        // Use provided amount or calculate from inward total
         BigDecimal finalAmount = invoiceAmount != null ? invoiceAmount : inward.getTotalAmount();
 
         PurchaseInvoice purchaseInvoice = PurchaseInvoice.builder()
@@ -298,7 +322,9 @@ public class MaterialInwardService {
                 .materialInward(inward)
                 .source("AUTO")
                 .remarks(remarks)
+                .createdByUserId(SecurityUtils.getCurrentUserId())
                 .build();
+
         purchaseInvoiceRepository.save(purchaseInvoice);
     }
 
@@ -339,7 +365,7 @@ public class MaterialInwardService {
 
         // I'll add the received items
         if (request.getItems() != null) {
-            for (com.kalibyte.foundry.inventory.inward.dto.request.InternalReturnRequest.InternalReturnItemRequest itemReq : request.getItems()) {
+            for (InternalReturnRequest.InternalReturnItemRequest itemReq : request.getItems()) {
                 Item item = itemRepository.findById(itemReq.itemId())
                         .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemReq.itemId()));
 

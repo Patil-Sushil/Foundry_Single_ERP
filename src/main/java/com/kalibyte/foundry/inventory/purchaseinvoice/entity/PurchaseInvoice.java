@@ -11,6 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "purchase_invoices",
@@ -69,7 +70,7 @@ public class PurchaseInvoice {
     private LocalDateTime createdAt;
 
     @Column(name = "created_by_user_id")
-    private Long createdByUserId;
+    private UUID createdByUserId;
 
     @UpdateTimestamp
     @Column(name = "updated_at")

@@ -14,7 +14,7 @@ CREATE TABLE purchase_invoices (
     verified_by_user_id     BIGINT,
     verified_at             TIMESTAMP,
     created_at              TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
-    created_by_user_id      BIGINT,
+    created_by_user_id      UUID,
     updated_at              TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT uk_vendor_invoice UNIQUE (vendor_id, vendor_invoice_number),

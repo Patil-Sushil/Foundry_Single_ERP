@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.inward.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -17,6 +18,8 @@ public record UpdateReceivedQuantityRequest(
     @DecimalMin(value = "0.01", message = "Unit Rate must be > 0")
     BigDecimal unitRate,
 
+    @NotBlank
     String vendorInvoiceNumber,
+    @NotBlank
     LocalDate vendorInvoiceDate
 ) implements Serializable {}

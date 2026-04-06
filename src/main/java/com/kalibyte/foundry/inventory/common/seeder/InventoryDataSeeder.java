@@ -329,7 +329,7 @@ public class InventoryDataSeeder implements CommandLineRunner {
                     .materialInward(matchingInward)
                     .source("AUTO")
                     .isVerified(i % 2 == 0)
-                    .createdByUserId(adminUser != null ? Long.valueOf(adminUser.getId().getMostSignificantBits()) : 1L)
+                    .createdByUserId(adminUser.getId())
                     .build();
             
             purchaseInvoiceRepository.save(purchaseInvoice);

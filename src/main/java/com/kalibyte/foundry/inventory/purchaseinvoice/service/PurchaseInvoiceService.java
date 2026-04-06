@@ -61,7 +61,7 @@ public class PurchaseInvoiceService {
                 .vendor(vendor)
                 .source("MANUAL")
                 .remarks(request.remarks())
-                .createdByUserId(SecurityUtils.getCurrentUserId() != null ? Long.valueOf(SecurityUtils.getCurrentUserId().getMostSignificantBits()) : null)
+                .createdByUserId(SecurityUtils.getCurrentUserId())
                 .build();
 
         if (request.purchaseOrderId() != null) {
