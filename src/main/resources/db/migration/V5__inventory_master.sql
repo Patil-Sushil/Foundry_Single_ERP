@@ -10,6 +10,7 @@ CREATE TABLE vendors (
     phone VARCHAR(20),
     gst_number VARCHAR(20),
     address TEXT,
+    email TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),

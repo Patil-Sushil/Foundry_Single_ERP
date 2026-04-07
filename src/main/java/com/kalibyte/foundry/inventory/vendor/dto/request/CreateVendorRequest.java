@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.inventory.vendor.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import java.io.Serializable;
 
@@ -8,5 +9,7 @@ public record CreateVendorRequest(
     String name,
     String phone,
     String gstNumber,
-    String address
+    String address,
+    @Email
+    String email
 ) implements Serializable {}

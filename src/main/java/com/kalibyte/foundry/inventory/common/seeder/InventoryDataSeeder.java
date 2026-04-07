@@ -49,7 +49,7 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 @Profile("seed") // Use a specific profile for seeding inventory
-@Order(2) // Run after AdminBootstrap and DataSeeder
+@Order(3) // Run after AdminBootstrap and DataSeeder
 public class InventoryDataSeeder implements CommandLineRunner {
 
     private final DepartmentRepository departmentRepository;
@@ -124,26 +124,27 @@ public class InventoryDataSeeder implements CommandLineRunner {
     private List<Vendor> seedVendors() {
         log.info("Seeding Vendors...");
         List<Vendor> vendors = new ArrayList<>();
-        vendors.add(createVendor("Industrial Solutions Ltd", "9876543210", "27AAAAA0000A1Z5", "Industrial Estate, Pune", "Maharashtra"));
-        vendors.add(createVendor("Elite Packaging Systems", "9876543211", "27BBBBB1111B1Z5", "Chakan MIDC, Pune", "Maharashtra"));
-        vendors.add(createVendor("Global Raw Materials", "9876543212", "27CCCCC2222C1Z5", "Narhe, Pune", "Maharashtra"));
-        vendors.add(createVendor("Precision Tools & Spares", "9876543213", "27DDDDD3333D1Z5", "Bhosari, Pune", "Maharashtra"));
-        vendors.add(createVendor("Quality Chemicals", "9876543214", "27EEEEE4444E1Z5", "Hadapsar, Pune", "Maharashtra"));
+        vendors.add(createVendor("Industrial Solutions Ltd", "9876543210", "27AAAAA0000A1Z5", "Industrial Estate, Pune", "Maharashtra", "info@industrialsolutions.com"));
+        vendors.add(createVendor("Elite Packaging Systems", "9876543211", "27BBBBB1111B1Z5", "Chakan MIDC, Pune", "Maharashtra", "sales@elitepkg.com"));
+        vendors.add(createVendor("Global Raw Materials", "9876543212", "27CCCCC2222C1Z5", "Narhe, Pune", "Maharashtra", "contact@globalraw.com"));
+        vendors.add(createVendor("Precision Tools & Spares", "9876543213", "27DDDDD3333D1Z5", "Bhosari, Pune", "Maharashtra", "support@precisiontools.com"));
+        vendors.add(createVendor("Quality Chemicals", "9876543214", "27EEEEE4444E1Z5", "Hadapsar, Pune", "Maharashtra", "info@qualitychems.com"));
         
         // Add some out-of-state vendors
-        vendors.add(createVendor("Gujarat Steel Hub", "9876543215", "24GGGGG5555G1Z5", "Ahmedabad, Gujarat", "Gujarat"));
-        vendors.add(createVendor("Karnataka Spares", "9876543216", "29KKKKK6666K1Z5", "Bangalore, Karnataka", "Karnataka"));
+        vendors.add(createVendor("Gujarat Steel Hub", "9876543215", "24GGGGG5555G1Z5", "Ahmedabad, Gujarat", "Gujarat", "sales@gujaratsteel.com"));
+        vendors.add(createVendor("Karnataka Spares", "9876543216", "29KKKKK6666K1Z5", "Bangalore, Karnataka", "Karnataka", "contact@karnatakaspares.com"));
         
         return vendorRepository.saveAll(vendors);
     }
 
-    private Vendor createVendor(String name, String phone, String gst, String address, String state) {
+    private Vendor createVendor(String name, String phone, String gst, String address, String state, String email) {
         return Vendor.builder()
                 .name(name)
                 .phone(phone)
                 .gstNumber(gst)
                 .address(address)
                 .state(state)
+                .email(email)
                 .isActive(true)
                 .build();
     }
@@ -319,6 +320,10 @@ public class InventoryDataSeeder implements CommandLineRunner {
                     .filter(inw -> inw.getPurchaseOrder() != null && inw.getPurchaseOrder().getId().equals(po.getId()))
                     .findFirst()
                     .orElse(null);
+            
+            if (adminUser == null) {
+                adminUser = userRepository.findAll().stream().findFirst().orElse(null);
+            }
             
             PurchaseInvoice purchaseInvoice = PurchaseInvoice.builder()
                     .vendorInvoiceNumber(invoiceNumber)

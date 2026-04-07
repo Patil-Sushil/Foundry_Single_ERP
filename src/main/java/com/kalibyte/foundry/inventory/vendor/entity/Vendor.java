@@ -26,6 +26,8 @@ public class Vendor extends BaseInventoryEntity {
     @Column(columnDefinition = "TEXT")
     private String address;
 
+    private String email;
+
     @Builder.Default
     @Column(name = "is_active")
     private Boolean isActive = true;

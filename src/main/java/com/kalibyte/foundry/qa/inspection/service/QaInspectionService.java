@@ -93,10 +93,25 @@ public class QaInspectionService {
         existing.setTotalInspected(updated.getTotalInspected());
         existing.setRemarks(updated.getRemarks());
         
+        // Update references if they are provided
+        if (updated.getProductionEntry() != null) existing.setProductionEntry(updated.getProductionEntry());
+        if (updated.getProductionItem() != null) existing.setProductionItem(updated.getProductionItem());
+        if (updated.getOrder() != null) existing.setOrder(updated.getOrder());
+        if (updated.getOrderItem() != null) existing.setOrderItem(updated.getOrderItem());
+        if (updated.getHeatOrderItem() != null) existing.setHeatOrderItem(updated.getHeatOrderItem());
+
+        // Ensure all entities are loaded
+        fetchRelatedEntities(existing);
+        
         // Update findings
-        existing.getFindings().clear();
         if (updated.getFindings() != null) {
-            updated.getFindings().forEach(existing::addFinding);
+            existing.getFindings().clear();
+            for (InspectionFinding finding : updated.getFindings()) {
+                if (finding.getDefect() != null && finding.getDefect().getId() != null) {
+                    finding.setDefect(defectCatalogService.getById(finding.getDefect().getId()));
+                }
+                existing.addFinding(finding);
+            }
         }
         
         QaInspection saved = repository.save(existing);
@@ -217,25 +232,54 @@ public class QaInspectionService {
     }
 
     private void fetchRelatedEntities(QaInspection inspection) {
-        if (inspection.getProductionEntry() != null && inspection.getProductionEntry().getId() != null) {
-            inspection.setProductionEntry(productionEntryRepository.findById(inspection.getProductionEntry().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Production entry not found")));
+        if (inspection.getProductionEntry() != null) {
+            if (inspection.getProductionEntry().getId() != null) {
+                inspection.setProductionEntry(productionEntryRepository.findById(inspection.getProductionEntry().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Production entry not found")));
+            } else {
+                inspection.setProductionEntry(null);
+            }
         }
-        if (inspection.getProductionItem() != null && inspection.getProductionItem().getId() != null) {
-            inspection.setProductionItem(productionItemRepository.findById(inspection.getProductionItem().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Production item not found")));
+        if (inspection.getProductionItem() != null) {
+            if (inspection.getProductionItem().getId() != null) {
+                inspection.setProductionItem(productionItemRepository.findById(inspection.getProductionItem().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Production item not found")));
+            } else {
+                inspection.setProductionItem(null);
+            }
         }
-        if (inspection.getOrder() != null && inspection.getOrder().getId() != null) {
-            inspection.setOrder(orderRepository.findById(inspection.getOrder().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Order not found")));
+        if (inspection.getOrder() != null) {
+            if (inspection.getOrder().getId() != null) {
+                inspection.setOrder(orderRepository.findById(inspection.getOrder().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Order not found")));
+            } else {
+                inspection.setOrder(null);
+            }
         }
-        if (inspection.getOrderItem() != null && inspection.getOrderItem().getId() != null) {
-            inspection.setOrderItem(orderItemRepository.findById(inspection.getOrderItem().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Order item not found")));
+        if (inspection.getOrderItem() != null) {
+            if (inspection.getOrderItem().getId() != null) {
+                inspection.setOrderItem(orderItemRepository.findById(inspection.getOrderItem().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Order item not found")));
+            } else {
+                inspection.setOrderItem(null);
+            }
         }
-        if (inspection.getHeatOrderItem() != null && inspection.getHeatOrderItem().getId() != null) {
-            inspection.setHeatOrderItem(heatOrderItemRepository.findById(inspection.getHeatOrderItem().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Heat order item not found")));
+        if (inspection.getHeatOrderItem() != null) {
+            if (inspection.getHeatOrderItem().getId() != null) {
+                inspection.setHeatOrderItem(heatOrderItemRepository.findById(inspection.getHeatOrderItem().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Heat order item not found")));
+            } else {
+                inspection.setHeatOrderItem(null);
+            }
+        }
+        
+        // Also handle findings
+        if (inspection.getFindings() != null) {
+            for (InspectionFinding finding : inspection.getFindings()) {
+                if (finding.getDefect() != null && finding.getDefect().getId() != null) {
+                    finding.setDefect(defectCatalogService.getById(finding.getDefect().getId()));
+                }
+            }
         }
     }
 }

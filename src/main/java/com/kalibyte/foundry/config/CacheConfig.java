@@ -12,6 +12,11 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        return new ConcurrentMapCacheManager("dashboardSummary");
+        return new ConcurrentMapCacheManager(
+            "dashboardSummary", 
+            "report_profit_loss", 
+            "report_overdue", 
+            "report_revenue"
+        );
     }
 }

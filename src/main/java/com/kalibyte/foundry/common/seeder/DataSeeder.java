@@ -20,7 +20,6 @@ import com.kalibyte.foundry.furnace.furnace_report.repository.FurnaceRepository;
 import com.kalibyte.foundry.order.entity.OrderItem;
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.enums.OrderType;
-import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import com.kalibyte.foundry.quotation.entity.enums.QuotationStatus;
@@ -31,6 +30,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import com.kalibyte.foundry.order.entity.Order;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,7 +42,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile("seed") // Only runs in dev profile
+@Profile("seed")// Only runs in dev profile
 @org.springframework.core.annotation.Order(1)
 public class DataSeeder implements CommandLineRunner {
 

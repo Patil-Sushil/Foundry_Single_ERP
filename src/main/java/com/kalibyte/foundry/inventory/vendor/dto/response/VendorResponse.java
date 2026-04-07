@@ -8,6 +8,7 @@ public record VendorResponse(
     String phone,
     String gstNumber,
     String address,
+    String email,
     Boolean isActive,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
