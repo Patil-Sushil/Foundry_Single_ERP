@@ -15,6 +15,7 @@ public class HsnSummaryItem {
     private String description;
     private String uqc; // Unit Quantity Code (e.g., KGS, NOS)
     private BigDecimal totalQuantity;
+    private BigDecimal totalWeight;
     private BigDecimal totalValue;
     private BigDecimal taxableValue;
     private BigDecimal gstRate;

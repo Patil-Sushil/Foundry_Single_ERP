@@ -4,5 +4,6 @@ public enum HeatMaterialType {
     RAW_MATERIAL,
     ADDITIVE,
     CORE,
-    OTHER
+    OTHER,
+    ELECTRICITY
 }

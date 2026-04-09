@@ -18,6 +18,9 @@ public interface LaborerMapper {
 	@Mapping(target = "id", ignore = true)
 	void updateEntityFromDto(LaborerRequestDTO request, @org.mapstruct.MappingTarget Laborer entity);
 
+	@Mapping(source = "phNumber", target = "phNumber")
+	@Mapping(source = "email", target = "email")
+	@Mapping(source = "address", target = "address")
 	LaborerResponseDTO toResponse(Laborer entity);
 
 	List<LaborerResponseDTO> toResponseDTOList(List<Laborer> laborers);

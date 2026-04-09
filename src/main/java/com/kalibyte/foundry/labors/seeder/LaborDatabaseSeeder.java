@@ -47,6 +47,7 @@ public class LaborDatabaseSeeder implements CommandLineRunner {
                     .wageType(WageType.HOURLY)
                     .dailyWage(new BigDecimal("800.00")) // 100 per hour
                     .hourlyRate(new BigDecimal("80"))
+                    .phNumber("1234567890")
                     .isActive(true)
                     .build());
 
@@ -55,6 +56,7 @@ public class LaborDatabaseSeeder implements CommandLineRunner {
                     .wageType(WageType.HOURLY)
                     .dailyWage(new BigDecimal("1000.00")) // 125 per hour
                     .hourlyRate(new BigDecimal("100"))
+                    .phNumber("1234567890")
                     .isActive(true)
                     .build());
 
@@ -62,6 +64,7 @@ public class LaborDatabaseSeeder implements CommandLineRunner {
                     .name("Bob Wilson")
                     .wageType(WageType.PIECE_RATE)
                     .pieceRate(new BigDecimal("50.00"))
+                    .phNumber("1234567890")
                     .isActive(true)
                     .build());
 

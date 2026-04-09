@@ -23,6 +23,12 @@ public class TaxLiabilitySummary {
     private BigDecimal totalIgst;
     private BigDecimal totalOutputTax;
 
+    private BigDecimal totalCreditNoteTaxableValue;
+    private BigDecimal totalCreditNoteTax;
+    
+    private BigDecimal netTaxableValue;
+    private BigDecimal netGstLiability;
+
     private int totalB2BInvoices;
     private BigDecimal b2bTaxableValue;
     private BigDecimal b2bTax;

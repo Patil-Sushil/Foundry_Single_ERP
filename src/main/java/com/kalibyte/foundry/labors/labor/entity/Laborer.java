@@ -21,6 +21,15 @@ public class Laborer {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "ph_number")
+    private String phNumber;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "address")
+    private String address;
+
     @Column(name = "wage_type", nullable = false)
     @Enumerated(EnumType.STRING)
     private WageType wageType; // 'HOURLY' or 'PIECE_RATE'

@@ -18,5 +18,11 @@ public class B2BCustomerGroup {
     private BigDecimal totalTaxableValue;
     private BigDecimal totalGst;
     private BigDecimal totalInvoiceValue;
+    
+    private BigDecimal totalCreditNoteTaxableValue;
+    private BigDecimal totalCreditNoteGst;
+    private BigDecimal totalCreditNoteValue;
+    
     private List<B2BInvoiceItem> invoices;
+    private List<B2BCreditNoteItem> creditNotes;
 }

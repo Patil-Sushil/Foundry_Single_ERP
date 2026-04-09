@@ -5,6 +5,8 @@ import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.reports.gst.dto.request.GstReportRequest;
+import com.kalibyte.foundry.billing.creditnote.entity.CreditNote;
+import com.kalibyte.foundry.billing.creditnote.repository.CreditNoteRepository;
 import com.kalibyte.foundry.reports.gst.dto.response.b2b.*;
 import com.kalibyte.foundry.reports.gst.dto.response.b2c.*;
 import com.kalibyte.foundry.reports.gst.dto.response.document.*;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 public class GstOutwardReportServiceImpl implements GstOutwardReportService {
 
     private final GstInvoiceRepository gstInvoiceRepository;
+    private final CreditNoteRepository creditNoteRepository;
 
     // ================================================
     // B2B REPORT
@@ -46,14 +49,17 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
         String periodDesc = GstPeriodResolver.describe(request);
 
         List<Invoice> invoices = gstInvoiceRepository.findB2BInvoices(from, to);
+        List<CreditNote> creditNotes = creditNoteRepository.findOutwardCreditNotes(from, to);
 
         // Group by GSTIN
-        Map<String, List<Invoice>> groupedByGstin = invoices.stream()
-                .collect(Collectors.groupingBy(
-                        inv -> inv.getCustomer().getGstNumber().trim(),
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
+        Map<String, List<Invoice>> groupedInvoices = invoices.stream()
+                .collect(Collectors.groupingBy(inv -> inv.getCustomer().getGstNumber().trim()));
+        Map<String, List<CreditNote>> groupedCNs = creditNotes.stream()
+                .collect(Collectors.groupingBy(cn -> cn.getCustomer().getGstNumber().trim()));
+
+        Set<String> allGstins = new TreeSet<>();
+        allGstins.addAll(groupedInvoices.keySet());
+        allGstins.addAll(groupedCNs.keySet());
 
         BigDecimal totalTaxable = BigDecimal.ZERO;
         BigDecimal totalCgst = BigDecimal.ZERO;
@@ -62,26 +68,41 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
         BigDecimal totalGst = BigDecimal.ZERO;
         BigDecimal totalValue = BigDecimal.ZERO;
 
+        BigDecimal totalCnTaxable = BigDecimal.ZERO;
+        BigDecimal totalCnGst = BigDecimal.ZERO;
+        BigDecimal totalCnValue = BigDecimal.ZERO;
+
         List<B2BCustomerGroup> customerGroups = new ArrayList<>();
 
-        for (Map.Entry<String, List<Invoice>> entry : groupedByGstin.entrySet()) {
-            String gstin = entry.getKey();
-            List<Invoice> custInvoices = entry.getValue();
-            String customerName = custInvoices.get(0).getCustomer().getName();
+        for (String gstin : allGstins) {
+            List<Invoice> custInvoices = groupedInvoices.getOrDefault(gstin, Collections.emptyList());
+            List<CreditNote> custCNs = groupedCNs.getOrDefault(gstin, Collections.emptyList());
+
+            String customerName = !custInvoices.isEmpty() ? custInvoices.get(0).getCustomer().getName()
+                    : custCNs.get(0).getCustomer().getName();
 
             BigDecimal grpTaxable = BigDecimal.ZERO;
             BigDecimal grpGst = BigDecimal.ZERO;
             BigDecimal grpValue = BigDecimal.ZERO;
 
-            List<B2BInvoiceItem> items = new ArrayList<>();
-
+            List<B2BInvoiceItem> invItems = new ArrayList<>();
             for (Invoice inv : custInvoices) {
-                B2BInvoiceItem item = mapToB2BItem(inv);
-                items.add(item);
-
+                invItems.add(mapToB2BItem(inv));
                 grpTaxable = grpTaxable.add(safe(inv.getSubtotal()));
                 grpGst = grpGst.add(safe(inv.getTotalGst()));
                 grpValue = grpValue.add(safe(inv.getTotalAmount()));
+            }
+
+            BigDecimal grpCnTaxable = BigDecimal.ZERO;
+            BigDecimal grpCnGst = BigDecimal.ZERO;
+            BigDecimal grpCnValue = BigDecimal.ZERO;
+
+            List<B2BCreditNoteItem> cnItems = new ArrayList<>();
+            for (CreditNote cn : custCNs) {
+                cnItems.add(mapToB2BCreditNoteItem(cn));
+                grpCnTaxable = grpCnTaxable.add(safe(cn.getSubtotal()));
+                grpCnGst = grpCnGst.add(safe(cn.getTotalGst()));
+                grpCnValue = grpCnValue.add(safe(cn.getTotalAmount()));
             }
 
             customerGroups.add(B2BCustomerGroup.builder()
@@ -91,19 +112,36 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
                     .totalTaxableValue(grpTaxable)
                     .totalGst(grpGst)
                     .totalInvoiceValue(grpValue)
-                    .invoices(items)
+                    .totalCreditNoteTaxableValue(grpCnTaxable)
+                    .totalCreditNoteGst(grpCnGst)
+                    .totalCreditNoteValue(grpCnValue)
+                    .invoices(invItems)
+                    .creditNotes(cnItems)
                     .build());
 
             totalTaxable = totalTaxable.add(grpTaxable);
             totalGst = totalGst.add(grpGst);
             totalValue = totalValue.add(grpValue);
+
+            totalCnTaxable = totalCnTaxable.add(grpCnTaxable);
+            totalCnGst = totalCnGst.add(grpCnGst);
+            totalCnValue = totalCnValue.add(grpCnValue);
         }
 
-        // Calculate total CGST/SGST/IGST
+        // Net Totals
         for (Invoice inv : invoices) {
             totalCgst = totalCgst.add(safe(inv.getCgst()));
             totalSgst = totalSgst.add(safe(inv.getSgst()));
             totalIgst = totalIgst.add(safe(inv.getIgst()));
+        }
+        
+        BigDecimal totalCnCgst = BigDecimal.ZERO;
+        BigDecimal totalCnSgst = BigDecimal.ZERO;
+        BigDecimal totalCnIgst = BigDecimal.ZERO;
+        for (CreditNote cn : creditNotes) {
+            totalCnCgst = totalCnCgst.add(safe(cn.getCgst()));
+            totalCnSgst = totalCnSgst.add(safe(cn.getSgst()));
+            totalCnIgst = totalCnIgst.add(safe(cn.getIgst()));
         }
 
         return Gstr1B2BReport.builder()
@@ -112,13 +150,36 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
                 .periodDescription(periodDesc)
                 .totalCustomers(customerGroups.size())
                 .totalInvoices(invoices.size())
+                .totalCreditNoteCount(creditNotes.size())
                 .totalTaxableValue(totalTaxable)
                 .totalCgst(totalCgst)
                 .totalSgst(totalSgst)
                 .totalIgst(totalIgst)
                 .totalGst(totalGst)
                 .totalInvoiceValue(totalValue)
+                .totalCreditNoteTaxableValue(totalCnTaxable)
+                .totalCreditNoteGst(totalCnGst)
+                .totalCreditNoteValue(totalCnValue)
+                .netTaxableValue(totalTaxable.subtract(totalCnTaxable))
+                .netGst(totalGst.subtract(totalCnGst))
                 .customerGroups(customerGroups)
+                .build();
+    }
+
+    private B2BCreditNoteItem mapToB2BCreditNoteItem(CreditNote cn) {
+        return B2BCreditNoteItem.builder()
+                .creditNoteId(cn.getId())
+                .creditNoteNumber(cn.getCreditNoteNumber())
+                .issueDate(cn.getIssueDate())
+                .originalInvoiceNumber(cn.getOriginalInvoiceNumber())
+                .gstType(cn.getGstType())
+                .taxableValue(safe(cn.getSubtotal()))
+                .gstRate(safe(cn.getGstPercentage()))
+                .cgstAmount(safe(cn.getCgst()))
+                .sgstAmount(safe(cn.getSgst()))
+                .igstAmount(safe(cn.getIgst()))
+                .totalGst(safe(cn.getTotalGst()))
+                .totalAmount(safe(cn.getTotalAmount()))
                 .build();
     }
 
@@ -164,18 +225,13 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
         LocalDate from = request.resolvedFromDate();
         LocalDate to = request.resolvedToDate();
 
-        List<Object[]> rawData = gstInvoiceRepository.getHsnSummaryData(from, to);
+        List<Object[]> invoiceHsnData = gstInvoiceRepository.getHsnSummaryData(from, to);
+        List<Object[]> creditNoteHsnData = creditNoteRepository.getCreditNoteHsnSummary(from, to);
 
-        BigDecimal totalTaxable = BigDecimal.ZERO;
-        BigDecimal totalCgst = BigDecimal.ZERO;
-        BigDecimal totalSgst = BigDecimal.ZERO;
-        BigDecimal totalIgst = BigDecimal.ZERO;
-        BigDecimal totalGst = BigDecimal.ZERO;
-        BigDecimal totalValue = BigDecimal.ZERO;
+        Map<String, HsnSummaryItem> hsnMap = new LinkedHashMap<>();
 
-        List<HsnSummaryItem> items = new ArrayList<>();
-
-        for (Object[] row : rawData) {
+        // Process Invoices
+        for (Object[] row : invoiceHsnData) {
             String materialGrade = (String) row[0];
             String partName = (String) row[1];
             BigDecimal qty = toBigDecimal(row[2]);
@@ -187,26 +243,81 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
             BigDecimal sgst = toBigDecimal(row[8]);
             BigDecimal igst = toBigDecimal(row[9]);
 
-            items.add(HsnSummaryItem.builder()
+            String key = (materialGrade != null ? materialGrade : "N/A") + "_" + (partName != null ? partName : "N/A") + "_" + gstRate;
+            hsnMap.put(key, HsnSummaryItem.builder()
                     .hsnCode(materialGrade != null ? materialGrade : "N/A")
                     .description(partName != null ? partName : "N/A")
                     .uqc("KGS")
                     .totalQuantity(qty)
-                    .totalValue(amount.add(gstAmount))
+                    .totalWeight(weight)
                     .taxableValue(amount)
                     .gstRate(gstRate)
                     .cgstAmount(cgst)
                     .sgstAmount(sgst)
                     .igstAmount(igst)
                     .totalGst(gstAmount)
+                    .totalValue(amount.add(gstAmount))
                     .build());
+        }
 
-            totalTaxable = totalTaxable.add(amount);
-            totalCgst = totalCgst.add(cgst);
-            totalSgst = totalSgst.add(sgst);
-            totalIgst = totalIgst.add(igst);
-            totalGst = totalGst.add(gstAmount);
-            totalValue = totalValue.add(amount.add(gstAmount));
+        // Process Credit Notes (Subtract)
+        for (Object[] row : creditNoteHsnData) {
+            String materialGrade = (String) row[0];
+            String partName = (String) row[1];
+            BigDecimal qty = toBigDecimal(row[2]);
+            BigDecimal weight = toBigDecimal(row[3]);
+            BigDecimal amount = toBigDecimal(row[4]);
+            BigDecimal gstRate = toBigDecimal(row[5]);
+            BigDecimal gstAmount = toBigDecimal(row[6]);
+            BigDecimal cgst = toBigDecimal(row[7]);
+            BigDecimal sgst = toBigDecimal(row[8]);
+            BigDecimal igst = toBigDecimal(row[9]);
+
+            String key = (materialGrade != null ? materialGrade : "N/A") + "_" + (partName != null ? partName : "N/A") + "_" + gstRate;
+            HsnSummaryItem item = hsnMap.get(key);
+            if (item != null) {
+                item.setTotalQuantity(item.getTotalQuantity().subtract(qty));
+                if (item.getTotalWeight() != null) item.setTotalWeight(item.getTotalWeight().subtract(weight));
+                item.setTaxableValue(item.getTaxableValue().subtract(amount));
+                item.setCgstAmount(item.getCgstAmount().subtract(cgst));
+                item.setSgstAmount(item.getSgstAmount().subtract(sgst));
+                item.setIgstAmount(item.getIgstAmount().subtract(igst));
+                item.setTotalGst(item.getTotalGst().subtract(gstAmount));
+                item.setTotalValue(item.getTaxableValue().add(item.getTotalGst()));
+            } else {
+                // If only CN exists for this HSN in period (rare but possible)
+                hsnMap.put(key, HsnSummaryItem.builder()
+                        .hsnCode(materialGrade != null ? materialGrade : "N/A")
+                        .description(partName != null ? partName : "N/A")
+                        .uqc("KGS")
+                        .totalQuantity(qty.negate())
+                        .totalWeight(weight.negate())
+                        .taxableValue(amount.negate())
+                        .gstRate(gstRate)
+                        .cgstAmount(cgst.negate())
+                        .sgstAmount(sgst.negate())
+                        .igstAmount(igst.negate())
+                        .totalGst(gstAmount.negate())
+                        .totalValue(amount.add(gstAmount).negate())
+                        .build());
+            }
+        }
+
+        List<HsnSummaryItem> items = new ArrayList<>(hsnMap.values());
+        BigDecimal totalTaxable = BigDecimal.ZERO;
+        BigDecimal totalCgst = BigDecimal.ZERO;
+        BigDecimal totalSgst = BigDecimal.ZERO;
+        BigDecimal totalIgst = BigDecimal.ZERO;
+        BigDecimal totalGst = BigDecimal.ZERO;
+        BigDecimal totalValue = BigDecimal.ZERO;
+
+        for (HsnSummaryItem item : items) {
+            totalTaxable = totalTaxable.add(item.getTaxableValue());
+            totalCgst = totalCgst.add(item.getCgstAmount());
+            totalSgst = totalSgst.add(item.getSgstAmount());
+            totalIgst = totalIgst.add(item.getIgstAmount());
+            totalGst = totalGst.add(item.getTotalGst());
+            totalValue = totalValue.add(item.getTotalValue());
         }
 
         return HsnSummaryReport.builder()
@@ -393,11 +504,29 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
             }
         }
 
+        List<CreditNote> outwardCNs = creditNoteRepository.findOutwardCreditNotes(from, to);
+        BigDecimal totalCnTaxable = BigDecimal.ZERO;
+        BigDecimal totalCnTax = BigDecimal.ZERO;
+        
+        for (CreditNote cn : outwardCNs) {
+            totalCnTaxable = totalCnTaxable.add(safe(cn.getSubtotal()));
+            totalCnTax = totalCnTax.add(safe(cn.getTotalGst()));
+        }
+
         // Monthly breakdown
         List<Object[]> monthlyData = gstInvoiceRepository.getMonthlyGstBreakdown(from, to);
         List<MonthlyTaxBreakdown> monthlyBreakdown = new ArrayList<>();
 
         DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMM yyyy");
+
+        Map<String, BigDecimal[]> monthlyCNMap = new HashMap<>();
+        for (CreditNote cn : outwardCNs) {
+            String monthKey = cn.getIssueDate().withDayOfMonth(1).format(monthFormatter);
+            BigDecimal[] values = monthlyCNMap.getOrDefault(monthKey, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            values[0] = values[0].add(safe(cn.getSubtotal()));
+            values[1] = values[1].add(safe(cn.getTotalGst()));
+            monthlyCNMap.put(monthKey, values);
+        }
 
         for (Object[] row : monthlyData) {
             LocalDate monthDate;
@@ -406,15 +535,23 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
             } else {
                 monthDate = (LocalDate) row[0];
             }
+            
+            String monthKey = monthDate.format(monthFormatter);
+            BigDecimal cnTaxable = BigDecimal.ZERO;
+            BigDecimal cnGst = BigDecimal.ZERO;
+            if (monthlyCNMap.containsKey(monthKey)) {
+                cnTaxable = monthlyCNMap.get(monthKey)[0];
+                cnGst = monthlyCNMap.get(monthKey)[1];
+            }
 
             monthlyBreakdown.add(MonthlyTaxBreakdown.builder()
-                    .month(monthDate.format(monthFormatter))
+                    .month(monthKey)
                     .invoiceCount(((Number) row[1]).intValue())
-                    .taxableValue(toBigDecimal(row[2]))
-                    .cgst(toBigDecimal(row[3]))
+                    .taxableValue(toBigDecimal(row[2]).subtract(cnTaxable))
+                    .cgst(toBigDecimal(row[3])) // Simplified
                     .sgst(toBigDecimal(row[4]))
                     .igst(toBigDecimal(row[5]))
-                    .totalTax(toBigDecimal(row[6]))
+                    .totalTax(toBigDecimal(row[6]).subtract(cnGst))
                     .build());
         }
 
@@ -429,6 +566,10 @@ public class GstOutwardReportServiceImpl implements GstOutwardReportService {
                 .totalSgst(totalSgst)
                 .totalIgst(totalIgst)
                 .totalOutputTax(totalOutputTax)
+                .totalCreditNoteTaxableValue(totalCnTaxable)
+                .totalCreditNoteTax(totalCnTax)
+                .netTaxableValue(totalTaxable.subtract(totalCnTaxable))
+                .netGstLiability(totalOutputTax.subtract(totalCnTax))
                 .totalB2BInvoices(b2bCount)
                 .b2bTaxableValue(b2bTaxable)
                 .b2bTax(b2bTax)

@@ -1,5 +1,9 @@
 package com.kalibyte.foundry.qa.customerreturn.service;
 
+import com.kalibyte.foundry.billing.creditnote.service.CreditNoteService;
+import com.kalibyte.foundry.order.dto.request.OrderCreateRequest;
+import com.kalibyte.foundry.order.dto.request.OrderItemRequest;
+import com.kalibyte.foundry.order.service.OrderService;
 import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.order.repository.OrderItemRepository;
@@ -33,6 +37,8 @@ public class CustomerReturnService {
     private final QaTrackingLogService trackingLogService;
     private final QaNumberGenerator numberGenerator;
     private final OrderItemRepository orderItemRepository;
+    private final OrderService orderService;
+    private final CreditNoteService creditNoteService;
 
     @Transactional(readOnly = true)
     public List<CustomerReturn> list(LocalDate startDate, LocalDate endDate, UUID customerId, UUID orderId, ReturnStatus status, ReturnDisposition disposition) {
@@ -104,8 +110,13 @@ public class CustomerReturnService {
         
         if (disposition == ReturnDisposition.CREDIT_NOTE) {
             existing.setCreditAmount(creditAmount);
+            createCreditNoteFromReturn(existing, creditAmount);
         } else if (disposition == ReturnDisposition.REPLACE) {
-            existing.setReplacementOrderId(replacementOrderId);
+            if (replacementOrderId != null) {
+                existing.setReplacementOrderId(replacementOrderId);
+            } else {
+                createReplacementOrderFromReturn(existing);
+            }
         } else if (disposition == ReturnDisposition.SCRAP_FOR_REMELT || disposition == ReturnDisposition.SCRAP_FOR_SALE) {
             createScrapFromReturn(existing);
         }
@@ -148,5 +159,44 @@ public class CustomerReturnService {
         var scrapResponse = scrapService.createScrapEntry(scrapRequest);
         returnEntry.setScrapEntryId(scrapResponse.getId());
         trackingLogService.log(TrackingReferenceType.CUSTOMER_RETURN, returnEntry.getId(), returnEntry.getStatus().name(), returnEntry.getStatus().name(), TrackingAction.SCRAP_GENERATED, "SYSTEM", "Scrap entry created: " + scrapResponse.getScrapNumber());
+    }
+
+    private void createReplacementOrderFromReturn(CustomerReturn returnEntry) {
+        var originalItem = returnEntry.getOrderItem();
+        
+        OrderItemRequest itemRequest = OrderItemRequest.builder()
+                .partName(originalItem.getPartName())
+                .materialGrade(originalItem.getMaterialGrade())
+                .metalType(originalItem.getMetalType())
+                .castingProcess(originalItem.getCastingProcess())
+                .netWeightKg(originalItem.getNetWeightKg())
+                .grossWeightKg(originalItem.getGrossWeightKg())
+                .quantity(returnEntry.getReturnedQuantity())
+                .unitPrice(originalItem.getUnitPrice())
+                .gstPercentage(originalItem.getGstPercentage())
+                .patternProvidedByCustomer(originalItem.getPatternProvidedByCustomer())
+                .patternId(originalItem.getPattern() != null ? originalItem.getPattern().getId() : null)
+                .build();
+
+        OrderCreateRequest orderRequest = OrderCreateRequest.builder()
+                .customerId(returnEntry.getCustomer().getId())
+                .deliveryDate(LocalDate.now().plusWeeks(2)) // Default 2 weeks for replacement
+                .gstPercentage(returnEntry.getOrder().getGstPercentage())
+                .placeOfSupply(returnEntry.getOrder().getPlaceOfSupply())
+                .poReference("REPLACEMENT-" + returnEntry.getReturnNumber())
+                .paymentTerms(returnEntry.getOrder().getPaymentTerms())
+                .customPaymentTerms(returnEntry.getOrder().getCustomPaymentTerms())
+                .items(List.of(itemRequest))
+                .build();
+
+        var orderResponse = orderService.createOrder(orderRequest);
+        returnEntry.setReplacementOrderId(orderResponse.getId());
+        trackingLogService.log(TrackingReferenceType.CUSTOMER_RETURN, returnEntry.getId(), returnEntry.getStatus().name(), returnEntry.getStatus().name(), TrackingAction.DISPOSITIONED, "SYSTEM", "Replacement order created: " + orderResponse.getOrderNumber());
+    }
+
+    private void createCreditNoteFromReturn(CustomerReturn returnEntry, BigDecimal creditAmount) {
+        var cnResponse = creditNoteService.generateCreditNoteFromReturn(returnEntry, creditAmount);
+        returnEntry.setCreditNoteId(cnResponse.getId());
+        trackingLogService.log(TrackingReferenceType.CUSTOMER_RETURN, returnEntry.getId(), returnEntry.getStatus().name(), returnEntry.getStatus().name(), TrackingAction.DISPOSITIONED, "SYSTEM", "Credit note created: " + cnResponse.getCreditNoteNumber());
     }
 }

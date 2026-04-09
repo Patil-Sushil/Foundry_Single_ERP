@@ -19,12 +19,20 @@ public class Gstr1B2BReport {
 
     private int totalCustomers;
     private int totalInvoices;
+    private int totalCreditNoteCount;
     private BigDecimal totalTaxableValue;
     private BigDecimal totalCgst;
     private BigDecimal totalSgst;
     private BigDecimal totalIgst;
     private BigDecimal totalGst;
     private BigDecimal totalInvoiceValue;
+    
+    private BigDecimal totalCreditNoteTaxableValue;
+    private BigDecimal totalCreditNoteGst;
+    private BigDecimal totalCreditNoteValue;
+    
+    private BigDecimal netTaxableValue;
+    private BigDecimal netGst;
 
     private List<B2BCustomerGroup> customerGroups;
 }

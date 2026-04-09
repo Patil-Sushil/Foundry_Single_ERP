@@ -95,16 +95,86 @@ public class GstExcelExportServiceImpl implements GstExcelExportService {
                 }
             }
 
-            // Totals row
+            // Totals row (Invoices)
             Row totalRow = dataSheet.createRow(rowIdx++);
-            totalRow.createCell(0).setCellValue("TOTAL");
+            totalRow.createCell(0).setCellValue("INVOICE TOTAL");
             totalRow.getCell(0).setCellStyle(headerStyle);
             createCurrencyCell(totalRow, 4, report.getTotalInvoiceValue(), createTotalStyle(workbook));
             createCurrencyCell(totalRow, 9, report.getTotalTaxableValue(), createTotalStyle(workbook));
             createCurrencyCell(totalRow, 10, report.getTotalCgst(), createTotalStyle(workbook));
             createCurrencyCell(totalRow, 11, report.getTotalSgst(), createTotalStyle(workbook));
             createCurrencyCell(totalRow, 12, report.getTotalIgst(), createTotalStyle(workbook));
-            createCurrencyCell(totalRow, 13, BigDecimal.ZERO, createTotalStyle(workbook));
+            
+            rowIdx += 2; // Empty rows
+
+            // --- CREDIT NOTES SECTION ---
+            Row cnTitleRow = dataSheet.createRow(rowIdx++);
+            cnTitleRow.createCell(0).setCellValue("Credit / Debit Notes (Registered)");
+            cnTitleRow.getCell(0).setCellStyle(createTitleStyle(workbook));
+            
+            String[] cnHeaders = {
+                    "GSTIN/UIN of Recipient", "Receiver Name", "Note Number",
+                    "Note Date", "Original Invoice Number", "Note Value",
+                    "Place of Supply", "Note Type", "Rate (%)",
+                    "Taxable Value", "CGST Amount", "SGST Amount",
+                    "IGST Amount", "Cess Amount"
+            };
+
+            Row cnHeaderRow = dataSheet.createRow(rowIdx++);
+            for (int i = 0; i < cnHeaders.length; i++) {
+                Cell cell = cnHeaderRow.createCell(i);
+                cell.setCellValue(cnHeaders[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            for (B2BCustomerGroup group : report.getCustomerGroups()) {
+                if (group.getCreditNotes() == null) continue;
+                for (B2BCreditNoteItem item : group.getCreditNotes()) {
+                    Row row = dataSheet.createRow(rowIdx++);
+                    int col = 0;
+
+                    createTextCell(row, col++, group.getGstin(), textStyle);
+                    createTextCell(row, col++, group.getCustomerName(), textStyle);
+                    createTextCell(row, col++, item.getCreditNoteNumber(), textStyle);
+                    createDateCell(row, col++, item.getIssueDate(), dateStyle);
+                    createTextCell(row, col++, item.getOriginalInvoiceNumber(), textStyle);
+                    createCurrencyCell(row, col++, item.getTotalAmount(), currencyStyle);
+                    createTextCell(row, col++, group.getInvoices().isEmpty() ? "N/A" : group.getInvoices().get(0).getPlaceOfSupply(), textStyle);
+                    createTextCell(row, col++, "C", textStyle); // C for Credit Note
+                    createCurrencyCell(row, col++, item.getGstRate(), currencyStyle);
+                    createCurrencyCell(row, col++, item.getTaxableValue(), currencyStyle);
+                    createCurrencyCell(row, col++, item.getCgstAmount(), currencyStyle);
+                    createCurrencyCell(row, col++, item.getSgstAmount(), currencyStyle);
+                    createCurrencyCell(row, col++, item.getIgstAmount(), currencyStyle);
+                    createCurrencyCell(row, col++, BigDecimal.ZERO, currencyStyle);
+                }
+            }
+
+            // Totals row (Credit Notes)
+            Row cnTotalRow = dataSheet.createRow(rowIdx++);
+            cnTotalRow.createCell(0).setCellValue("CREDIT NOTE TOTAL");
+            cnTotalRow.getCell(0).setCellStyle(headerStyle);
+            createCurrencyCell(cnTotalRow, 5, report.getTotalCreditNoteValue(), createTotalStyle(workbook));
+            createCurrencyCell(cnTotalRow, 9, report.getTotalCreditNoteTaxableValue(), createTotalStyle(workbook));
+            createCurrencyCell(cnTotalRow, 10, report.getTotalCreditNoteGst().divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP), createTotalStyle(workbook)); // Simplified summary
+            createCurrencyCell(cnTotalRow, 11, report.getTotalCreditNoteGst().divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP), createTotalStyle(workbook));
+            createCurrencyCell(cnTotalRow, 12, report.getTotalCreditNoteGst(), createTotalStyle(workbook));
+
+            rowIdx += 2;
+
+            // NET TAX LIABILITY
+            Row netRow = dataSheet.createRow(rowIdx++);
+            netRow.createCell(0).setCellValue("NET TAX LIABILITY (Invoices - Credit Notes)");
+            netRow.getCell(0).setCellStyle(createTitleStyle(workbook));
+            dataSheet.addMergedRegion(new CellRangeAddress(rowIdx-1, rowIdx-1, 0, 8));
+
+            Row netDataRow = dataSheet.createRow(rowIdx++);
+            netDataRow.createCell(0).setCellValue("NET TAXABLE VALUE:");
+            createCurrencyCell(netDataRow, 1, report.getNetTaxableValue(), createTotalStyle(workbook));
+            
+            netDataRow = dataSheet.createRow(rowIdx++);
+            netDataRow.createCell(0).setCellValue("NET GST LIABILITY:");
+            createCurrencyCell(netDataRow, 1, report.getNetGst(), createTotalStyle(workbook));
 
             // Auto-size columns
             for (int i = 0; i < headers.length; i++) {
@@ -450,11 +520,20 @@ public class GstExcelExportServiceImpl implements GstExcelExportService {
 
             // Summary data
             String[][] summaryData = {
+                    {"INVOICE TOTALS", ""},
                     {"Total Taxable Value", formatAmount(report.getTotalTaxableValue())},
                     {"Total CGST", formatAmount(report.getTotalCgst())},
                     {"Total SGST", formatAmount(report.getTotalSgst())},
                     {"Total IGST", formatAmount(report.getTotalIgst())},
                     {"Total Output Tax", formatAmount(report.getTotalOutputTax())},
+                    {"", ""},
+                    {"CREDIT NOTE TOTALS", ""},
+                    {"CN Taxable Value", formatAmount(report.getTotalCreditNoteTaxableValue())},
+                    {"CN Tax", formatAmount(report.getTotalCreditNoteTax())},
+                    {"", ""},
+                    {"NET LIABILITY", ""},
+                    {"NET Taxable Value", formatAmount(report.getNetTaxableValue())},
+                    {"NET GST Liability", formatAmount(report.getNetGstLiability())},
                     {"", ""},
                     {"B2B Invoices", String.valueOf(report.getTotalB2BInvoices())},
                     {"B2B Taxable Value", formatAmount(report.getB2bTaxableValue())},

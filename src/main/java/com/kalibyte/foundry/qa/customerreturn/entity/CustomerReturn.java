@@ -103,6 +103,9 @@ public class CustomerReturn extends BaseQaEntity {
     @Column(name = "replacement_order_id")
     private UUID replacementOrderId;
 
+    @Column(name = "credit_note_id")
+    private UUID creditNoteId;
+
     @Column(name = "scrap_entry_id")
     private Long scrapEntryId;
 

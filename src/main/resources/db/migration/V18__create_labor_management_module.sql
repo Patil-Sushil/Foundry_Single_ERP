@@ -3,6 +3,9 @@
 CREATE TABLE IF NOT EXISTS laborers (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
+    ph_number VARCHAR(10),
+    email VARCHAR(50),
+    address VARCHAR(200),
     wage_type VARCHAR(50) NOT NULL, -- 'HOURLY' or 'PIECE_RATE'
     daily_wage DECIMAL(19, 2),
     piece_rate DECIMAL(19, 2),

@@ -1,37 +1,48 @@
 package com.kalibyte.foundry.furnace.furnace_heats.mapper;
 
+import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatMaterialItemResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
+import com.kalibyte.foundry.furnace.furnace_heats.repository.ElectricityRateRepository;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.ReportingPolicy;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 
 @Mapper(componentModel = "spring", uses = {HeatMaterialMapper.class, HeatOrderItemMapper.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface FurnaceHeatMapper {
+public abstract class FurnaceHeatMapper {
+
+    @Autowired
+    protected ElectricityRateRepository electricityRateRepository;
+
     @Mapping(source = "order.id", target = "orderId")
-    FurnaceHeatResponse toResponse(FurnaceHeats heat);
+    public abstract FurnaceHeatResponse toResponse(FurnaceHeats heat);
 
     @Mapping(target = "order", ignore = true)
     @Mapping(target = "materialsUsed", ignore = true)
     @Mapping(target = "heatOrderItems", ignore = true)
     @Mapping(target = "furnace", ignore = true)
     @Mapping(target = "id", ignore = true)
-    FurnaceHeats toEntity(FurnaceHeatRequest request);
+    public abstract FurnaceHeats toEntity(FurnaceHeatRequest request);
 
     @Mapping(target = "order", ignore = true)
     @Mapping(target = "materialsUsed", ignore = true)
     @Mapping(target = "heatOrderItems", ignore = true)
     @Mapping(target = "furnace", ignore = true)
     @Mapping(target = "id", ignore = true)
-    void updateEntity(FurnaceHeatRequest request, @MappingTarget FurnaceHeats heat);
+    public abstract void updateEntity(FurnaceHeatRequest request, @MappingTarget FurnaceHeats heat);
 
     @AfterMapping
-    default void calculateDerivedFields(FurnaceHeats entity, @MappingTarget FurnaceHeatResponse response) {
+    protected void calculateDerivedFields(FurnaceHeats entity, @MappingTarget FurnaceHeatResponse response) {
         if (entity.getLiquidMetalWeight() != null && entity.getLiquidMetalWeight().compareTo(BigDecimal.ZERO) > 0) {
             // Metal loss
             response.setMetalLoss(entity.getMetalLoss());
@@ -47,5 +58,37 @@ public interface FurnaceHeatMapper {
             // Remaining capacity
             response.setRemainingCapacity(entity.getRemainingCastingsCapacity());
         }
+
+        // Add virtual electricity material item to the response
+        addElectricityMaterialToResponse(entity, response);
+    }
+
+    private void addElectricityMaterialToResponse(FurnaceHeats entity, FurnaceHeatResponse response) {
+        double unitsConsumed = entity.getDifferenceReading();
+        if (unitsConsumed <= 0) return;
+
+        LocalDate heatDate = (entity.getFurnace() != null) ? entity.getFurnace().getDate() : LocalDate.now();
+
+        double rate = electricityRateRepository.findRateEffectiveOn(heatDate)
+                .map(er -> er.getRatePerUnit())
+                .orElseThrow(() -> new BusinessException("Electricity rate not present in database for date: " + heatDate));
+
+        HeatMaterialItemResponse electricityItem = HeatMaterialItemResponse.builder()
+                .id(null)
+                .itemId(null)
+                .itemName("Electricity Consumed")
+                .materialType(HeatMaterialType.ELECTRICITY)
+                .quantityUsed(unitsConsumed)
+                .unitRate(rate)
+                .totalCost(unitsConsumed * rate)
+                .build();
+
+        if (response.getMaterialsUsed() == null) {
+            response.setMaterialsUsed(new ArrayList<>());
+        } else {
+            // Ensure we don't duplicate if called multiple times in some edge cases
+            response.getMaterialsUsed().removeIf(m -> m.getMaterialType() == HeatMaterialType.ELECTRICITY);
+        }
+        response.getMaterialsUsed().add(electricityItem);
     }
 }

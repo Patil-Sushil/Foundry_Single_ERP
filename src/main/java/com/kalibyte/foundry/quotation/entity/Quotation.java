@@ -67,7 +67,7 @@ public class Quotation extends BaseEntity {
     @Column(name = "payment_terms", length = 500)
     private String paymentTerms;
 
-    @Column(name = "delivery_terms", length = 500)
+    @Column(name = "delivery_terms", length =  500)
     private String deliveryTerms;
 
     @Column(name = "delivery_location", length = 255)

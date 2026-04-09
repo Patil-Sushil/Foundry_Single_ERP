@@ -38,6 +38,7 @@ public class CustomerReturnResponse {
     private String dispositionBy;
     private BigDecimal creditAmount;
     private UUID replacementOrderId;
+    private UUID creditNoteId;
     private Long scrapEntryId;
     private Long inspectionId;
     private String inspectionNumber;

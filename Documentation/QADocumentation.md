@@ -17,6 +17,10 @@ Inspections are performed on production items at various stages (e.g., after fet
     - **Automated**: The system automatically creates a `DRAFT` inspection for any `ProductionItem` with a `fettling_quantity > 0` during the saving of a `ProductionEntry`.
 2.  **Recording Findings**: Specific defects are recorded as `InspectionFindings` from the `DefectCatalog`.
 3.  **Completion**: Upon completion, the system:
+    *   Determines the **Result**:
+        - **PASSED**: No rejections or reworks. All pieces are accepted. **Note**: Inspections can be passed without recording any findings if no defects are present.
+        - **FAILED**: All pieces are rejected.
+        - **CONDITIONAL_PASS**: Some pieces are rejected or reworkable.
     *   Updates the `ProductionItem` with inspected, accepted, rejected, and rework quantities.
     *   Automatically creates a `QaRejection` if there are any rejected items.
     *   Sets the `dispatched_quantity` on the `ProductionItem` based on the accepted amount (QA-controlled dispatch).
@@ -120,10 +124,10 @@ QA endpoints are protected by Role-Based Access Control (RBAC):
 ## 6. Future Integration Points
 
 ### Billing & Financials
-*   **Credit Notes**: Automatic generation of credit notes in the billing module when a `CustomerReturn` is dispositioned with a `credit_amount`.
+*   **Credit Notes**: Automatic generation of credit notes in the billing module when a `CustomerReturn` is dispositioned with a `credit_amount`. (Implemented)
 
 ### Order Management
-*   **Replacement Orders**: Automated creation of a new Sales Order when a customer return is marked for `REPLACE`.
+*   **Replacement Orders**: Automated creation of a new Sales Order when a customer return is marked for `REPLACE`. (Implemented)
 
 ### Analytics & Reporting
 *   **Cost of Quality**: Aggregating scrap weights and rework hours to calculate real-time cost-of-quality metrics.

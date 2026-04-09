@@ -59,6 +59,9 @@ public class LaborerService {
 	}
 
     private void validateLaborerRequest(LaborerRequestDTO request) {
+        if (request.getPhNumber() == null || request.getPhNumber().length() != 10) {
+            throw new LaborException("Phone number must be of 10 length");
+        }
         if (request.getWageType() == null) {
             throw new LaborException("Wage type is required");
         }
