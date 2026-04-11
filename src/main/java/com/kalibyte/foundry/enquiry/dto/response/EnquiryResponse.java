@@ -17,6 +17,8 @@ import java.util.UUID;
 public class EnquiryResponse {
     private UUID id;
     private String enquiryNo;
+    private int revisionNo;
+    private String revisionNote;
     private LocalDate enquiryDate;
     private UUID customerId;
     private String customerName;

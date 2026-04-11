@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.customer.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.dto.CustomerResponse;
 import com.kalibyte.foundry.customer.service.CustomerService;
@@ -31,11 +32,11 @@ public class CustomerController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PRODUCTION', 'SALES', 'STORE', 'INVENTORY')")
-    public ResponseEntity<ApiResponse<Page<CustomerResponse>>> listCustomers(
+    public ResponseEntity<ApiResponse<PageResponse<CustomerResponse>>> listCustomers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "name") String sort) {
-        Page<CustomerResponse> customers = customerService.listCustomers(page, size, sort);
+        PageResponse<CustomerResponse> customers = customerService.listCustomers(page, size, sort);
         return ResponseEntity.ok(new ApiResponse<>(true, "Customers fetched successfully", customers));
     }
 

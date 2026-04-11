@@ -7,6 +7,7 @@ import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.enquiry.dto.request.EnquiryCreateRequest;
 import com.kalibyte.foundry.enquiry.dto.request.EnquiryItemCreateRequest;
+import com.kalibyte.foundry.enquiry.dto.request.EnquiryReviseRequest;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.entity.*;
 import com.kalibyte.foundry.enquiry.entity.enums.EnquiryStatus;
@@ -15,6 +16,8 @@ import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.enquiry.mapper.EnquiryMapper;
 import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
+import com.kalibyte.foundry.quotation.entity.enums.QuotationStatus;
+import com.kalibyte.foundry.quotation.repository.QuotationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -32,6 +35,7 @@ public class EnquiryServiceImpl implements EnquiryService {
     private final EnquiryRepository enquiryRepository;
     private final CustomerRepository customerRepository;
     private final EnquiryMapper enquiryMapper;
+    private final QuotationRepository quotationRepository;
 
     @Override
     public EnquiryResponse create(EnquiryCreateRequest request) {
@@ -151,6 +155,73 @@ public class EnquiryServiceImpl implements EnquiryService {
 
         enquiry.setStatus(newStatus);
         enquiry.setUpdatedBy(SecurityUtils.getCurrentUsername());
+
+        return enquiryMapper.toResponse(enquiry);
+    }
+
+    /**
+     * Revise an existing enquiry.
+     * PURPOSE:
+     * - Track changes to requirements for audit.
+     * - Increments revision_no on the same enquiry record.
+     * - Note: This does NOT auto-revise quotations.
+     */
+    @Override
+    @Transactional
+    public EnquiryResponse reviseEnquiry(UUID enquiryId, EnquiryReviseRequest request) {
+        Enquiry enquiry = enquiryRepository.findById(enquiryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+
+        // If active quotations exist for this enquiry, cancel them as they're now based on old requirements
+        quotationRepository.findAllByEnquiryIdAndStatusNot(enquiryId, QuotationStatus.CANCELLED).forEach(q -> {
+            q.setStatus(QuotationStatus.CANCELLED);
+            q.setUpdatedBy(SecurityUtils.getCurrentUsername());
+        });
+
+        // Rule: Only the latest revision can be revised
+        Integer maxRevision = enquiryRepository.findMaxRevisionByEnquiryNo(enquiry.getEnquiryNo());
+        if (maxRevision != null && enquiry.getRevisionNo() < maxRevision) {
+            throw new IllegalArgumentException("Only the latest revision of an enquiry can be revised.");
+        }
+
+        // Increment revision
+        enquiry.setRevisionNo(enquiry.getRevisionNo() + 1);
+        enquiry.setRevisionNote(request.getRevisionNote());
+        enquiry.setStatus(EnquiryStatus.REVISED);
+        enquiry.setUpdatedBy(SecurityUtils.getCurrentUsername());
+
+        // Update items (clear and re-add for simplicity in tracking current state)
+        enquiry.getEnquiryItems().clear();
+        BigDecimal totalWeight = BigDecimal.ZERO;
+
+        for (EnquiryItemCreateRequest itemReq : request.getItems()) {
+            MetalType type = itemReq.getMetalType();
+            MetalCategory category = type.getCategory();
+
+            BigDecimal itemWeight = itemReq.getApproxPieceWeightKg()
+                    .multiply(BigDecimal.valueOf(itemReq.getRequiredQuantity()));
+            totalWeight = totalWeight.add(itemWeight);
+
+            EnquiryItem item = EnquiryItem.builder()
+                    .enquiry(enquiry)
+                    .partName(itemReq.getPartName())
+                    .metalCategory(category)
+                    .materialGrade(itemReq.getMaterialGrade())
+                    .metalType(type)
+                    .castingProcess(itemReq.getCastingProcess())
+                    .requiredQuantity(itemReq.getRequiredQuantity())
+                    .approxPieceWeightKg(itemReq.getApproxPieceWeightKg())
+                    .totalWeightKg(itemWeight)
+                    .machineRequired(itemReq.getMachineRequired())
+                    .patternProvidedBy(itemReq.getPatternProvidedBy())
+                    .build();
+            
+            item.setCreatedBy(SecurityUtils.getCurrentUsername());
+            enquiry.getEnquiryItems().add(item);
+        }
+
+        enquiry.setTotalWeightKg(totalWeight);
+        enquiryRepository.save(enquiry);
 
         return enquiryMapper.toResponse(enquiry);
     }

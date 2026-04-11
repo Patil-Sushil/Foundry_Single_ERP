@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.common.exception;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.customer.exception.DuplicateGstException;
 import com.kalibyte.foundry.dashboard.exception.DashboardException;
 import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
 import com.kalibyte.foundry.labors.labor.exception.LaborException;
@@ -102,5 +103,11 @@ public class GlobalExceptionHandler {
         log.warn("Labor exception: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiResponse<>(false, ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(DuplicateGstException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateGstException(DuplicateGstException ex){
+        log.warn("Duplicate GstException : {}",ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body( ApiResponse.failure(ex.getMessage()));
     }
 }

@@ -19,5 +19,5 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
     Optional<Customer> findByPhone(String phone);
 
-
+    Optional<Customer> findByGstNumber(String gstNumber);
 }

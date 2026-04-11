@@ -65,8 +65,8 @@ public class QuotationServiceImpl implements QuotationService {
         //--------------------------------------------------
         if (request.getEnquiryId() != null) {
 
-            if (quotationRepository.existsByEnquiryId(request.getEnquiryId())) {
-                throw new IllegalStateException("Quotation already exists for this enquiry");
+            if (quotationRepository.existsByEnquiryIdAndStatusNot(request.getEnquiryId(), QuotationStatus.CANCELLED)) {
+                throw new IllegalStateException("An active quotation already exists for this enquiry. Please cancel it before creating a new one.");
             }
 
             enquiry = enquiryRepository.findById(request.getEnquiryId())
@@ -199,9 +199,11 @@ public class QuotationServiceImpl implements QuotationService {
         item.setPartName(enquiryItem.getPartName());
         item.setMaterialGrade(enquiryItem.getMaterialGrade());
         item.setMetalType(enquiryItem.getMetalType());
+        item.setMetalCategory(enquiryItem.getMetalCategory());
         item.setCastingProcess(enquiryItem.getCastingProcess());
         item.setQuantity(enquiryItem.getRequiredQuantity());
         item.setNetWeightKg(enquiryItem.getApproxPieceWeightKg());
+        item.setIsMachiningRequired(enquiryItem.getMachineRequired());
 
         // ===== OVERRIDE WITH REQUEST IF PROVIDED =====
         if (itemReq != null) {
@@ -214,8 +216,14 @@ public class QuotationServiceImpl implements QuotationService {
             if (itemReq.getMetalType() != null) {
                 item.setMetalType(itemReq.getMetalType());
             }
+            if (itemReq.getMetalCategory() != null) {
+                item.setMetalCategory(itemReq.getMetalCategory());
+            }
             if (itemReq.getCastingProcess() != null && !itemReq.getCastingProcess().isBlank()) {
                 item.setCastingProcess(itemReq.getCastingProcess());
+            }
+            if (itemReq.getIsMachiningRequired() != null) {
+                item.setIsMachiningRequired(itemReq.getIsMachiningRequired());
             }
             if (itemReq.getQuantity() != null && itemReq.getQuantity() > 0) {
                 item.setQuantity(itemReq.getQuantity());
@@ -253,12 +261,14 @@ public class QuotationServiceImpl implements QuotationService {
         item.setPartName(itemReq.getPartName());
         item.setMaterialGrade(itemReq.getMaterialGrade());
         item.setMetalType(itemReq.getMetalType());
+        item.setMetalCategory(itemReq.getMetalCategory());
         item.setCastingProcess(itemReq.getCastingProcess());
         item.setDrawingNumber(itemReq.getDrawingNumber());
         item.setNetWeightKg(itemReq.getNetWeightKg());
         item.setPatternStatus(itemReq.getPatternStatus());
         item.setQuantity(itemReq.getQuantity());
         item.setUnitPrice(itemReq.getUnitPrice());
+        item.setIsMachiningRequired(itemReq.getIsMachiningRequired());
 
         return item;
     }

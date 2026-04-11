@@ -14,7 +14,7 @@ import java.util.List;
 @Entity
 @Table(
         name = "enquiry",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"tenant_id", "enquiry_no"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"enquiry_no", "revision_no"})
 )
 @Getter
 @Setter
@@ -23,8 +23,15 @@ import java.util.List;
 @Builder
 public class Enquiry extends BaseEntity {
 
-    @Column(name = "enquiry_no", nullable = false, unique = true)
+    @Column(name = "enquiry_no", nullable = false)
     private String enquiryNo;
+
+    @Column(name = "revision_no", nullable = false)
+    @Builder.Default
+    private int revisionNo = 0;
+
+    @Column(name = "revision_note")
+    private String revisionNote;
 
     @Column(name = "enquiry_date", nullable = false)
     private LocalDate enquiryDate;

@@ -26,7 +26,8 @@ public interface QuotationMapper {
     // ITEM
     //--------------------------------------------------
     @Mapping(source = "metalType.displayName", target = "metalType")
-    @Mapping(target = "metalCategory", ignore = true)
+    @Mapping(source = "metalCategory.displayName", target = "metalCategory")
+    @Mapping(source = "isMachiningRequired", target = "isMachiningRequired")
     @Mapping(source = "patternStatus", target = "patternStatus")
     @Mapping(source = "patternProvidedByCustomer", target = "patternProvidedByCustomer")
     @Mapping(target = "receiptName", ignore = true)
@@ -48,11 +49,6 @@ public interface QuotationMapper {
     default void mapExtraDetails(QuotationItem item,
                                  @MappingTarget QuotationItemResponse response) {
         if (item == null) return;
-
-        // Metal Category from MetalType
-        if (item.getMetalType() != null && item.getMetalType().getCategory() != null) {
-            response.setMetalCategory(item.getMetalType().getCategory().getDisplayName());
-        }
 
         // Pattern Details
         if (Boolean.TRUE.equals(item.getPatternProvidedByCustomer())) {

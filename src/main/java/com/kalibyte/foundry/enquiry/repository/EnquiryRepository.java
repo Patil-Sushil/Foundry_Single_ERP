@@ -28,4 +28,7 @@ public interface EnquiryRepository extends JpaRepository<Enquiry, UUID> {
             "enquiryItems"
     })
     Page<Enquiry>findByCustomerId(UUID customerId, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT MAX(e.revisionNo) FROM Enquiry e WHERE e.enquiryNo = :enquiryNo")
+    Integer findMaxRevisionByEnquiryNo(String enquiryNo);
 }

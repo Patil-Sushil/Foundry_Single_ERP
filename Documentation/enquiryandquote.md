@@ -37,7 +37,9 @@ Header table for customer enquiries.
 | `customer_id`            | UUID          | Link to the `customer` table             |
 | `total_weight_kg`        | NUMERIC(12,3) | Total weight of all items in the enquiry |
 | `expected_delivery_date` | DATE          | Optional requested delivery date         |
-| `status`                 | VARCHAR(20)   | `PENDING`, `QUOTED`, `CLOSED`            |
+| `status`                 | VARCHAR(20)   | `PENDING`, `REVISED`, `QUOTED`, `CLOSED` |
+| `revision_no`            | INTEGER       | Version number (starts at 0)             |
+| `revision_note`          | TEXT          | Optional comment for audit               |
 | `created_at`             | TIMESTAMP     | Record creation timestamp                |
 | `created_by`             | VARCHAR(255)  | User who created the record              |
 
@@ -125,3 +127,65 @@ In the `QuotationServiceImpl`, every time an item is added or updated, the syste
 - Sending an email automatically moves the status to `SENT`.
 - Only a `SENT` quotation can be `APPROVED` or `CANCELLED`.
 - Updating a `SENT` quotation resets it to `DRAFT` (or `REVISED`) and resets the `sent_at` timestamp.
+
+---
+
+## 4. Enquiry Revision Flow
+
+When a customer revises their requirements (e.g., changes quantities or specifications) after an initial enquiry has been recorded, the system supports a **Revision Flow**.
+
+### 4.1 Purpose
+- **Audit Trail**: Maintain a history of changes to the original customer request.
+- **Traceability**: Track why a quotation might have changed between revisions.
+
+### 4.2 Revision Logic
+1.  **Endpoint**: `PATCH /api/enquiries/{id}/revise`
+2.  **Logic**:
+    - The system fetches the latest revision of the enquiry.
+    - It increments the `revision_no`.
+    - It replaces the old items with the new specifications provided in the request.
+    - It sets the status back to `REVISED`.
+    - It stores an optional `revision_note` explaining the change.
+
+### 4.3 Quotation Impact
+**CRITICAL**: Quotations are **NOT** automatically created or revised when an enquiry is revised.
+- The salesperson must **manually** create a new quotation (or a new revision of an existing quotation) from the latest revised enquiry.
+- This gives the sales team full control over pricing, discounts, and terms which might change due to the revised enquiry (e.g., volume discounts for increased quantity).
+
+### 4.4 Example Request (Revise Enquiry)
+**PATCH** `/api/enquiries/{enquiry_id}/revise`
+
+```json
+{
+  "revisionNote": "Customer increased quantity from 500 to 1000 and changed material grade to SG500/7.",
+  "items": [
+    {
+      "partName": "Gear Housing",
+      "metalType": "SG_IRON",
+      "materialGrade": "SG500/7",
+      "castingProcess": "Sand Casting",
+      "requiredQuantity": 1000,
+      "approxPieceWeightKg": 12.5,
+      "machineRequired": true,
+      "patternProvidedBy": "CUSTOMER"
+    }
+  ]
+}
+```
+
+**Example Response**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "enquiryNo": "ENQ-2024-00123",
+    "revisionNo": 1,
+    "revisionNote": "Customer increased quantity from 500 to 1000 and changed material grade to SG500/7.",
+    "status": "REVISED",
+    "totalWeightKg": 12500.0,
+    "items": [...]
+  }
+}
+```
+

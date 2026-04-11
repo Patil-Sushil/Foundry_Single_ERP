@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.order.dto.request;
 
+import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
 import jakarta.validation.Valid;
@@ -23,7 +24,10 @@ public class OrderItemRequest {
 
     // Metal & Casting
     private MetalType metalType;
+    private MetalCategory metalCategory;
     private String castingProcess;
+
+    private Boolean isMachiningRequired;
 
     @NotNull(message = "Net weight is required")
     @DecimalMin(value = "0.001", message = "Net weight must be greater than 0")

@@ -32,5 +32,7 @@ public interface QuotationRepository extends JpaRepository<Quotation, UUID> {
     Optional<Quotation> findByIdWithItems(UUID id);
     Page<Quotation> findByStatus(QuotationStatus status, Pageable pageable);
 
-    boolean existsByEnquiryId(UUID enquiryId);
+    boolean existsByEnquiryIdAndStatusNot(UUID enquiryId, QuotationStatus status);
+
+    java.util.List<Quotation> findAllByEnquiryIdAndStatusNot(UUID enquiryId, QuotationStatus status);
 }

@@ -138,17 +138,18 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         log.info("Seeding customers...");
-        createCustomer("Acme Castings", "acme@company.com", "1111111111");
-        createCustomer("Steel Industries", "steel@company.com", "2222222222");
-        createCustomer("Metal Traders", "metal@company.com", "3333333333");
+        createCustomer("Acme Castings", "acme@company.com", "1111111111","27ABCDE1234F1Z5");
+        createCustomer("Steel Industries", "steel@company.com", "2222222222","07PQRST6789G1Z3");
+        createCustomer("Metal Traders", "metal@company.com", "3333333333","19LMNOP4321H1Z8");
         log.info("Customers seeded.");
     }
 
-    private void createCustomer(String name, String email, String phone) {
+    private void createCustomer(String name, String email, String phone,String gst) {
         CustomerRequest req = new CustomerRequest();
         req.setName(name);
         req.setEmail(email);
         req.setPhone(phone);
+        req.setGstNumber(gst);
         req.setCreditLimit(new BigDecimal("100000"));
         customerService.createCustomer(req);
     }
@@ -168,7 +169,7 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        Customer acme = customers.get(0);
+        Customer acme = customers.getFirst();
 
         // Quotation for Order 1
         Quotation q1 = new Quotation();

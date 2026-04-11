@@ -98,7 +98,7 @@ public class QuotationPdfService {
             addSeparator(document);
 
             // ================= ITEM TABLE =================
-            float[] widths = {1, 4, 2, 2, 2, 2, 3};
+            float[] widths = {1, 4, 2, 2, 2, 1, 3, 3};
             Table table = new Table(UnitValue.createPercentArray(widths))
                     .useAllAvailableWidth();
 
@@ -108,19 +108,30 @@ public class QuotationPdfService {
             addHeader(table, "Weight (Kg)");
             addHeader(table, "Rate / Kg");
             addHeader(table, "Qty");
+            addHeader(table, "Taxable Amount");
             addHeader(table, "Total Amount");
 
             int sr = 1;
             BigDecimal subTotal = BigDecimal.ZERO;
+            BigDecimal totalGst = BigDecimal.ZERO;
+            BigDecimal totalWeight = BigDecimal.ZERO;
 
             for (QuotationItem item : quotation.getItems()) {
 
-                BigDecimal total =
+                BigDecimal lineWeight = item.getNetWeightKg()
+                        .multiply(BigDecimal.valueOf(item.getQuantity()));
+                totalWeight = totalWeight.add(lineWeight);
+
+                BigDecimal taxable =
                         item.getNetWeightKg()
                                 .multiply(item.getUnitPrice())
                                 .multiply(BigDecimal.valueOf(item.getQuantity()));
 
-                subTotal = subTotal.add(total);
+                BigDecimal gstAmount = taxable.multiply(new BigDecimal("0.18"));
+                BigDecimal lineTotal = taxable.add(gstAmount);
+
+                subTotal = subTotal.add(taxable);
+                totalGst = totalGst.add(gstAmount);
 
                 table.addCell(createCell(String.valueOf(sr++)));
                 table.addCell(createCell(item.getPartName()));
@@ -128,28 +139,27 @@ public class QuotationPdfService {
                 table.addCell(createCell(item.getNetWeightKg().toString()));
                 table.addCell(createCell(formatINR(item.getUnitPrice())));
                 table.addCell(createCell(String.valueOf(item.getQuantity())));
-                table.addCell(createCell(formatINR(total)));
+                table.addCell(createCell(formatINR(taxable)));
+                table.addCell(createCell(formatINR(lineTotal)));
             }
 
             document.add(table);
 
-            document.add(new Paragraph("\nTotal Amount: "
-                    + formatINR(subTotal))
+            BigDecimal grandTotal = subTotal.add(totalGst);
+
+            document.add(new Paragraph("\nTotal Weight: " + totalWeight + " Kg")
                     .setBold()
                     .setTextAlignment(TextAlignment.RIGHT));
-
-            addSeparator(document);
-
-            // ================= COST BREAKUP =================
-            document.add(new Paragraph("Cost Breakup:")
-                    .setBold());
-
-            document.add(new Paragraph("• Basic Casting Rate: "
-                    + formatINR(subTotal)));
-
-            BigDecimal gst = subTotal.multiply(new BigDecimal("0.18"));
-            document.add(new Paragraph("• GST @ 18%: "
-                    + formatINR(gst)));
+            document.add(new Paragraph("Taxable Amount: " + formatINR(subTotal))
+                    .setBold()
+                    .setTextAlignment(TextAlignment.RIGHT));
+            document.add(new Paragraph("GST @ 18%: " + formatINR(totalGst))
+                    .setBold()
+                    .setTextAlignment(TextAlignment.RIGHT));
+            document.add(new Paragraph("Grand Total (Incl. Tax): " + formatINR(grandTotal))
+                    .setBold()
+                    .setFontSize(14)
+                    .setTextAlignment(TextAlignment.RIGHT));
 
             addSeparator(document);
 
@@ -238,12 +248,16 @@ public class QuotationPdfService {
         document.add(new LineSeparator(new SolidLine()));
     }
 
-    //  Proper Indian currency formatting
+    //  Proper Indian currency formatting with decimal support
     private String formatINR(BigDecimal amount) {
-        long value = amount.longValue();
-        String s = String.valueOf(value);
+        if (amount == null) return "₹ 0.00";
+        
+        amount = amount.setScale(2, java.math.RoundingMode.HALF_UP);
+        String[] parts = amount.toString().split("\\.");
+        String s = parts[0];
+        String decimal = parts.length > 1 ? "." + parts[1] : ".00";
 
-        if (s.length() <= 3) return "₹ " + s;
+        if (s.length() <= 3) return "₹ " + s + decimal;
 
         String last3 = s.substring(s.length() - 3);
         String remaining = s.substring(0, s.length() - 3);
@@ -255,6 +269,6 @@ public class QuotationPdfService {
         }
         sb.insert(0, remaining);
 
-        return "₹ " + sb.toString() + last3;
+        return "₹ " + sb.toString() + "," + last3 + decimal;
     }
 }

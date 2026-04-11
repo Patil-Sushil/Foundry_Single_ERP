@@ -20,6 +20,7 @@ public class QuotationItemResponse {
     private String metalType;
     private String metalCategory;
     private String castingProcess;
+    private Boolean isMachiningRequired;
 
     private BigDecimal netWeightKg;
     private BigDecimal grossWeightKg;

@@ -26,7 +26,7 @@ public class EnquiryItemCreateRequest {
     @NotNull(message = "Metal type is required")
     private MetalType metalType;
 
-    @NotNull(message = "Metal type is required")
+    @NotBlank(message = "Material grade is required")
     private String materialGrade;
 
     @NotBlank(message = "Casting process is required")

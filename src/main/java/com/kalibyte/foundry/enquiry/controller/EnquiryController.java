@@ -3,6 +3,7 @@ package com.kalibyte.foundry.enquiry.controller;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.enquiry.dto.request.EnquiryCreateRequest;
+import com.kalibyte.foundry.enquiry.dto.request.EnquiryReviseRequest;
 import com.kalibyte.foundry.enquiry.dto.request.UpdateEnquiryStatusRequest;
 import com.kalibyte.foundry.enquiry.dto.response.EnquiryResponse;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
@@ -63,5 +64,17 @@ public class EnquiryController {
                 enquiryService.updateStatus(id, request.getStatus());
 
         return ApiResponse.success(response);
+    }
+
+    /**
+     * Revise an existing enquiry.
+     * Increments revision number and updates item details.
+     */
+    @PatchMapping("/{id}/revise")
+    public ApiResponse<EnquiryResponse> reviseEnquiry(
+            @PathVariable UUID id,
+            @Valid @RequestBody EnquiryReviseRequest request) {
+
+        return ApiResponse.success(enquiryService.reviseEnquiry(id, request));
     }
 }

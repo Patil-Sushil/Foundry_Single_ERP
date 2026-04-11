@@ -1,11 +1,13 @@
 package com.kalibyte.foundry.customer.service.impl;
 
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.util.SecurityUtils;
 import com.kalibyte.foundry.customer.dto.CustomerRequest;
 import com.kalibyte.foundry.customer.dto.CustomerResponse;
 import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.exception.CustomerNotFoundException;
 import com.kalibyte.foundry.customer.exception.DuplicateCustomerException;
+import com.kalibyte.foundry.customer.exception.DuplicateGstException;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.customer.service.CustomerService;
 import com.kalibyte.foundry.customer.service.CustomerValidator;
@@ -43,6 +45,10 @@ public class CustomerServiceImpl implements CustomerService {
             throw new DuplicateCustomerException("Phone number already exists");
         }
 
+        if(customerRepository.findByGstNumber(request.getGstNumber()).isPresent()){
+            throw new DuplicateGstException("Customer with this GST number already exists");
+        }
+
 
         Customer customer = modelMapper.map(request, Customer.class);
         if (customer.getCountry() == null) {
@@ -66,11 +72,10 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CustomerResponse> listCustomers(int page, int size, String sort) {
+    public PageResponse<CustomerResponse> listCustomers(int page, int size, String sort) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
-        // Repository already scoped to tenant via connection
-        return customerRepository.findAll(pageable)
-                .map(customer -> modelMapper.map(customer, CustomerResponse.class));
+        Page<Customer> customerPage = customerRepository.findAll(pageable);
+        return PageResponse.from(customerPage, customer -> modelMapper.map(customer, CustomerResponse.class));
     }
 
     @Override

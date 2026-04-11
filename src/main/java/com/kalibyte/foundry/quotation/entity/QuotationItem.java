@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.quotation.entity;
 
 import com.kalibyte.foundry.common.base.BaseEntity;
+import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.PatternReceipt;
@@ -41,8 +42,15 @@ public class QuotationItem extends BaseEntity {
     @Column(name = "metal_type", length = 50)
     private MetalType metalType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metal_category", length = 50)
+    private MetalCategory metalCategory;
+
     @Column(name = "casting_process", length = 50)
     private String castingProcess;
+
+    @Column(name = "is_machining_required")
+    private Boolean isMachiningRequired = false;
 
     // ================= WEIGHT =================
 

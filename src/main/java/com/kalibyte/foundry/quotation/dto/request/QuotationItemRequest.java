@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.quotation.dto.request;
 
+import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
@@ -22,7 +23,10 @@ public class QuotationItemRequest {
 
     // Metal & Casting
     private MetalType metalType;
+    private MetalCategory metalCategory;
     private String castingProcess;
+
+    private Boolean isMachiningRequired;
 
     private BigDecimal netWeightKg;
     private BigDecimal grossWeightKg;
