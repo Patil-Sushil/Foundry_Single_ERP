@@ -18,7 +18,7 @@ public class ElectricityRateServiceImpl implements ElectricityRateService {
 
     @Override
     public Double getCurrentRate() {
-        return electricityRateRepository.findByActiveTrue()
+        return electricityRateRepository.findFirstByActiveTrueOrderByIdDesc()
                 .map(ElectricityRate::getRatePerUnit)
                 .orElseThrow(() -> new ResourceNotFoundException("Active electricity rate not found"));
     }
@@ -26,7 +26,7 @@ public class ElectricityRateServiceImpl implements ElectricityRateService {
     @Override
     @Transactional
     public ElectricityRate updateRate(Double newRate) {
-        electricityRateRepository.findByActiveTrue()
+        electricityRateRepository.findFirstByActiveTrueOrderByIdDesc()
                 .ifPresent(rate -> {
                     rate.setActive(false);
                     rate.setEffectiveTo(LocalDate.now());

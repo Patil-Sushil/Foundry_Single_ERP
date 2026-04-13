@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface ElectricityRateRepository extends JpaRepository<ElectricityRate, Long> {
 
-    Optional<ElectricityRate> findByActiveTrue();
+    Optional<ElectricityRate> findFirstByActiveTrueOrderByIdDesc();
 
     /**
      * Find all electricity rates that were effective during a given date range.
@@ -28,7 +28,7 @@ public interface ElectricityRateRepository extends JpaRepository<ElectricityRate
         SELECT er FROM ElectricityRate er
         WHERE er.effectiveFrom <= :endDate
           AND (er.effectiveTo IS NULL OR er.effectiveTo >= :startDate)
-        ORDER BY er.effectiveFrom ASC
+        ORDER BY er.effectiveFrom DESC, er.id DESC
     """)
     List<ElectricityRate> findRatesEffectiveBetween(
         @Param("startDate") LocalDate startDate,
@@ -44,9 +44,9 @@ public interface ElectricityRateRepository extends JpaRepository<ElectricityRate
         SELECT er FROM ElectricityRate er
         WHERE er.effectiveFrom <= :date
           AND (er.effectiveTo IS NULL OR er.effectiveTo >= :date)
-        ORDER BY er.effectiveFrom DESC
+        ORDER BY er.effectiveFrom DESC, er.id DESC
     """)
-    Optional<ElectricityRate> findRateEffectiveOn(@Param("date") LocalDate date);
+    List<ElectricityRate> findRatesEffectiveOn(@Param("date") LocalDate date);
 
     /**
      * Find the most recent rate before the given date.

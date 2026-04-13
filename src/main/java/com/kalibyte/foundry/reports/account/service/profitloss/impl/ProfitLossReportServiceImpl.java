@@ -118,7 +118,7 @@ public class ProfitLossReportServiceImpl implements ProfitLossReportService {
         List<ElectricityRate> applicableRates = electricityRateRepository.findRatesEffectiveBetween(from, to);
         
         // Fallback: get current active rate if no historical rates found
-        Double fallbackRate = electricityRateRepository.findByActiveTrue()
+        Double fallbackRate = electricityRateRepository.findFirstByActiveTrueOrderByIdDesc()
                 .map(ElectricityRate::getRatePerUnit)
                 .orElse(0.0);
 

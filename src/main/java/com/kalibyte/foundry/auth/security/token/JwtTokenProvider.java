@@ -58,16 +58,11 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException ex) {
-            log.error("Invalid JWT token", ex);
-        }
-        return false;
+        Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token);
+        return true;
     }
 
     public CustomUserDetails getUserDetailsFromToken(String token) {

@@ -69,10 +69,10 @@ public abstract class FurnaceHeatMapper {
 
         LocalDate heatDate = (entity.getFurnace() != null) ? entity.getFurnace().getDate() : LocalDate.now();
 
-        double rate = electricityRateRepository.findRateEffectiveOn(heatDate)
+        double rate = electricityRateRepository.findRatesEffectiveOn(heatDate).stream().findFirst()
                 .or(() -> electricityRateRepository.findFirstByEffectiveFromGreaterThanOrderByEffectiveFromAsc(heatDate))
                 .or(() -> electricityRateRepository.findFirstByEffectiveFromLessThanOrderByEffectiveFromDesc(heatDate))
-                .or(() -> electricityRateRepository.findByActiveTrue())
+                .or(() -> electricityRateRepository.findFirstByActiveTrueOrderByIdDesc())
                 .map(er -> er.getRatePerUnit())
                 .orElse(0.0);
 

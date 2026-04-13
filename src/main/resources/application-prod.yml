@@ -1,5 +1,5 @@
 server:
-  port: { PORT:8080 }
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -17,13 +17,28 @@ spring:
       ddl-auto: none
     properties:
       hibernate:
+        show-sql: false
         format_sql: false
-        show_sql: false
 
   flyway:
     enabled: true
     baselineOnMigrate: true
     locations: classpath:db/migration/public
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${SPRING_USERMAIL}
+    password: ${SPRING_USERPASS}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
 
 jwt:
   secret: ${JWT_SECRET_KEY}
