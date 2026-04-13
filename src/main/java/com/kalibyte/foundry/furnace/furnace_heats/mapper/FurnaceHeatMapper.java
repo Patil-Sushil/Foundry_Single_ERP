@@ -1,6 +1,5 @@
 package com.kalibyte.foundry.furnace.furnace_heats.mapper;
 
-import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatMaterialItemResponse;
@@ -17,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Optional;
 
 @Mapper(componentModel = "spring", uses = {HeatMaterialMapper.class, HeatOrderItemMapper.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class FurnaceHeatMapper {
@@ -70,8 +70,11 @@ public abstract class FurnaceHeatMapper {
         LocalDate heatDate = (entity.getFurnace() != null) ? entity.getFurnace().getDate() : LocalDate.now();
 
         double rate = electricityRateRepository.findRateEffectiveOn(heatDate)
+                .or(() -> electricityRateRepository.findFirstByEffectiveFromGreaterThanOrderByEffectiveFromAsc(heatDate))
+                .or(() -> electricityRateRepository.findFirstByEffectiveFromLessThanOrderByEffectiveFromDesc(heatDate))
+                .or(() -> electricityRateRepository.findByActiveTrue())
                 .map(er -> er.getRatePerUnit())
-                .orElseThrow(() -> new BusinessException("Electricity rate not present in database for date: " + heatDate));
+                .orElse(0.0);
 
         HeatMaterialItemResponse electricityItem = HeatMaterialItemResponse.builder()
                 .id(null)

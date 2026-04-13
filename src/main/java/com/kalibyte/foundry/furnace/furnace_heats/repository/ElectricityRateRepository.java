@@ -49,6 +49,16 @@ public interface ElectricityRateRepository extends JpaRepository<ElectricityRate
     Optional<ElectricityRate> findRateEffectiveOn(@Param("date") LocalDate date);
 
     /**
+     * Find the most recent rate before the given date.
+     */
+    Optional<ElectricityRate> findFirstByEffectiveFromLessThanOrderByEffectiveFromDesc(LocalDate date);
+
+    /**
+     * Find the earliest rate after the given date.
+     */
+    Optional<ElectricityRate> findFirstByEffectiveFromGreaterThanOrderByEffectiveFromAsc(LocalDate date);
+
+    /**
      * Get all rates ordered by effective date for historical view.
      */
     List<ElectricityRate> findAllByOrderByEffectiveFromDesc();
