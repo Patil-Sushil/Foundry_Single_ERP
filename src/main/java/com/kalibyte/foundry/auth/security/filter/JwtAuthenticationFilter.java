@@ -28,6 +28,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
 
     @Override
+    protected boolean shouldNotFilter(@org.jspecify.annotations.NonNull HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.startsWith("/api/auth/") ||
+                path.startsWith("/v3/api-docs/") ||
+                path.startsWith("/swagger-ui/") ||
+                path.equals("/swagger-ui.html") ||
+                path.startsWith("/webjars/") ||
+                path.equals("/error") ||
+                path.startsWith("/actuator/");
+    }
+
+    @Override
     protected void doFilterInternal(
 		    @org.jspecify.annotations.NonNull HttpServletRequest request,
 		    @org.jspecify.annotations.NonNull HttpServletResponse response,
