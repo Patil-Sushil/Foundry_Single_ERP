@@ -8,8 +8,5 @@ public record StartInwardRequest(
     String vehicleNumber,
     String driverName,
     String driverPhone,
-    @NotBlank(message = "Vendor Challan Number is required")
-    String vendorChallanNumber,
-    String vendorInvoiceNumber,
-    LocalDate vendorInvoiceDate
+    String vendorChallanNumber
 ) implements Serializable {}

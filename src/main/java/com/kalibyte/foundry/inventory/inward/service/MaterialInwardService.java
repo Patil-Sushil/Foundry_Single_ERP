@@ -97,8 +97,6 @@ public class MaterialInwardService {
                 .driverName(request.driverName())
                 .driverPhone(request.driverPhone())
                 .vendorChallanNumber(request.vendorChallanNumber())
-                .vendorInvoiceNumber(request.vendorInvoiceNumber())
-                .vendorInvoiceDate(request.vendorInvoiceDate())
                 .inwardDate(LocalDate.now())
                 .status(InwardStatus.DRAFT)
                 .createdByUserId(SecurityUtils.getCurrentUserId())
@@ -283,15 +281,15 @@ public class MaterialInwardService {
 
     /**
      * Creates a PurchaseInvoice record when inward is confirmed.
-     * 
+     * <p>
      * This is called ONLY from confirm() method, never from draft stages.
      * Each confirmed inward gets its own PurchaseInvoice — no updates.
-     * 
+     * <p>
      * For partial deliveries:
      * - PO: 100kg
      * - Inward 1 (60kg) → Invoice #1 (ABC/INV/001)
      * - Inward 2 (40kg) → Invoice #2 (ABC/INV/002)
-     * 
+     * <p>
      * Both invoices link to the same PO but different inwards.
      */
     private void createPurchaseInvoiceFromInward(
