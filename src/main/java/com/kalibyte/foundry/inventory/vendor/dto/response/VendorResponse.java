@@ -7,6 +7,7 @@ public record VendorResponse(
     String name,
     String phone,
     String gstNumber,
+    String state,
     String address,
     String email,
     Boolean isActive,

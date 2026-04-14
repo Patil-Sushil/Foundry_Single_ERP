@@ -8,6 +8,7 @@ public record UpdateVendorRequest(
     String name,
     String phone,
     String gstNumber,
+    String state,
     String address,
     Boolean isActive
 ) implements Serializable {}

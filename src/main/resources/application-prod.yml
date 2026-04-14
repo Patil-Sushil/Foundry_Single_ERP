@@ -44,6 +44,12 @@ jwt:
   secret: ${JWT_SECRET_KEY}
   expiration: ${JWT_EXP_TIME}
 
+app:
+  company-state: ${COMPANY_STATE:Maharashtra}
+  default-admin:
+    email: admin@foundry.com
+    password: Admin@123
+
 springdoc:
   api-docs:
     enabled: false

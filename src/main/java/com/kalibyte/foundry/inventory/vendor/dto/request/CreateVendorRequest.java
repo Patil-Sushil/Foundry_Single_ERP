@@ -9,6 +9,7 @@ public record CreateVendorRequest(
     String name,
     String phone,
     String gstNumber,
+    String state,
     String address,
     @Email
     String email
