@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    container_name: foundry-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/foundry_db
+      SPRING_DATASOURCE_USERNAME: foundry_user
+      SPRING_DATASOURCE_PASSWORD: foundry_pass
+
+      JWT_SECRET_KEY: VpeQme0/mbArdH6giD1NYI2OJzMAnnpJHva5QUwlhZo=
+      JWT_EXP_TIME: 604800000
+
+      SPRING_USERMAIL: orthrox1422@gmail.com
+      SPRING_USERPASS: oulh fwgb hvsc uhir
+
+      COMPANY_STATE: Maharashtra
+
+      PORT: 8080

@@ -16,7 +16,7 @@ public class OrderStatusTransitionValidator {
 
     static {
         VALID_TRANSITIONS.put(OrderStatus.CREATED, Set.of(
-                OrderStatus.CONFIRMED, OrderStatus.CANCELLED, OrderStatus.ON_HOLD));
+                OrderStatus.CONFIRMED, OrderStatus.CANCELLED, OrderStatus.ON_HOLD, OrderStatus.IN_PRODUCTION));
 
         VALID_TRANSITIONS.put(OrderStatus.CONFIRMED, Set.of(
                 OrderStatus.IN_PRODUCTION, OrderStatus.CANCELLED, OrderStatus.ON_HOLD));

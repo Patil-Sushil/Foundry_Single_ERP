@@ -67,7 +67,7 @@ public class SecurityConfig {
 
                         // Reports
                         .requestMatchers("/api/reports/**")
-                        .hasAnyRole("ADMIN", "MANAGER", "ACCOUNTANT")
+                        .hasAnyRole("ADMIN", "MANAGER", "FINANCE")
 
                         // Admin
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

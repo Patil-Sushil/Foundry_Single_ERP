@@ -2,7 +2,6 @@ package com.kalibyte.foundry.inventory.inward.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.common.response.PageResponse;
-import com.kalibyte.foundry.common.security.UserPrincipal;
 import com.kalibyte.foundry.inventory.inward.dto.request.ConfirmInwardRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.StartInwardRequest;
 import com.kalibyte.foundry.inventory.inward.dto.request.UpdateReceivedQuantityRequest;
@@ -13,8 +12,6 @@ import com.kalibyte.foundry.inventory.inward.entity.enums.InwardStatus;
 import com.kalibyte.foundry.inventory.inward.service.MaterialInwardService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;

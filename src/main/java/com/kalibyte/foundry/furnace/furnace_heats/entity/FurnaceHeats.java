@@ -120,23 +120,33 @@ public class FurnaceHeats {
      * sum(heatOrderItems.weightProduced) <= castingsPouredWeight
      */
     public void validateMetalBalance() {
-        if (liquidMetalWeight == null || liquidMetalWeight.compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal liquid = safeValue(liquidMetalWeight);
+        BigDecimal chargeWeight = BigDecimal.valueOf(totalWeight);
+
+        // 1. Validate: Liquid metal (output) cannot exceed Total Weight (input charge)
+        if (chargeWeight.compareTo(BigDecimal.ZERO) > 0 && liquid.compareTo(chargeWeight) > 0) {
+             throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
+                    "Liquid metal weight (%s kg) cannot exceed total charge weight (%s kg).",
+                    liquid, chargeWeight));
+        }
+
+        if (liquid.compareTo(BigDecimal.ZERO) <= 0) {
             throw new com.kalibyte.foundry.common.exception.BusinessException("Liquid metal weight must be greater than zero.");
         }
 
-        // 1. Validate: breakdown must not exceed liquid metal
+        // 2. Validate: breakdown must not exceed liquid metal
         BigDecimal totalBreakdown = safeValue(castingsPouredWeight)
                 .add(safeValue(runnerWeight))
                 .add(safeValue(riserWeight))
                 .add(safeValue(skullWeight))
                 .add(safeValue(spillageWeight));
 
-        if (totalBreakdown.compareTo(liquidMetalWeight) > 0) {
+        if (totalBreakdown.compareTo(liquid) > 0) {
             throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
                     "Metal balance exceeded! Liquid metal: %s kg, " +
                             "but breakdown totals: %s kg " +
                             "(Castings: %s + Runners: %s + Risers: %s + Skull: %s + Spillage: %s)",
-                    liquidMetalWeight, totalBreakdown,
+                    liquid, totalBreakdown,
                     safeValue(castingsPouredWeight),
                     safeValue(runnerWeight),
                     safeValue(riserWeight),
@@ -145,19 +155,25 @@ public class FurnaceHeats {
             ));
         }
 
-        // 2. Validate: total weight produced across order items
-        //    must not exceed castings poured weight
-        if (heatOrderItems != null && !heatOrderItems.isEmpty()
-                && castingsPouredWeight != null) {
+        // 3. Validate: total weight produced across order items
+        //    must exactly match castings poured weight
+        BigDecimal castingsPoured = safeValue(castingsPouredWeight);
+        if (castingsPoured.compareTo(BigDecimal.ZERO) > 0) {
+            if (heatOrderItems == null || heatOrderItems.isEmpty()) {
+                throw new com.kalibyte.foundry.common.exception.BusinessException(
+                        "Castings were poured but no produced items were recorded. " +
+                        "Please allocate the poured weight to specific order items or stock items.");
+            }
+
             BigDecimal totalWeightProduced = heatOrderItems.stream()
                     .map(item -> safeValue(item.getWeightProduced()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (totalWeightProduced.compareTo(castingsPouredWeight) > 0) {
+            if (totalWeightProduced.compareTo(castingsPoured) != 0) {
                 throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
-                        "Total weight produced by order items (%s kg) exceeds " +
+                        "Total weight produced by order/stock items (%s kg) must exactly match " +
                                 "castings poured weight (%s kg).",
-                        totalWeightProduced, castingsPouredWeight
+                        totalWeightProduced, castingsPoured
                 ));
             }
         }

@@ -12,9 +12,22 @@ public class MetalBalanceValidator
     @Override
     public boolean isValid(FurnaceHeatRequest req,
                            ConstraintValidatorContext context) {
-        if (req == null || req.getLiquidMetalWeight() == null) return true; // Skip if not provided
+        if (req == null) return true;
 
-        BigDecimal liquid = req.getLiquidMetalWeight();
+        BigDecimal liquid = safe(req.getLiquidMetalWeight());
+        BigDecimal chargeWeight = req.getTotalWeight() != null ? BigDecimal.valueOf(req.getTotalWeight()) : BigDecimal.ZERO;
+
+        // 1. Validate: Liquid metal (output) cannot exceed Total Weight (input charge)
+        if (chargeWeight.compareTo(BigDecimal.ZERO) > 0 && liquid.compareTo(chargeWeight) > 0) {
+            context.disableDefaultConstraintViolation();
+            context.buildConstraintViolationWithTemplate(
+                    String.format("Liquid metal weight (%s kg) cannot exceed total charge weight (%s kg)",
+                            liquid, chargeWeight)
+            ).addConstraintViolation();
+            return false;
+        }
+
+        // 2. Validate: Metal breakdown vs Liquid Metal
         BigDecimal breakdown = safe(req.getCastingsPouredWeight())
                 .add(safe(req.getRunnerWeight()))
                 .add(safe(req.getRiserWeight()))
@@ -37,19 +50,29 @@ public class MetalBalanceValidator
             return false;
         }
 
-        // Validate order items against castings poured
-        if (req.getHeatOrderItems() != null && req.getCastingsPouredWeight() != null) {
+        // 3. Validate: Castings Poured vs Produced Items
+        BigDecimal castingsPoured = safe(req.getCastingsPouredWeight());
+        if (castingsPoured.compareTo(BigDecimal.ZERO) > 0) {
+            if (req.getHeatOrderItems() == null || req.getHeatOrderItems().isEmpty()) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate(
+                        "Castings were poured but no items (orders or stock) were recorded. " +
+                        "Please allocate the poured weight to specific items."
+                ).addConstraintViolation();
+                return false;
+            }
+
             BigDecimal totalProduced = req.getHeatOrderItems().stream()
                     .map(item -> safe(item.getWeightProduced()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (totalProduced.compareTo(req.getCastingsPouredWeight()) > 0) {
+            if (totalProduced.compareTo(castingsPoured) != 0) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(
                         String.format(
-                                "Total weight produced (%s kg) exceeds " +
-                                        "castings poured weight (%s kg)",
-                                totalProduced, req.getCastingsPouredWeight())
+                                "Total weight produced (%s kg) must exactly match " +
+                                        "castings poured weight (%s kg).",
+                                totalProduced, castingsPoured)
                 ).addConstraintViolation();
                 return false;
             }

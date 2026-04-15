@@ -5,7 +5,9 @@ import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.entity.OrderItem;
+import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.repository.OrderRepository;
+import com.kalibyte.foundry.order.validation.OrderStatusTransitionValidator;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import com.kalibyte.foundry.production.dto.PipelineTotals;
@@ -169,6 +171,9 @@ public class ProductionServiceImpl implements ProductionService {
 
         log.info("Created production entry {} for order {}", entry.getEntryNumber(), order.getOrderNumber());
 
+        // ── 5b. Auto-update order status to IN_PRODUCTION ──
+        autoUpdateOrderStatus(order);
+
         // ── 6. Build response using pre-computed totals ──
         return buildCreateResponse(entry, preSaveTotals);
     }
@@ -260,9 +265,12 @@ public class ProductionServiceImpl implements ProductionService {
         Order order = orderRepo.findWithDetailsById(entry.getOrder().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        // ── Keep track of old QA fields to preserve them ──
-        Map<UUID, ProductionItem> oldItemsMap = new HashMap<>();
-        entry.getProductionItems().forEach(i -> oldItemsMap.put(i.getOrderItem().getId(), i));
+        // ── Map existing items by orderItem.id for updates ──
+        Map<UUID, ProductionItem> existingItemsMap = new HashMap<>();
+        entry.getProductionItems().forEach(i -> existingItemsMap.put(i.getOrderItem().getId(), i));
+
+        // ── Track which items are updated/kept ──
+        Set<UUID> updatedOrderItemIds = new HashSet<>();
 
         // ── Check if date/shift changed and new combo already exists ──
         boolean dateOrShiftChanged = !entry.getReportDate().equals(request.getReportDate())
@@ -278,59 +286,67 @@ public class ProductionServiceImpl implements ProductionService {
             );
         }
 
-        // ── Clear old items ──
-        entry.getProductionItems().clear();
-        entityManager.flush();
-
-        // ── Rebuild items ──
+        // ── Process request items ──
         List<PipelineTotals> preSaveTotals = new ArrayList<>();
+        List<ProductionItem> updatedItemsList = new ArrayList<>();
 
         for (ProductionItemRequest itemReq : request.getItems()) {
-
             OrderItem orderItem = findOrderItem(order, itemReq.getOrderItemId());
+            UUID orderItemId = orderItem.getId();
+            updatedOrderItemIds.add(orderItemId);
 
             int cores    = safe(itemReq.getReadyCores());
             int poured   = safe(itemReq.getPouredMoulds());
             int shot     = safe(itemReq.getShotBlastingQuantity());
             int fettling = safe(itemReq.getFettlingQuantity());
 
-            // ── QA Data Preservation ──
-            ProductionItem oldItem = oldItemsMap.get(orderItem.getId());
-            int existingDispatch = (oldItem != null) ? oldItem.getDispatchedQuantity() : 0;
-
             validateAtLeastOnePositive(cores, poured, shot, fettling, orderItem.getPartName());
 
-            // cumulative EXCLUDING this entry's old values
-            PipelineTotals beforeTotals = getCumulativeTotalsExcluding(orderItem.getId(), entry.getId());
+            // cumulative EXCLUDING this entry's values (for validation)
+            PipelineTotals beforeTotals = getCumulativeTotalsExcluding(orderItemId, entry.getId());
             preSaveTotals.add(beforeTotals);
 
             validatePipeline(cores, poured, shot, fettling, orderItem, beforeTotals);
 
             Pattern pattern = resolvePattern(itemReq.getPatternNumber());
 
-            ProductionItem item = ProductionItem.builder()
-                    .productionEntry(entry)
-                    .orderItem(orderItem)
-                    .itemName(orderItem.getPartName())
-                    .pattern(pattern)
-                    .orderedQuantity(orderItem.getQuantity())
-                    .readyCores(cores)
-                    .pouredMoulds(poured)
-                    .shotBlastingQuantity(shot)
-                    .fettlingQuantity(fettling)
-                    .dispatchedQuantity(existingDispatch) // Preserve QA-controlled value
-                    .itemRemark(itemReq.getItemRemark())
-                    .build();
-
-            // preserve QA fields if they existed
-            if (oldItem != null) {
-                item.setInspectedQuantity(oldItem.getInspectedQuantity());
-                item.setAcceptedQuantity(oldItem.getAcceptedQuantity());
-                item.setRejectedQuantity(oldItem.getRejectedQuantity());
-                item.setReworkQuantity(oldItem.getReworkQuantity());
+            ProductionItem item = existingItemsMap.get(orderItemId);
+            if (item != null) {
+                // Update existing entity to preserve ID
+                item.setPattern(pattern);
+                item.setReadyCores(cores);
+                item.setPouredMoulds(poured);
+                item.setShotBlastingQuantity(shot);
+                item.setFettlingQuantity(fettling);
+                item.setItemRemark(itemReq.getItemRemark());
+                // Note: dispatchedQuantity and other QA fields are already on this entity
+            } else {
+                // Create new item for this entry
+                item = ProductionItem.builder()
+                        .productionEntry(entry)
+                        .orderItem(orderItem)
+                        .itemName(orderItem.getPartName())
+                        .pattern(pattern)
+                        .orderedQuantity(orderItem.getQuantity())
+                        .readyCores(cores)
+                        .pouredMoulds(poured)
+                        .shotBlastingQuantity(shot)
+                        .fettlingQuantity(fettling)
+                        .dispatchedQuantity(0)
+                        .itemRemark(itemReq.getItemRemark())
+                        .build();
             }
+            updatedItemsList.add(item);
+        }
 
-            entry.getProductionItems().add(item);
+        // ── Remove items no longer in request ──
+        entry.getProductionItems().removeIf(item -> !updatedOrderItemIds.contains(item.getOrderItem().getId()));
+        
+        // ── Add new items ──
+        for (ProductionItem item : updatedItemsList) {
+            if (!entry.getProductionItems().contains(item)) {
+                entry.getProductionItems().add(item);
+            }
         }
 
         // ── Update metadata ──
@@ -348,6 +364,9 @@ public class ProductionServiceImpl implements ProductionService {
         }
 
         log.info("Updated production entry {}", entry.getEntryNumber());
+
+        // ── Auto-update order status to IN_PRODUCTION ──
+        autoUpdateOrderStatus(order);
 
         return buildCreateResponse(entry, preSaveTotals);
     }
@@ -384,6 +403,12 @@ public class ProductionServiceImpl implements ProductionService {
             throw new BusinessException(
                     "Cannot create production entry for " + status + " order: " + order.getOrderNumber()
             );
+        }
+        
+        // Ensure status is valid for production (CREATED, CONFIRMED, or already IN_PRODUCTION)
+        if (!status.equals("CREATED") && !status.equals("CONFIRMED") && !status.equals("IN_PRODUCTION") &&
+            !status.equals("PARTIALLY_PRODUCED") && !status.equals("ON_HOLD")) {
+             log.warn("Order {} in status {} is receiving production entry", order.getOrderNumber(), status);
         }
     }
 
@@ -579,6 +604,28 @@ public class ProductionServiceImpl implements ProductionService {
 
     private int toInt(Object value) {
         return value != null ? ((Number) value).intValue() : 0;
+    }
+
+    private void autoUpdateOrderStatus(Order order) {
+        OrderStatus current = order.getStatus();
+        // If it's already in a production or post-production status, don't revert or change
+        if (current == OrderStatus.IN_PRODUCTION || 
+            current == OrderStatus.PARTIALLY_PRODUCED || 
+            current == OrderStatus.PRODUCED ||
+            current == OrderStatus.PARTIALLY_DISPATCHED ||
+            current == OrderStatus.DISPATCHED ||
+            current == OrderStatus.COMPLETED) {
+            return;
+        }
+
+        try {
+            OrderStatusTransitionValidator.validate(current, OrderStatus.IN_PRODUCTION);
+            order.setStatus(OrderStatus.IN_PRODUCTION);
+            orderRepo.save(order);
+            log.info("Auto-transitioned order {} status to IN_PRODUCTION", order.getOrderNumber());
+        } catch (Exception e) {
+            log.warn("Could not auto-transition order {} status: {}", order.getOrderNumber(), e.getMessage());
+        }
     }
 
 

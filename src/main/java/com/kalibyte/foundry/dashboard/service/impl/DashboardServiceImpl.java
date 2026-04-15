@@ -4,6 +4,7 @@ import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.dashboard.dto.response.*;
 import com.kalibyte.foundry.dashboard.service.DashboardService;
 import com.kalibyte.foundry.dashboard.util.DateRangeResolver;
+import com.kalibyte.foundry.expenses.repository.ExpenseRepository;
 import com.kalibyte.foundry.furnace.furnace_heats.repository.FurnaceHeatsRepository;
 import com.kalibyte.foundry.inventory.inward.repository.MaterialInwardRepository;
 import com.kalibyte.foundry.inventory.item.entity.Item;
@@ -41,6 +42,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final MaterialInwardRepository materialInwardRepository;
     private final ProductionEntryRepository productionEntryRepository;
     private final QaInspectionRepository qaInspectionRepository;
+    private final ExpenseRepository expenseRepository;
 
     @Override
     @Cacheable(value = "dashboardSummary", key = "#range.startDate().toString() + '-' + #range.endDate().toString()")
@@ -49,6 +51,10 @@ public class DashboardServiceImpl implements DashboardService {
 
         BigDecimal periodRevenue = invoiceRepository.getTotalRevenue(range.startDate(), range.endDate());
         BigDecimal prevPeriodRevenue = invoiceRepository.getTotalRevenue(prevRange.startDate(), prevRange.endDate());
+
+        BigDecimal totalExpenses = expenseRepository.getTotalExpenses(range.startDate(), range.endDate());
+        BigDecimal materialCost = furnaceHeatsRepository.getTotalMaterialCost(range.startDate(), range.endDate());
+        BigDecimal netProfit = periodRevenue.subtract(totalExpenses).subtract(materialCost);
 
         Object[] rejectionStats = qaInspectionRepository.sumRejectionStatsBetweenDates(range.startDate(), range.endDate());
         BigDecimal rejectionRate = calculateRejectionRate(rejectionStats);
@@ -61,6 +67,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .newOrdersValue(orderRepository.sumOrderValueBetweenDates(range.startDate(), range.endDate()))
                 .periodRevenue(periodRevenue)
                 .previousPeriodRevenue(prevPeriodRevenue)
+                .totalExpenses(totalExpenses)
+                .netProfit(netProfit)
                 .heatCount(furnaceHeatsRepository.countHeatsBetweenDates(range.startDate(), range.endDate()))
                 .averageMeltingEfficiency(furnaceHeatsRepository.averagePowerToWeightBetweenDates(range.startDate(), range.endDate()))
                 .furnaceYieldPercentage(calculateFurnaceYield(range))

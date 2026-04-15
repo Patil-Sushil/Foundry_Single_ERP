@@ -30,6 +30,8 @@ public class DashboardSummaryResponse {
     private Long overdueInvoicesCount;
     private BigDecimal overdueInvoicesValue;
     private BigDecimal totalCollections;
+    private BigDecimal totalExpenses;
+    private BigDecimal netProfit;
     private Long lowStockAlertsCount;
     private BigDecimal rejectionRatePercentage;
 }

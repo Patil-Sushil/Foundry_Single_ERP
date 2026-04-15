@@ -21,15 +21,24 @@ public class RoleBootstrap implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        Arrays.stream(RoleName.values()).forEach(roleName -> {
-            if (roleRepository.findByName(roleName).isEmpty()) {
-                Role role = new Role();
-                role.setName(roleName);
-                role.setDescription(roleName.name() + " role");
-                roleRepository.save(role);
-                log.info("Created role: {}", roleName);
-            }
-        });
-        log.info("Role seeding complete. Total roles: {}", roleRepository.count());
+        try {
+            log.info("Checking roles seeding...");
+            Arrays.stream(RoleName.values()).forEach(roleName -> {
+                try {
+                    if (roleRepository.findByName(roleName).isEmpty()) {
+                        Role role = new Role();
+                        role.setName(roleName);
+                        role.setDescription(roleName.name() + " role");
+                        roleRepository.save(role);
+                        log.info("Created role: {}", roleName);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to seed role {}: {}", roleName, e.getMessage());
+                }
+            });
+            log.info("Role seeding check complete.");
+        } catch (Exception e) {
+            log.warn("Could not seed roles. This might be normal if migrations haven't run yet. Error: {}", e.getMessage());
+        }
     }
 }
