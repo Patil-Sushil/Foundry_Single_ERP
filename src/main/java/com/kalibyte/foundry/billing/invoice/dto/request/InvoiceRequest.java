@@ -3,6 +3,7 @@ package com.kalibyte.foundry.billing.invoice.dto.request;
 import com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -22,4 +23,6 @@ public class InvoiceRequest {
     private LocalDate dueDate;
 
     private InvoiceStatus billStatus;
+
+    private BigDecimal amountPaid;
 }

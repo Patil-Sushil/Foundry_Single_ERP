@@ -11,6 +11,7 @@ public enum PaymentStatus {
 
     PENDING("Pending"),
     SUCCESS("Success"),
+    PARTIAL("Partial"),
     FAILED("Failed"),
     CANCELLED("Cancelled"),
     REFUNDED("Refunded"),
@@ -46,7 +47,7 @@ public enum PaymentStatus {
 
         throw new IllegalArgumentException(
                 "Unknown payment status: '" + value
-                        + "'. Allowed values: PENDING, SUCCESS, FAILED, CANCELLED, REFUNDED, BOUNCED"
+                        + "'. Allowed values: PENDING, SUCCESS, PARTIAL, FAILED, CANCELLED, REFUNDED, BOUNCED"
         );
     }
 }

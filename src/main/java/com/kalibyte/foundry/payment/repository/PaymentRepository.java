@@ -32,7 +32,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
        SELECT COALESCE(SUM(p.amountPaid), 0)
        FROM Payment p
        WHERE p.invoice.id = :invoiceId
-         AND p.status = 'SUCCESS'
+         AND p.status IN ('SUCCESS', 'PARTIAL')
        """)
     BigDecimal getTotalPaid(@Param("invoiceId") UUID invoiceId);
 
@@ -72,7 +72,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
              SUM(CASE WHEN p.payment_method = 'IMPS'          THEN p.amount_paid ELSE 0 END) AS imps_amount
            FROM payments p
            WHERE p.payment_date BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            GROUP BY p.payment_date
            ORDER BY p.payment_date
            """, nativeQuery = true)
@@ -85,7 +85,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            SELECT COALESCE(SUM(p.amountPaid), 0)
            FROM Payment p
            WHERE p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            """)
     BigDecimal getTotalCollection(
             @Param("from") LocalDate from,
@@ -96,7 +96,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            SELECT p.paymentMethod, SUM(p.amountPaid), COUNT(p)
            FROM Payment p
            WHERE p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            GROUP BY p.paymentMethod
            """)
     List<Object[]> getMethodWiseCollection(
@@ -108,7 +108,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            SELECT p.customer.id, p.customer.name, SUM(p.amountPaid)
            FROM Payment p
            WHERE p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            GROUP BY p.customer.id, p.customer.name
            ORDER BY SUM(p.amountPaid) DESC
            """)
@@ -120,7 +120,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
     @Query("""
            SELECT p.customer.id, SUM(p.amountPaid), MAX(p.paymentDate)
            FROM Payment p
-           WHERE p.status = 'SUCCESS'
+           WHERE p.status IN ('SUCCESS', 'PARTIAL')
            GROUP BY p.customer.id
            """)
     List<Object[]> getCustomerPayments();
@@ -130,7 +130,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            FROM Payment p
            WHERE p.customer.id = :customerId
              AND p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            ORDER BY p.paymentDate
            """)
     List<Payment> findPaymentsByCustomerAndDateRange(
@@ -143,7 +143,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            SELECT p.paymentDate, SUM(p.amountPaid)
            FROM Payment p
            WHERE p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            GROUP BY p.paymentDate
            ORDER BY p.paymentDate
            """)
@@ -156,7 +156,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            SELECT COALESCE(SUM(p.amountPaid), 0)
            FROM Payment p
            WHERE p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            """)
     BigDecimal getTotalCollections(
             @Param("from") LocalDate from,
@@ -167,7 +167,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
            SELECT FUNCTION('DATE_TRUNC', 'month', p.paymentDate), SUM(p.amountPaid)
            FROM Payment p
            WHERE p.paymentDate BETWEEN :from AND :to
-             AND p.status = 'SUCCESS'
+             AND p.status IN ('SUCCESS', 'PARTIAL')
            GROUP BY FUNCTION('DATE_TRUNC', 'month', p.paymentDate)
            ORDER BY FUNCTION('DATE_TRUNC', 'month', p.paymentDate)
            """)

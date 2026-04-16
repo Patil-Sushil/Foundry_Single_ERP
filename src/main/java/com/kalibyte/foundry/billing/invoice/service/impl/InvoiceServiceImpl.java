@@ -9,6 +9,7 @@ import com.kalibyte.foundry.billing.invoice.entity.InvoiceItem;
 import com.kalibyte.foundry.billing.invoice.mapper.InvoiceMapper;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceItemRepository;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
+import com.kalibyte.foundry.billing.invoice.service.InvoicePaymentService;
 import com.kalibyte.foundry.billing.invoice.service.InvoiceService;
 import com.kalibyte.foundry.billing.util.GstCalculationResult;
 import com.kalibyte.foundry.billing.util.PdfGenerator;
@@ -41,6 +42,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceMapper invoiceMapper;  // Injected MapStruct mapper
     private final PdfGenerator pdfGenerator;
     private final EmailService emailService;
+    private final InvoicePaymentService invoicePaymentService;
 
     //------------------------------------------------
     // GENERATE INVOICE
@@ -122,6 +124,14 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .build();
 
         invoiceRepository.save(invoice);
+
+        //------------------------------------------------
+        // PROCESS AUTOMATIC PAYMENT
+        //------------------------------------------------
+
+        if (request.getAmountPaid() != null && request.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
+            invoicePaymentService.processAutomaticPayment(invoice, request.getAmountPaid());
+        }
 
         //------------------------------------------------
         // CREATE INVOICE ITEMS WITH GST

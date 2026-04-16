@@ -3,6 +3,7 @@ package com.kalibyte.foundry.payment.service.impl;
 import com.kalibyte.foundry.billing.invoice.entity.Invoice;
 import com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
+import com.kalibyte.foundry.billing.invoice.service.InvoicePaymentService;
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
@@ -52,6 +53,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentValidator paymentValidator;
     private final EmailService emailService;
     private final PaymentMapper paymentMapper;
+    private final InvoicePaymentService invoicePaymentService;
 
     // ══════════════════════════════════════════════════
     //  CREATE PAYMENT
@@ -91,6 +93,9 @@ public class PaymentServiceImpl implements PaymentService {
         checkDuplicate(request);
 
         PaymentStatus initialStatus = resolveInitialStatus(request.getPaymentMethod());
+        if (initialStatus == PaymentStatus.SUCCESS && request.getAmountPaid().compareTo(invoice.getTotalAmount()) < 0) {
+            initialStatus = PaymentStatus.PARTIAL;
+        }
         Customer customer = invoice.getCustomer();
 
         Payment payment = Payment.builder()
@@ -121,7 +126,7 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.getAmountPaid(),
                 payment.getStatus().getDisplayName());
 
-        recalculateInvoiceStatus(invoice);
+        invoicePaymentService.updateInvoiceStatus(invoice.getId());
         sendPaymentEmail(payment, EmailEventType.PAYMENT_CREATED);
 
         return paymentMapper.toResponse(payment);
@@ -155,7 +160,7 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Payment {} — Cheque {} CLEARED ✅",
                 payment.getPaymentNumber(), payment.getInstrumentNumber());
 
-        recalculateInvoiceStatus(payment.getInvoice());
+        invoicePaymentService.updateInvoiceStatus(payment.getInvoice().getId());
         sendPaymentEmail(payment, EmailEventType.CHEQUE_CLEARED);
 
         return paymentMapper.toResponse(payment);
@@ -192,7 +197,7 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.getPaymentNumber(),
                 payment.getInstrumentNumber(), reason);
 
-        recalculateInvoiceStatus(payment.getInvoice());
+        invoicePaymentService.updateInvoiceStatus(payment.getInvoice().getId());
         sendPaymentEmail(payment, EmailEventType.CHEQUE_BOUNCED);
 
         return paymentMapper.toResponse(payment);
@@ -225,7 +230,7 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Payment {} CANCELLED | Reason: {}",
                 payment.getPaymentNumber(), request.getReason());
 
-        recalculateInvoiceStatus(payment.getInvoice());
+        invoicePaymentService.updateInvoiceStatus(payment.getInvoice().getId());
         sendPaymentEmail(payment, EmailEventType.PAYMENT_CANCELLED);
 
         return paymentMapper.toResponse(payment);
@@ -314,29 +319,6 @@ public class PaymentServiceImpl implements PaymentService {
     // ══════════════════════════════════════════════════
     //  PRIVATE HELPERS
     // ══════════════════════════════════════════════════
-
-    private void recalculateInvoiceStatus(Invoice invoice) {
-        BigDecimal totalPaid = paymentRepository.getTotalPaid(invoice.getId());
-        BigDecimal totalPending = paymentRepository.getTotalPending(invoice.getId());
-
-        InvoiceStatus newStatus;
-        if (totalPaid.compareTo(invoice.getTotalAmount()) >= 0) {
-            newStatus = InvoiceStatus.PAID;
-        } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0
-                || totalPending.compareTo(BigDecimal.ZERO) > 0) {
-            newStatus = InvoiceStatus.PARTIALLY_PAID;
-        } else {
-            newStatus = InvoiceStatus.UNPAID;
-        }
-
-        InvoiceStatus oldStatus = invoice.getBillStatus();
-        if (oldStatus != newStatus) {
-            invoice.setBillStatus(newStatus);
-            invoiceRepository.save(invoice);
-            log.info("Invoice {} status: {} → {}",
-                    invoice.getInvoiceNumber(), oldStatus, newStatus);
-        }
-    }
 
     private PaymentStatus resolveInitialStatus(PaymentMethod method) {
         return switch (method) {
