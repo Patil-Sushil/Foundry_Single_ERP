@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @media only screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+            }
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f9;
+            color: #333;
+        }
+        .container {
+            width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            background-color: #123566;
+            padding: 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .header img {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px;
+            line-height: 1.6;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #123566;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .summary-box {
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #123566;
+        }
+        .summary-item {
+            margin-bottom: 8px;
+        }
+        .summary-label {
+            font-weight: bold;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body th:fragment="layout(content)">
+    <div class="container">
+        <div class="header">
+            <h1 th:text="${companyName}">Foundry Name</h1>
+        </div>
+        <div class="content">
+            <div th:replace="${content}"></div>
+        </div>
+        <div class="footer">
+            <p th:text="${companyAddress}">Company Address</p>
+            <p>&copy; <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy')}">2026</span> <span th:text="${companyName}">Company Name</span>. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

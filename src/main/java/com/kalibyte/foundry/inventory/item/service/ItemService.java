@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.inventory.item.service;
 
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.inventory.item.dto.request.CreateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.request.UpdateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.response.ItemResponse;

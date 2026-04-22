@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email/layout/email-layout :: layout(~{::content})}">
+<body>
+    <div th:fragment="content">
+        <h2>Dear <span th:text="${customerName}">Customer</span>,</h2>
+        <p>Thank you for your order! We are pleased to confirm that your order <strong>#<span th:text="${orderNumber}">ORD-123</span></strong> has been received and is being processed.</p>
+        
+        <div class="summary-box">
+            <div class="summary-item">
+                <span class="summary-label">Order Date:</span>
+                <span th:text="${orderDate}">2026-04-17</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Total Amount:</span>
+                <span th:text="${totalAmount}">₹0.00</span>
+            </div>
+        </div>
+
+        <p>You can view your order details in the attached PDF.</p>
+        
+        <p>We will notify you once your order is ready for dispatch.</p>
+        
+        <p>Best Regards,<br>
+        <span th:text="${companyName}">Company Name</span></p>
+    </div>
+</body>
+</html>

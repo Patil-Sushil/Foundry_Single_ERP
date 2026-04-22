@@ -13,11 +13,14 @@ import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.layout.*;
 import com.itextpdf.layout.borders.*;
 import com.itextpdf.layout.element.*;
+import com.itextpdf.layout.properties.HorizontalAlignment;
 import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
 import com.kalibyte.foundry.billing.deliveryChallan.entity.*;
 import com.kalibyte.foundry.billing.invoice.entity.*;
 import com.kalibyte.foundry.order.entity.enums.GstType;
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -31,29 +34,47 @@ import java.util.List;
 @Component
 public class PdfGenerator {
 
+    @Value("${app.company.name}")
+    private String companyName;
+
+    @Value("${app.company.address}")
+    private String companyAddress;
+
+    @Value("${app.company.gstNo}")
+    private String companyGst;
+
+    @Value("${app.company.contact}")
+    private String companyContact;
+
+    @Value("${app.company.email}")
+    private String companyEmail;
+
+    @Value("${app.company.logoPath}")
+    private String logoPath;
+
+    @Value("${app.company.bankName}")
+    private String bankName;
+
+    @Value("${app.company.branch}")
+    private String bankBranch;
+
+    @Value("${app.company.accountNo}")
+    private String bankAccountNo;
+
+    @Value("${app.company.ifsc}")
+    private String bankIfsc;
+
+    @Value("${app.company.termsPayment}")
+    private String termsPayment;
+
+    @Value("${app.company.termsDelivery}")
+    private String termsDelivery;
+
     // ─── Theme Colors ───
     private static final DeviceRgb THEME_BLUE = new DeviceRgb(18, 53, 102);
     private static final DeviceRgb LIGHT_LINE = new DeviceRgb(200, 210, 225);
     private static final DeviceRgb ROW_BORDER = new DeviceRgb(160, 175, 195);
     private static final DeviceRgb LIGHT_BG = new DeviceRgb(245, 248, 252);
-
-    // ─── Company Constants ───
-    private static final String COMPANY_NAME = "KALI-BYTE PRECISION STEEL FOUNDRY";
-    private static final String COMPANY_PLOT = "Plot No: A-12, MIDC Industrial Area, Sangli - 416234";
-    private static final String COMPANY_GST = "GST No: 27AACM1234P125";
-    private static final String COMPANY_CONTACT = "Contact No: 0214-2654321";
-    private static final String COMPANY_EMAIL = "Email: info@kalibytefoundry.com";
-
-    // ─── Bank Details ───
-    private static final String BANK_ACCOUNT_NAME = "Kalibyte Precision Steel Foundry";
-    private static final String BANK_NAME = "HDFC Bank";
-    private static final String BANK_BRANCH = "Vishrambag (Sangli)";
-    private static final String BANK_ACCOUNT_NO = "5010012345678";
-    private static final String BANK_IFSC = "HDFC0000123";
-
-    // ─── Terms ───
-    private static final String TERMS_PAYMENT = "50% Advance, 50% Before Dispatch";
-    private static final String TERMS_DELIVERY = "Mumbai";
 
     // ─── Page Layout Constants ───
     private static final float PAGE_HEIGHT = PageSize.A4.getHeight();
@@ -65,6 +86,40 @@ public class PdfGenerator {
 
     private static final float TABLE_ROW_HEIGHT = 30f;
     private static final float TABLE_HEADER_HEIGHT = 35f;
+
+    private void addCompanyHeader(Document doc) {
+        try {
+            Image logo = new Image(com.itextpdf.io.image.ImageDataFactory.create(new ClassPathResource(logoPath).getInputStream().readAllBytes()));
+            logo.setWidth(65);
+            logo.setHorizontalAlignment(HorizontalAlignment.LEFT);
+            doc.add(logo);
+        } catch (Exception ignored) {}
+
+        Table headerTable = new Table(UnitValue.createPercentArray(new float[]{100}))
+                .useAllAvailableWidth()
+                .setMarginTop(-25);
+
+        headerTable.addCell(new Cell().add(new Paragraph(companyName)
+                        .setBold()
+                        .setFontSize(14)
+                        .setFontColor(THEME_BLUE))
+                .setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.CENTER));
+
+        headerTable.addCell(new Cell().add(new Paragraph(companyAddress)
+                        .setFontSize(8))
+                .setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.CENTER));
+
+        headerTable.addCell(new Cell().add(new Paragraph("GST: " + companyGst + " | Contact: " + companyContact + " | Email: " + companyEmail)
+                        .setFontSize(7))
+                .setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(2));
+
+        doc.add(headerTable);
+        doc.add(new LineSeparator(new SolidLine(1)).setMarginTop(1).setMarginBottom(2));
+    }
 
     // ════════════════════════════════════════════════════════════
     //  DELIVERY CHALLAN PDF
@@ -132,17 +187,11 @@ public class PdfGenerator {
     }
 
     private void addCompactDcHeader(Document doc, DeliveryChallan dc) {
-        Table header = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
-        header.setMarginBottom(4);
+        addCompanyHeader(doc);
 
-        Cell left = noBorderCell();
-        left.add(new Paragraph(COMPANY_NAME)
-                .setBold().setFontSize(12)
-                .setFontColor(THEME_BLUE).setMarginBottom(2));
-        left.add(miniLine(COMPANY_PLOT));
-        left.add(miniLine(COMPANY_GST));
-        left.add(miniLine(COMPANY_CONTACT + " | " + COMPANY_EMAIL));
-
+        Table info = new Table(new float[]{1f}).useAllAvailableWidth();
+        info.setMarginBottom(4);
+        
         Cell right = noBorderCell();
         right.add(miniKv("DC No: ",
                 safe(dc != null ? dc.getDcNumber() : null)));
@@ -152,10 +201,10 @@ public class PdfGenerator {
                 safe(dc != null ? dc.getVehicleNumber() : null)));
         right.add(miniKv("Transporter: ",
                 safe(dc != null ? dc.getTransportName() : null)));
+        right.setTextAlignment(TextAlignment.RIGHT);
 
-        header.addCell(left);
-        header.addCell(right);
-        doc.add(header);
+        info.addCell(right);
+        doc.add(info);
     }
 
     private void addCompactDcInfo(Document doc, DeliveryChallan dc) {
@@ -311,7 +360,7 @@ public class PdfGenerator {
 
         Cell right = noBorderCell();
         right.setTextAlignment(TextAlignment.RIGHT);
-        right.add(new Paragraph("For " + COMPANY_NAME)
+        right.add(new Paragraph("For " + companyName)
                 .setBold().setFontSize(8)
                 .setFontColor(THEME_BLUE).setMarginBottom(14));
         right.add(new Paragraph("Authorized Signatory")
@@ -355,7 +404,7 @@ public class PdfGenerator {
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
             Document doc = new Document(pdf, PageSize.A4);
-            doc.setMargins(TOP_MARGIN, RIGHT_MARGIN, BOTTOM_MARGIN, LEFT_MARGIN);
+            doc.setMargins(15, RIGHT_MARGIN, 15, LEFT_MARGIN);
 
             pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderHandler());
 
@@ -366,12 +415,12 @@ public class PdfGenerator {
             // ── Title ──
             doc.add(new Paragraph("TAX INVOICE")
                     .setBold()
-                    .setFontSize(18)
+                    .setFontSize(15)
                     .setFontColor(THEME_BLUE)
                     .setTextAlignment(TextAlignment.CENTER)
                     .setUnderline()
-                    .setMarginTop(6)
-                    .setMarginBottom(6));
+                    .setMarginTop(4)
+                    .setMarginBottom(4));
 
             addThinRule(doc);
 
@@ -379,12 +428,6 @@ public class PdfGenerator {
             addInvoiceToBlock(doc, invoice);
             addThinRule(doc);
 
-            // ── Subject ──
-            doc.add(new Paragraph()
-                    .add(kvInline("Subject: ", "Invoice for SG Iron Castings"))
-                    .setMarginTop(6).setMarginBottom(6));
-
-            addThinRule(doc);
 
             // ── Items Table ──
             addInvoiceItemsTable(doc, items);
@@ -410,37 +453,30 @@ public class PdfGenerator {
     }
 
     private void addInvoiceCompanyHeader(Document doc, Invoice invoice) {
-        doc.add(new Paragraph(COMPANY_NAME)
-                .setBold().setFontSize(20).setFontColor(THEME_BLUE)
-                .setTextAlignment(TextAlignment.CENTER).setMarginBottom(4));
+        addCompanyHeader(doc);
 
-        Table header = new Table(new float[]{2.2f, 1.8f}).useAllAvailableWidth();
-        header.setMarginBottom(4);
-
-        Cell left = noBorderCell();
-        left.add(miniLine(COMPANY_PLOT));
-        left.add(miniLine(COMPANY_GST));
-        left.add(miniLine(COMPANY_CONTACT + " | " + COMPANY_EMAIL));
+        Table header = new Table(new float[]{1f}).useAllAvailableWidth();
+        header.setMarginBottom(2);
 
         Cell right = noBorderCell();
         right.add(miniKv("Invoice No: ",
                 safe(invoice != null ? invoice.getInvoiceNumber() : null)));
         right.add(miniKv("Date: ",
                 formatDate(invoice != null ? invoice.getInvoiceDate() : null)));
+        right.setTextAlignment(TextAlignment.RIGHT);
 
-        header.addCell(left);
         header.addCell(right);
         doc.add(header);
     }
 
     private void addInvoiceToBlock(Document doc, Invoice invoice) {
         Table t = new Table(new float[]{1f}).useAllAvailableWidth();
-        t.setMarginTop(6).setMarginBottom(6);
+        t.setMarginTop(4).setMarginBottom(4);
 
         Cell c = noBorderCell();
         c.add(new Paragraph("To,")
                 .setBold().setFontColor(THEME_BLUE)
-                .setFontSize(10).setMarginBottom(3));
+                .setFontSize(9).setMarginBottom(2));
 
         String name = safe(invoice != null && invoice.getCustomer() != null
                 ? invoice.getCustomer().getName() : null);
@@ -452,7 +488,7 @@ public class PdfGenerator {
                 ? invoice.getCustomer().getPhone() : null);
 
         c.add(new Paragraph(name)
-                .setBold().setFontSize(10).setMarginBottom(1));
+                .setBold().setFontSize(9).setMarginBottom(1));
         c.add(miniLine(addr));
         c.add(miniKv("GST No: ", gst));
         c.add(miniKv("Mobile: ", phone));
@@ -467,7 +503,7 @@ public class PdfGenerator {
                 "Weight(Kg)", "Rate", "Qty", "GST%", "GST Amt", "Amount"};
 
         Table table = new Table(cols).useAllAvailableWidth();
-        table.setMarginTop(6);
+        table.setMarginTop(4);
 
         for (String h : headers) {
             table.addHeaderCell(headerCell(h));
@@ -543,7 +579,7 @@ public class PdfGenerator {
 
     private void addInvoiceTotalsBlock(Document doc, Invoice invoice) {
         Table t = new Table(new float[]{2.5f, 1f}).useAllAvailableWidth();
-        t.setMarginTop(8);
+        t.setMarginTop(4);
 
         t.addCell(totalLabel("Subtotal"));
         t.addCell(totalValue(formatCurrency(
@@ -579,18 +615,18 @@ public class PdfGenerator {
         // Grand Total highlighted bar
         Cell grandL = noBorderCell();
         grandL.setBackgroundColor(THEME_BLUE);
-        grandL.setPadding(10);
+        grandL.setPadding(6);
         grandL.add(new Paragraph("GRAND TOTAL")
-                .setBold().setFontSize(12)
+                .setBold().setFontSize(11)
                 .setFontColor(ColorConstants.WHITE));
 
         Cell grandR = noBorderCell();
         grandR.setBackgroundColor(THEME_BLUE);
-        grandR.setPadding(10);
+        grandR.setPadding(6);
         grandR.setTextAlignment(TextAlignment.RIGHT);
         grandR.add(new Paragraph(formatCurrency(
                 invoice != null ? invoice.getTotalAmount() : null))
-                .setBold().setFontSize(12)
+                .setBold().setFontSize(11)
                 .setFontColor(ColorConstants.WHITE));
 
         t.addCell(grandL);
@@ -602,36 +638,36 @@ public class PdfGenerator {
             doc.add(new Paragraph()
                     .add(kvInline("Amount in Words: ",
                             convertToWords(invoice.getTotalAmount())))
-                    .setFontSize(9)
-                    .setMarginTop(4)
-                    .setMarginBottom(4));
+                    .setFontSize(8)
+                    .setMarginTop(2)
+                    .setMarginBottom(2));
         }
     }
 
     private void addBankAndTermsBlock(Document doc) {
         Table outer = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
-        outer.setMarginTop(10).setMarginBottom(10);
+        outer.setMarginTop(4).setMarginBottom(4);
 
         Cell bank = noBorderCell();
         bank.add(new Paragraph("Bank Details:")
                 .setBold().setFontColor(THEME_BLUE)
-                .setFontSize(10).setMarginBottom(4));
-        bank.add(miniKv("Account Name: ", BANK_ACCOUNT_NAME));
-        bank.add(miniKv("Bank: ", BANK_NAME));
-        bank.add(miniKv("Branch: ", BANK_BRANCH));
-        bank.add(miniKv("Account No: ", BANK_ACCOUNT_NO));
-        bank.add(miniKv("IFSC: ", BANK_IFSC));
+                .setFontSize(9).setMarginBottom(2));
+        bank.add(miniKv("Account Name: ", companyName));
+        bank.add(miniKv("Bank: ", bankName));
+        bank.add(miniKv("Branch: ", bankBranch));
+        bank.add(miniKv("Account No: ", bankAccountNo));
+        bank.add(miniKv("IFSC: ", bankIfsc));
 
         Cell terms = noBorderCell();
         terms.add(new Paragraph("Terms & Conditions:")
                 .setBold().setFontColor(THEME_BLUE)
-                .setFontSize(10).setMarginBottom(4));
-        terms.add(miniKv("Payment: ", TERMS_PAYMENT));
-        terms.add(miniKv("Delivery: ", TERMS_DELIVERY));
+                .setFontSize(9).setMarginBottom(2));
+        terms.add(miniKv("Payment: ", termsPayment));
+        terms.add(miniKv("Delivery: ", termsDelivery));
         terms.add(new Paragraph("* Goods once sold will not be taken back.")
-                .setFontSize(8).setMarginTop(4));
+                .setFontSize(7).setMarginTop(2));
         terms.add(new Paragraph("* Subject to Kolhapur jurisdiction.")
-                .setFontSize(8));
+                .setFontSize(7));
 
         outer.addCell(bank);
         outer.addCell(terms);
@@ -640,17 +676,17 @@ public class PdfGenerator {
 
     private void addInvoiceSignature(Document doc) {
         Table t = new Table(new float[]{1f, 1f}).useAllAvailableWidth();
-        t.setMarginTop(10).setMarginBottom(6);
+        t.setMarginTop(4).setMarginBottom(4);
 
         Cell left = noBorderCell();
         left.add(new Paragraph("Customer Seal & Signature")
-                .setFontSize(8).setFontColor(THEME_BLUE).setMarginTop(30));
+                .setFontSize(8).setFontColor(THEME_BLUE).setMarginTop(18));
 
         Cell right = noBorderCell();
         right.setTextAlignment(TextAlignment.RIGHT);
-        right.add(new Paragraph("For " + COMPANY_NAME)
+        right.add(new Paragraph("For " + companyName)
                 .setBold().setFontSize(9)
-                .setFontColor(THEME_BLUE).setMarginBottom(25));
+                .setFontColor(THEME_BLUE).setMarginBottom(12));
         right.add(new Paragraph("______________________________")
                 .setFontSize(8));
         right.add(new Paragraph("Authorized Signatory")
@@ -671,7 +707,7 @@ public class PdfGenerator {
                 .setFontColor(ColorConstants.WHITE)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setBold()
-                .setPadding(6)
+                .setPadding(4)
                 .setBorder(new SolidBorder(ColorConstants.WHITE, 0.5f))
                 .add(new Paragraph(text).setFontSize(8));
     }
@@ -679,7 +715,7 @@ public class PdfGenerator {
     private Cell bodyCell(String text, TextAlignment align, boolean shaded) {
         Cell cell = new Cell()
                 .setTextAlignment(align)
-                .setPadding(5)
+                .setPadding(3)
                 .setBorder(new SolidBorder(ROW_BORDER, 0.5f))
                 .add(new Paragraph(safe(text)).setFontSize(8));
         if (shaded) {
@@ -693,7 +729,7 @@ public class PdfGenerator {
                 .setBackgroundColor(LIGHT_BG)
                 .setTextAlignment(align)
                 .setBold()
-                .setPadding(6)
+                .setPadding(4)
                 .setBorder(new SolidBorder(THEME_BLUE, 0.8f))
                 .add(new Paragraph(text).setFontSize(8)
                         .setFontColor(THEME_BLUE));
@@ -703,18 +739,18 @@ public class PdfGenerator {
         return new Cell()
                 .setBorder(Border.NO_BORDER)
                 .setBorderBottom(new SolidBorder(LIGHT_LINE, 0.5f))
-                .setPadding(8)
+                .setPadding(4)
                 .add(new Paragraph(text)
-                        .setFontColor(THEME_BLUE).setBold().setFontSize(10));
+                        .setFontColor(THEME_BLUE).setBold().setFontSize(9));
     }
 
     private Cell totalValue(String text) {
         return new Cell()
                 .setBorder(Border.NO_BORDER)
                 .setBorderBottom(new SolidBorder(LIGHT_LINE, 0.5f))
-                .setPadding(8)
+                .setPadding(4)
                 .setTextAlignment(TextAlignment.RIGHT)
-                .add(new Paragraph(text).setBold().setFontSize(10));
+                .add(new Paragraph(text).setBold().setFontSize(9));
     }
 
     private Cell noBorderCell() {
@@ -727,12 +763,12 @@ public class PdfGenerator {
 
     private Paragraph miniLine(String text) {
         return new Paragraph(safe(text))
-                .setFontSize(8).setMargin(0).setMarginBottom(2);
+                .setFontSize(8).setMargin(0).setMarginBottom(1);
     }
 
     private Paragraph miniKv(String key, String value) {
         Paragraph p = new Paragraph()
-                .setFontSize(8).setMargin(0).setMarginBottom(2);
+                .setFontSize(8).setMargin(0).setMarginBottom(1);
         p.add(new Text(key).setBold().setFontColor(THEME_BLUE));
         p.add(new Text(safe(value)));
         return p;
@@ -753,8 +789,8 @@ public class PdfGenerator {
         SolidLine solid = new SolidLine(0.5f);
         solid.setColor(LIGHT_LINE);
         LineSeparator line = new LineSeparator(solid);
-        line.setMarginTop(3);
-        line.setMarginBottom(3);
+        line.setMarginTop(1);
+        line.setMarginBottom(1);
         doc.add(line);
     }
 

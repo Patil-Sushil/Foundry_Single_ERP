@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email/layout/email-layout :: layout(~{::content})}">
+<body>
+    <div th:fragment="content">
+        <h2>Dear <span th:text="${customerName}">Customer</span>,</h2>
+        <p>Your invoice <strong>#<span th:text="${invoiceNumber}">INV-123</span></strong> has been generated successfully.</p>
+        
+        <div class="summary-box">
+            <div class="summary-item">
+                <span class="summary-label">Invoice Date:</span>
+                <span th:text="${invoiceDate}">2026-04-17</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Due Date:</span>
+                <span th:text="${dueDate}">2026-05-17</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Total Amount:</span>
+                <span th:text="${totalAmount}">₹0.00</span>
+            </div>
+        </div>
+
+        <p>Please find the invoice PDF attached to this email for payment processing.</p>
+        
+        <p>Thank you for your business!</p>
+        
+        <p>Best Regards,<br>
+        <span th:text="${companyName}">Company Name</span></p>
+    </div>
+</body>
+</html>

@@ -29,6 +29,5 @@ public class ProductionEntryRequest {
     private String remarks;
 
     @NotEmpty(message = "At least one item is required")
-    @Valid
-    private List<ProductionItemRequest> items;
+    private List<@Valid ProductionItemRequest> items;
 }

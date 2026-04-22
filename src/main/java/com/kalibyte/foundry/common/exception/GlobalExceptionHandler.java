@@ -3,6 +3,7 @@ package com.kalibyte.foundry.common.exception;
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.customer.exception.DuplicateGstException;
 import com.kalibyte.foundry.dashboard.exception.DashboardException;
+import com.kalibyte.foundry.inventory.department.exception.DuplicateDepartmentException;
 import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
 import com.kalibyte.foundry.labors.labor.exception.LaborException;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -52,8 +53,8 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
-    @ExceptionHandler(com.kalibyte.foundry.inventory.department.exception.DuplicateDepartmentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDuplicateDepartmentException(com.kalibyte.foundry.inventory.department.exception.DuplicateDepartmentException ex) {
+    @ExceptionHandler(DuplicateDepartmentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateDepartmentException(DuplicateDepartmentException ex) {
         log.warn("Duplicate department: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ApiResponse<>(false, ex.getMessage(), null));

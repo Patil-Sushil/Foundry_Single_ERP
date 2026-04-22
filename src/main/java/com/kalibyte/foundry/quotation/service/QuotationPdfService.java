@@ -14,6 +14,7 @@ import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.*;
 import com.kalibyte.foundry.quotation.entity.Quotation;
 import com.kalibyte.foundry.quotation.entity.QuotationItem;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,24 @@ import java.math.BigDecimal;
 
 @Service
 public class QuotationPdfService {
+
+    @Value("${app.company.name}")
+    private String companyName;
+
+    @Value("${app.company.address}")
+    private String companyAddress;
+
+    @Value("${app.company.gstNo}")
+    private String companyGst;
+
+    @Value("${app.company.contact}")
+    private String companyContact;
+
+    @Value("${app.company.email}")
+    private String companyEmail;
+
+    @Value("${app.company.logoPath}")
+    private String logoPath;
 
     public byte[] generatePdf(Quotation quotation) {
 
@@ -45,30 +64,40 @@ public class QuotationPdfService {
             try {
                 Image logo = new Image(
                         ImageDataFactory.create(
-                                new ClassPathResource("static/logo.png")
+                                new ClassPathResource(logoPath)
                                         .getInputStream()
                                         .readAllBytes()
                         )
                 );
-                logo.setWidth(140);
-                logo.setHorizontalAlignment(HorizontalAlignment.CENTER);
+                logo.setWidth(100);
+                logo.setHorizontalAlignment(HorizontalAlignment.LEFT);
                 document.add(logo);
             } catch (Exception ignored) {}
 
             // ================= COMPANY HEADER =================
-            document.add(new Paragraph("KALI-BYTE PRECISION STEEL FOUNDRY")
-                    .setBold()
-                    .setFontSize(20)
-                    .setFontColor(ColorConstants.BLUE)
+            Table headerTable = new Table(UnitValue.createPercentArray(new float[]{100}))
+                    .useAllAvailableWidth()
+                    .setMarginTop(-30);
+
+            headerTable.addCell(new Cell().add(new Paragraph(companyName)
+                            .setBold()
+                            .setFontSize(18)
+                            .setFontColor(ColorConstants.BLUE))
+                    .setBorder(Border.NO_BORDER)
                     .setTextAlignment(TextAlignment.CENTER));
 
-            document.add(new Paragraph(
-                    "Plot No: A-12, MIDC Industrial Area, sangli - 416436")
+            headerTable.addCell(new Cell().add(new Paragraph(companyAddress)
+                            .setFontSize(9))
+                    .setBorder(Border.NO_BORDER)
                     .setTextAlignment(TextAlignment.CENTER));
 
-            document.add(new Paragraph(
-                    "GST No: 27AACM1234P125 | Contact: 0214-2654321 | Email: info@kalibytefoundry.com")
-                    .setTextAlignment(TextAlignment.CENTER));
+            headerTable.addCell(new Cell().add(new Paragraph("GST: " + companyGst + " | Contact: " + companyContact + " | Email: " + companyEmail)
+                            .setFontSize(9))
+                    .setBorder(Border.NO_BORDER)
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(10));
+
+            document.add(headerTable);
 
             addSeparator(document);
 
@@ -183,7 +212,7 @@ public class QuotationPdfService {
 
             // Left Cell
             Cell leftCell = new Cell()
-                    .add(new Paragraph("For Kali-Byte Precision Steel Foundry"))
+                    .add(new Paragraph("For " + companyName))
                     .setBorder(Border.NO_BORDER)
                     .setVerticalAlignment(VerticalAlignment.BOTTOM);
 

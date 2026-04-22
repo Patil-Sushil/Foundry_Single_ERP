@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.ledger.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.inventory.ledger.dto.response.VendorBalanceResponse;
 import com.kalibyte.foundry.inventory.ledger.dto.response.VendorLedgerResponse;
 import com.kalibyte.foundry.inventory.ledger.service.VendorLedgerService;
@@ -34,13 +35,13 @@ public class VendorLedgerController {
 
 	@GetMapping("/{vendorId}/ledger")
 	@PreAuthorize("hasAnyRole('ADMIN','FINANCE')")
-	public ApiResponse<Page<VendorLedgerResponse>> getLedger(
+	public ApiResponse<PageResponse<VendorLedgerResponse>> getLedger(
             @PathVariable Long vendorId,
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             Pageable pageable) {
         return ApiResponse.success("Vendor Ledger retrieved successfully", 
-                vendorLedgerService.getVendorLedger(vendorId, from, to, pageable));
+                PageResponse.from(vendorLedgerService.getVendorLedger(vendorId, from, to, pageable)));
     }
 
     @GetMapping("/{vendorId}/ledger/balance")

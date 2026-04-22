@@ -6,6 +6,7 @@ import com.kalibyte.foundry.billing.invoice.dto.request.InvoiceRequest;
 import com.kalibyte.foundry.billing.invoice.dto.response.InvoiceResponse;
 import com.kalibyte.foundry.billing.invoice.entity.Invoice;
 import com.kalibyte.foundry.billing.invoice.entity.InvoiceItem;
+import com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus;
 import com.kalibyte.foundry.billing.invoice.mapper.InvoiceMapper;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceItemRepository;
 import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
@@ -120,11 +121,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .totalAmount(gstResult.getGrandTotal())
                 .invoiceDate(request.getInvoiceDate())
                 .dueDate(request.getDueDate())
-                .billStatus(request.getBillStatus())
+                .billStatus(InvoiceStatus.UNPAID)
                 .build();
 
         invoiceRepository.save(invoice);
-
         //------------------------------------------------
         // PROCESS AUTOMATIC PAYMENT
         //------------------------------------------------
@@ -176,10 +176,18 @@ public class InvoiceServiceImpl implements InvoiceService {
         // SEND EMAIL
         //------------------------------------------------
 
-        emailService.sendEmailWithAttachment(
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("customerName", customer.getName());
+        variables.put("invoiceNumber", invoice.getInvoiceNumber());
+        variables.put("invoiceDate", invoice.getInvoiceDate().toString());
+        variables.put("dueDate", invoice.getDueDate().toString());
+        variables.put("totalAmount", "₹ " + invoice.getTotalAmount());
+
+        emailService.sendTemplatedEmailWithAttachment(
                 customer.getEmail(),
                 "Invoice - " + invoice.getInvoiceNumber(),
-                "Please find attached invoice.",
+                "invoice",
+                variables,
                 pdf,
                 "Invoice-" + invoice.getInvoiceNumber() + ".pdf"
         );

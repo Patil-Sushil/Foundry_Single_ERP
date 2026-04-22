@@ -6,12 +6,12 @@ spring:
     name: FoundryApplication
 
   datasource:
-#     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:9090/Foundry_Single_ERP?useSSL=false}
+#     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.11.41:5432/foundry_dev_db?useSSL=false}
 #     username: ${SPRING_DATASOURCE_USERNAME:postgres}
 #     password: ${SPRING_DATASOURCE_PASSWORD:1422}
 #     driver-class-name: org.postgresql.Driver
 
-      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-gentle-waterfall-a1tvsw0l-poxoler.ap-southeast-1.aws.neon.tech:5432/neondb?sslmode=require&user=neondb_owner&password=npg_Qg0h7AnrVNvz}
+      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-gentle-waterfall-a1tvsw0l-poxoler.ap-southeast-1.aws.neon.tech:5432/neon_db?sslmode=require&user=neondb_owner&password=npg_Qg0h7AnrVNvz}
 #      username: ${SPRING_DATASOURCE_USERNAME:devuser}
 #      password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
       driver-class-name: org.postgresql.Driver
@@ -50,6 +50,19 @@ jwt:
   refresh-expiration: 604800000
 
 app:
+  company:
+    name: "KALI-BYTE PRECISION STEEL FOUNDRY"
+    address: "Plot No: A-12, MIDC Industrial Area, Sangli - 416234"
+    gstNo: "27AACM1234P125"
+    contact: "0214-2654321"
+    email: "info@kalibytefoundry.com"
+    logoPath: "static/logo.png"
+    bankName: "HDFC Bank"
+    branch: "Vishrambag (Sangli)"
+    accountNo: "5010012345678"
+    ifsc: "HDFC0000123"
+    termsPayment: "50% Advance, 50% Before Dispatch"
+    termsDelivery: "Ex-Works Sangli"
   company-state: ${COMPANY_STATE:Maharashtra}
   default-admin:
     email: admin@foundry.com

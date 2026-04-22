@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email/layout/email-layout :: layout(~{::content})}">
+<body>
+    <div th:fragment="content">
+        <h2>Dear <span th:text="${customerName}">Customer</span>,</h2>
+        <p>Thank you for your inquiry. We are pleased to provide you with our quotation <strong>#<span th:text="${quotationNumber}">QT-123</span></strong>.</p>
+        
+        <div class="summary-box">
+            <div class="summary-item">
+                <span class="summary-label">Quotation Date:</span>
+                <span th:text="${quotationDate}">2026-04-17</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Total Amount:</span>
+                <span th:text="${totalAmount}">₹0.00</span>
+            </div>
+        </div>
+
+        <p>You can find the detailed quotation PDF attached to this email.</p>
+        
+        <p>If you have any questions regarding this quotation, please feel free to contact us.</p>
+        
+        <p>Best Regards,<br>
+        <span th:text="${companyName}">Company Name</span></p>
+    </div>
+</body>
+</html>

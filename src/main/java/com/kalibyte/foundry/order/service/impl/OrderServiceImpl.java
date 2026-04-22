@@ -47,10 +47,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -577,84 +574,18 @@ public class OrderServiceImpl implements OrderService {
                 return;
             }
 
-            String subject = "Order Confirmation - " + order.getOrderNumber();
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("customerName", customer.getName());
+            variables.put("orderNumber", order.getOrderNumber());
+            variables.put("orderDate", order.getOrderDate().toString());
+            variables.put("totalAmount", formatINR(order.getTotalAmount()));
 
-            StringBuilder gstInfoHtml = new StringBuilder();
-            if (order.getIgst() != null && order.getIgst().compareTo(BigDecimal.ZERO) > 0) {
-                gstInfoHtml.append(String.format("<tr><td style='padding: 8px;'>IGST (%s%%)</td><td style='padding: 8px; text-align: right;'>%s</td></tr>",
-                        order.getGstPercentage(), formatINR(order.getIgst())));
-            } else {
-                BigDecimal halfGst = order.getGstPercentage().divide(BigDecimal.valueOf(2));
-                gstInfoHtml.append(String.format("<tr><td style='padding: 8px;'>CGST (%s%%)</td><td style='padding: 8px; text-align: right;'>%s</td></tr>",
-                        halfGst, formatINR(order.getCgst())));
-                gstInfoHtml.append(String.format("<tr><td style='padding: 8px;'>SGST (%s%%)</td><td style='padding: 8px; text-align: right;'>%s</td></tr>",
-                        halfGst, formatINR(order.getSgst())));
-            }
-
-            String paymentInfo = order.getPaymentTermsDisplay() != null
-                    ? order.getPaymentTermsDisplay() : "Not specified";
-
-            BigDecimal totalOrderWeight = order.getItems().stream()
-                    .map(item -> item.getNetWeightKg().multiply(BigDecimal.valueOf(item.getQuantity())))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            String htmlBody = String.format("""
-                    <div style='font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; border: 1px solid #eee;'>
-                        <h2 style='color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;'>Order Confirmation</h2>
-                        <p>Dear <strong>%s</strong>,</p>
-                        <p>Your order has been created successfully. Below are your order details:</p>
-                        
-                        <table style='width: 100%%; border-collapse: collapse; margin-bottom: 20px;'>
-                            <tr><td style='width: 30%%; padding: 8px; font-weight: bold;'>Order Number</td><td style='padding: 8px;'>%s</td></tr>
-                            <tr><td style='padding: 8px; font-weight: bold;'>Order Type</td><td style='padding: 8px;'>%s</td></tr>
-                            <tr><td style='padding: 8px; font-weight: bold;'>Order Date</td><td style='padding: 8px;'>%s</td></tr>
-                            <tr><td style='padding: 8px; font-weight: bold;'>Delivery Date</td><td style='padding: 8px;'>%s</td></tr>
-                            <tr><td style='padding: 8px; font-weight: bold;'>Payment Terms</td><td style='padding: 8px;'>%s</td></tr>
-                            <tr><td style='padding: 8px; font-weight: bold;'>Total Order Weight</td><td style='padding: 8px;'>%s Kg</td></tr>
-                        </table>
-
-                        <h3 style='color: #333;'>Items:</h3>
-                        <table style='width: 100%%; border-collapse: collapse; margin-bottom: 20px;'>
-                            <thead style='background-color: #f8f9fa;'>
-                                <tr>
-                                    <th style='border: 1px solid #dee2e6; padding: 10px; text-align: left;'>Sr</th>
-                                    <th style='border: 1px solid #dee2e6; padding: 10px; text-align: left;'>Description</th>
-                                    <th style='border: 1px solid #dee2e6; padding: 10px; text-align: center;'>Qty</th>
-                                    <th style='border: 1px solid #dee2e6; padding: 10px; text-align: right;'>Total Weight</th>
-                                    <th style='border: 1px solid #dee2e6; padding: 10px; text-align: right;'>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                %s
-                            </tbody>
-                        </table>
-
-                        <div style='float: right; width: 40%%;'>
-                            <table style='width: 100%%; border-collapse: collapse;'>
-                                <tr><td style='padding: 8px;'>Sub Total</td><td style='padding: 8px; text-align: right;'>%s</td></tr>
-                                %s
-                                <tr><td style='padding: 8px; font-weight: bold; background-color: #f8f9fa;'>Grand Total</td><td style='padding: 8px; text-align: right; font-weight: bold; background-color: #f8f9fa;'>%s</td></tr>
-                            </table>
-                        </div>
-                        <div style='clear: both;'></div>
-
-                        <p style='margin-top: 40px;'>Thank you for your business!</p>
-                        <p>Best Regards,<br><strong>Kali-Byte Precision Steel Foundry</strong></p>
-                    </div>
-                    """,
-                    customer.getName(),
-                    order.getOrderNumber(),
-                    order.getOrderType(),
-                    order.getOrderDate(),
-                    order.getDeliveryDate() != null ? order.getDeliveryDate() : "To be confirmed",
-                    paymentInfo,
-                    totalOrderWeight.setScale(3, java.math.RoundingMode.HALF_UP).toString(),
-                    formatOrderItemsHtml(order.getItems()),
-                    formatINR(order.getSubTotal()),
-                    gstInfoHtml.toString(),
-                    formatINR(order.getTotalAmount()));
-
-            emailService.sendHtmlEmail(customer.getEmail(), subject, htmlBody);
+            emailService.sendTemplatedEmail(
+                    customer.getEmail(),
+                    "Order Confirmation - " + order.getOrderNumber(),
+                    "order",
+                    variables
+            );
 
             log.info("Order confirmation email sent for: {}", order.getOrderNumber());
 
@@ -664,36 +595,10 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private String formatOrderItemsHtml(List<OrderItem> items) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            OrderItem item = items.get(i);
-            String machiningText = Boolean.TRUE.equals(item.getIsMachiningRequired()) ? "Yes" : "No";
-            
-            BigDecimal lineWeight = item.getNetWeightKg() != null 
-                    ? item.getNetWeightKg().multiply(BigDecimal.valueOf(item.getQuantity()))
-                    : BigDecimal.ZERO;
-
-            sb.append("<tr>");
-            sb.append(String.format("<td style='border: 1px solid #dee2e6; padding: 8px;'>%d</td>", i + 1));
-            sb.append(String.format("<td style='border: 1px solid #dee2e6; padding: 8px;'>%s<br><small>Grade: %s | Process: %s | Machining: %s</small></td>",
-                    item.getPartName(),
-                    item.getMaterialGrade() != null ? item.getMaterialGrade() : "N/A",
-                    item.getCastingProcess() != null ? item.getCastingProcess() : "N/A",
-                    machiningText));
-            sb.append(String.format("<td style='border: 1px solid #dee2e6; padding: 8px; text-align: center;'>%d</td>", item.getQuantity()));
-            sb.append(String.format("<td style='border: 1px solid #dee2e6; padding: 8px; text-align: right;'>%s kg</td>", lineWeight.setScale(3, java.math.RoundingMode.HALF_UP).toString()));
-            sb.append(String.format("<td style='border: 1px solid #dee2e6; padding: 8px; text-align: right;'>%s</td>", formatINR(item.getLineTotal())));
-            sb.append("</tr>");
-        }
-        return sb.toString();
-    }
-
     private String formatINR(BigDecimal amount) {
         if (amount == null) return "₹ 0.00";
         return "₹ " + String.format("%,.2f", amount);
     }
-
     // =========================================================
     //  ORDER NUMBER GENERATION
     // =========================================================

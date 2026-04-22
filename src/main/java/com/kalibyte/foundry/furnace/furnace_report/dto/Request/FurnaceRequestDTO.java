@@ -30,6 +30,5 @@ public class FurnaceRequestDTO {
 	private LocalDate date;
 
 	@NotNull
-	@Valid
-	private List<FurnaceHeatRequest> heats;
+	private List<@Valid FurnaceHeatRequest> heats;
 }

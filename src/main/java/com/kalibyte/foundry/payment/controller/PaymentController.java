@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.payment.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.payment.dto.request.PaymentCancelRequest;
 import com.kalibyte.foundry.payment.dto.request.PaymentCreateRequest;
 import com.kalibyte.foundry.payment.dto.request.PaymentFilterRequest;
@@ -64,11 +65,11 @@ public class PaymentController {
 
     // ── Search / Filter with Pagination ──
     @PostMapping("/search")
-    public ApiResponse<Page<PaymentResponse>> searchPayments(
+    public ApiResponse<PageResponse<PaymentResponse>> searchPayments(
             @RequestBody PaymentFilterRequest filter) {
 
         return ApiResponse.success(
-                paymentService.searchPayments(filter)
+                PageResponse.from(paymentService.searchPayments(filter))
         );
     }
 

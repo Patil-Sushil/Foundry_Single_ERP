@@ -34,6 +34,5 @@ public class OrderCreateRequest {
     // Default GST percentage for the order (can be overridden per item)
     private BigDecimal gstPercentage;
 
-    @Valid
-    private List<OrderItemRequest> items;
+    private List<@Valid OrderItemRequest> items;
 }

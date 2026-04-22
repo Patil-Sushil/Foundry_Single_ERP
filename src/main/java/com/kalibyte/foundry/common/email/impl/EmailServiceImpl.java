@@ -11,6 +11,10 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -18,12 +22,16 @@ import org.springframework.stereotype.Service;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
 
     @Value("${spring.mail.username:noreply@kalibyte.com}")
     private String fromEmail;
 
     @Value("${app.company.name:Kalibyte Foundry}")
     private String companyName;
+
+    @Value("${app.company.address}")
+    private String companyAddress;
 
     // ── SIMPLE TEXT EMAIL ──
     @Override
@@ -48,8 +56,19 @@ public class EmailServiceImpl implements EmailService {
             helper.setText(htmlBody, true); // true = isHtml
             mailSender.send(message);
         } catch (MessagingException e) {
+            log.error("Failed to send HTML email", e);
             throw new RuntimeException("Failed to send HTML email", e);
         }
+    }
+
+    @Override
+    public void sendTemplatedEmail(String to, String subject, String templateName, Map<String, Object> variables) {
+        Context context = new Context();
+        context.setVariables(variables);
+        context.setVariable("companyName", companyName);
+        context.setVariable("companyAddress", companyAddress);
+        String htmlBody = templateEngine.process("email/" + templateName, context);
+        sendHtmlEmail(to, subject, htmlBody);
     }
 
     // ── EMAIL WITH ATTACHMENT ──
@@ -67,7 +86,33 @@ public class EmailServiceImpl implements EmailService {
             helper.addAttachment(fileName, new ByteArrayResource(attachment));
             mailSender.send(message);
         } catch (MessagingException e) {
+            log.error("Failed to send email with attachment", e);
             throw new RuntimeException("Failed to send email with attachment", e);
+        }
+    }
+
+    @Override
+    public void sendTemplatedEmailWithAttachment(
+            String to, String subject, String templateName,
+            Map<String, Object> variables, byte[] attachment, String fileName) {
+        try {
+            Context context = new Context();
+            context.setVariables(variables);
+            context.setVariable("companyName", companyName);
+            context.setVariable("companyAddress", companyAddress);
+            String htmlBody = templateEngine.process("email/" + templateName, context);
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            helper.addAttachment(fileName, new ByteArrayResource(attachment));
+            mailSender.send(message);
+        } catch (MessagingException e) {
+            log.error("Failed to send templated email with attachment", e);
+            throw new RuntimeException("Failed to send templated email with attachment", e);
         }
     }
 }

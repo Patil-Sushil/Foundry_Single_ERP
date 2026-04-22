@@ -48,8 +48,7 @@ public class FurnaceHeatRequest {
 
     private Double pouringTemp;
 
-    @Valid
-    private List<HeatMaterialItemRequest> materialsUsed;
+    private List<@Valid HeatMaterialItemRequest> materialsUsed;
 
     private LocalTime pouringStartTime;
 
@@ -73,6 +72,5 @@ public class FurnaceHeatRequest {
 
     private Boolean autoReturnScrap;
 
-    @Valid
-    private List<HeatOrderItemRequest> heatOrderItems;
+    private List<@Valid HeatOrderItemRequest> heatOrderItems;
 }

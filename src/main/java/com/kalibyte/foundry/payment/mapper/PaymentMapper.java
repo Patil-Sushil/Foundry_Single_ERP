@@ -1,9 +1,11 @@
 package com.kalibyte.foundry.payment.mapper;
 
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.payment.dto.response.PaymentResponse;
 import com.kalibyte.foundry.payment.entity.Payment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -17,4 +19,6 @@ public interface PaymentMapper {
     PaymentResponse toResponse(Payment payment);
 
     List<PaymentResponse> toResponseList(List<Payment> payments);
+
+    PageResponse toPageResponse(Page<Payment> payments);
 }

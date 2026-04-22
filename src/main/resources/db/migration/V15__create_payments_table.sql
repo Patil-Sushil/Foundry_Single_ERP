@@ -80,7 +80,7 @@ CREATE TABLE payments
 
     CONSTRAINT chk_payment_status
         CHECK (status IN (
-                          'PENDING', 'SUCCESS', 'FAILED',
+                          'PENDING', 'SUCCESS', 'FAILED','PARTIAL',
                           'CANCELLED', 'REFUNDED', 'BOUNCED'
             ))
 );

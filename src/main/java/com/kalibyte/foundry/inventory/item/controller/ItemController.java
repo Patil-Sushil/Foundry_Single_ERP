@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.item.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import com.kalibyte.foundry.common.security.UserPrincipal;
 import com.kalibyte.foundry.inventory.item.dto.request.CreateItemRequest;
 import com.kalibyte.foundry.inventory.item.dto.request.StockAdjustmentRequest;
@@ -61,12 +62,12 @@ public class ItemController {
     }
 
     @GetMapping
-    public ApiResponse<Page<ItemResponse>> getAll(
+    public ApiResponse<PageResponse<ItemResponse>> getAll(
             @RequestParam(required = false) ItemCategory category,
             @RequestParam(required = false) Boolean isActive,
             @RequestParam(required = false) Boolean isScrap,
             Pageable pageable) {
-        return ApiResponse.success("Items retrieved successfully", itemService.getAll(category, isActive, isScrap, pageable));
+        return ApiResponse.success("Items retrieved successfully", PageResponse.from(itemService.getAll(category, isActive, isScrap, pageable)));
     }
 
     @GetMapping("/{id}")

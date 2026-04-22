@@ -16,7 +16,6 @@ import com.kalibyte.foundry.payment.dto.response.PaymentSummaryResponse;
 import com.kalibyte.foundry.payment.email.EmailEventType;
 import com.kalibyte.foundry.payment.email.PaymentEmailContext;
 import com.kalibyte.foundry.payment.email.PaymentEmailContextFactory;
-import com.kalibyte.foundry.payment.email.PaymentEmailTemplateBuilder;
 import com.kalibyte.foundry.payment.entity.Enums.PaymentMethod;
 import com.kalibyte.foundry.payment.entity.Enums.PaymentStatus;
 import com.kalibyte.foundry.payment.entity.Payment;
@@ -32,14 +31,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -120,13 +117,14 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentRepository.save(payment);
 
+        updateInvoiceStatus(invoice);
+
         log.info("Payment {} created | Invoice: {} | Method: {} | Amount: ₹{} | Status: {}",
                 payment.getPaymentNumber(), invoice.getInvoiceNumber(),
                 payment.getPaymentMethod().getDisplayName(),
                 payment.getAmountPaid(),
                 payment.getStatus().getDisplayName());
 
-        invoicePaymentService.updateInvoiceStatus(invoice.getId());
         sendPaymentEmail(payment, EmailEventType.PAYMENT_CREATED);
 
         return paymentMapper.toResponse(payment);
@@ -157,10 +155,11 @@ public class PaymentServiceImpl implements PaymentService {
                 "Cheque cleared on " + LocalDate.now()));
         paymentRepository.save(payment);
 
+        updateInvoiceStatus(payment.getInvoice());
+
         log.info("Payment {} — Cheque {} CLEARED ✅",
                 payment.getPaymentNumber(), payment.getInstrumentNumber());
 
-        invoicePaymentService.updateInvoiceStatus(payment.getInvoice().getId());
         sendPaymentEmail(payment, EmailEventType.CHEQUE_CLEARED);
 
         return paymentMapper.toResponse(payment);
@@ -193,11 +192,12 @@ public class PaymentServiceImpl implements PaymentService {
                 "BOUNCED on " + LocalDate.now() + ". Reason: " + reason));
         paymentRepository.save(payment);
 
+        updateInvoiceStatus(payment.getInvoice());
+
         log.warn("Payment {} — Cheque {} BOUNCED ❌ | Reason: {}",
                 payment.getPaymentNumber(),
                 payment.getInstrumentNumber(), reason);
 
-        invoicePaymentService.updateInvoiceStatus(payment.getInvoice().getId());
         sendPaymentEmail(payment, EmailEventType.CHEQUE_BOUNCED);
 
         return paymentMapper.toResponse(payment);
@@ -227,10 +227,11 @@ public class PaymentServiceImpl implements PaymentService {
                         + ". Reason: " + request.getReason()));
         paymentRepository.save(payment);
 
+        updateInvoiceStatus(payment.getInvoice());
+
         log.info("Payment {} CANCELLED | Reason: {}",
                 payment.getPaymentNumber(), request.getReason());
 
-        invoicePaymentService.updateInvoiceStatus(payment.getInvoice().getId());
         sendPaymentEmail(payment, EmailEventType.PAYMENT_CANCELLED);
 
         return paymentMapper.toResponse(payment);
@@ -298,12 +299,19 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentEmailContext ctx = PaymentEmailContextFactory.create(
                     payment, eventType, totalPaid, totalPending);
 
-            String htmlBody = PaymentEmailTemplateBuilder.build(ctx);
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("customerName", ctx.getCustomerName());
+            variables.put("paymentAmount", "₹ " + ctx.getAmountPaid());
+            variables.put("paymentDate", ctx.getPaymentDate());
+            variables.put("paymentMode", ctx.getPaymentMethod());
+            variables.put("referenceNumber", ctx.getTransactionId() != null ? ctx.getTransactionId() : ctx.getInstrumentNumber());
 
-            emailService.sendHtmlEmail(
+            emailService.sendTemplatedEmail(
                     ctx.getCustomerEmail(),
                     ctx.getSubject(),
-                    htmlBody);
+                    "payment",
+                    variables
+            );
 
             log.info("📧 {} email sent to {} for {}",
                     eventType, ctx.getCustomerEmail(),
@@ -341,6 +349,23 @@ public class PaymentServiceImpl implements PaymentService {
                     "Duplicate instrument number: "
                             + request.getInstrumentNumber());
         }
+    }
+
+    private void updateInvoiceStatus(Invoice invoice) {
+        if (invoice.getBillStatus() == InvoiceStatus.CANCELLED) {
+            return;
+        }
+
+        BigDecimal totalPaid = paymentRepository.getTotalPaid(invoice.getId());
+
+        if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
+            invoice.setBillStatus(InvoiceStatus.UNPAID);
+        } else if (totalPaid.compareTo(invoice.getTotalAmount()) >= 0) {
+            invoice.setBillStatus(InvoiceStatus.PAID);
+        } else {
+            invoice.setBillStatus(InvoiceStatus.PARTIALLY_PAID);
+        }
+        invoiceRepository.save(invoice);
     }
 
     private Payment findPaymentOrThrow(UUID id) {

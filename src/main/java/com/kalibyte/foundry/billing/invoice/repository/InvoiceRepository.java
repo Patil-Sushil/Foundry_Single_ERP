@@ -48,22 +48,28 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     //------------------------------------------------
 
     /**
-     * Returns total invoiced amount per customer.
+     * Returns total invoiced amount (outstanding) per customer.
      */
-    @Query("""
+    @Query(value = """
         SELECT
-        i.order.customer.id,
-        i.order.customer.name,
-        i.order.customer.companyName,
-        SUM(i.totalAmount),
-        MIN(i.invoiceDate)
-        FROM Invoice i
-        WHERE i.billStatus <> 'CANCELLED'
-        GROUP BY
-        i.order.customer.id,
-        i.order.customer.name,
-        i.order.customer.companyName
-        """)
+        c.id,
+        c.name,
+        c.company_name,
+        SUM(i.total_amount - COALESCE(p.paid, 0)) as outstanding,
+        MIN(i.invoice_date)
+        FROM invoices i
+        JOIN orders o ON i.order_id = o.id
+        JOIN customer c ON o.customer_id = c.id
+        LEFT JOIN (
+            SELECT invoice_id, SUM(amount_paid) as paid
+            FROM payments
+            WHERE status IN ('SUCCESS', 'PARTIAL')
+            GROUP BY invoice_id
+        ) p ON i.id = p.invoice_id
+        WHERE i.bill_status <> 'CANCELLED'
+        GROUP BY c.id, c.name, c.company_name
+        HAVING SUM(i.total_amount - COALESCE(p.paid, 0)) > 0
+        """, nativeQuery = true)
     List<Object[]> getCustomerInvoiceTotals();
 
     //------------------------------------------------
@@ -78,7 +84,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         i.order.customer.id,
         MIN(i.invoiceDate)
         FROM Invoice i
-        WHERE i.billStatus IN ('UNPAID','PARTIALLY_PAID')
+        WHERE i.billStatus IN (com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.UNPAID, com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PARTIALLY_PAID)
         GROUP BY i.order.customer.id
         """)
     List<Object[]> getOldestUnpaidInvoices();
@@ -124,23 +130,29 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
             c.id,
             c.name,
             
-            SUM(CASE WHEN CURRENT_DATE <= i.due_date THEN i.total_amount ELSE 0 END) AS current_amount,
+            SUM(CASE WHEN CURRENT_DATE <= i.due_date THEN (i.total_amount - COALESCE(p.paid, 0)) ELSE 0 END) AS current_amount,
             
             SUM(CASE WHEN CURRENT_DATE - i.due_date BETWEEN 1 AND 30 
-                     THEN i.total_amount ELSE 0 END) AS days1to30,
+                     THEN (i.total_amount - COALESCE(p.paid, 0)) ELSE 0 END) AS days1to30,
             
             SUM(CASE WHEN CURRENT_DATE - i.due_date BETWEEN 31 AND 60 
-                     THEN i.total_amount ELSE 0 END) AS days31to60,
+                     THEN (i.total_amount - COALESCE(p.paid, 0)) ELSE 0 END) AS days31to60,
             
             SUM(CASE WHEN CURRENT_DATE - i.due_date BETWEEN 61 AND 90 
-                     THEN i.total_amount ELSE 0 END) AS days61to90,
+                     THEN (i.total_amount - COALESCE(p.paid, 0)) ELSE 0 END) AS days61to90,
             
             SUM(CASE WHEN CURRENT_DATE - i.due_date > 90 
-                     THEN i.total_amount ELSE 0 END) AS days90plus
+                     THEN (i.total_amount - COALESCE(p.paid, 0)) ELSE 0 END) AS days90plus
             
             FROM invoices i
             JOIN orders o ON i.order_id = o.id
             JOIN customer c ON o.customer_id = c.id
+            LEFT JOIN (
+                SELECT invoice_id, SUM(amount_paid) as paid
+                FROM payments
+                WHERE status IN ('SUCCESS', 'PARTIAL')
+                GROUP BY invoice_id
+            ) p ON i.id = p.invoice_id
             
             WHERE i.bill_status IN ('UNPAID','PARTIALLY_PAID')
             
@@ -161,6 +173,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         SELECT COALESCE(SUM(i.totalAmount),0)
         FROM Invoice i
         WHERE i.invoiceDate BETWEEN :from AND :to
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
         """)
     BigDecimal getTotalRevenue(LocalDate from, LocalDate to);
 
@@ -171,6 +184,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
             SELECT COUNT(i)
             FROM Invoice i
             WHERE i.invoiceDate BETWEEN :from AND :to
+            AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
             """)
     Long getInvoiceCount(LocalDate from, LocalDate to);
 
@@ -183,13 +197,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
      * - Invoice count
      */
     @Query("""
-        SELECT FUNCTION('DATE_TRUNC','month',i.invoiceDate),
+        SELECT FUNCTION('DATE_TRUNC', 'month', i.invoiceDate),
                SUM(i.totalAmount),
                COUNT(i.id)
         FROM Invoice i
         WHERE i.invoiceDate BETWEEN :from AND :to
-        GROUP BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
-        ORDER BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
+        GROUP BY FUNCTION('DATE_TRUNC', 'month', i.invoiceDate)
+        ORDER BY FUNCTION('DATE_TRUNC', 'month', i.invoiceDate)
         """)
     List<Object[]> getMonthlyInvoiceStats(LocalDate from, LocalDate to);
 
@@ -203,6 +218,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         FROM Invoice i
         JOIN i.order.customer c
         WHERE i.invoiceDate BETWEEN :from AND :to
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
         GROUP BY c.name
         ORDER BY SUM(i.totalAmount) DESC
         """)
@@ -215,25 +231,32 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         SELECT i
         FROM Invoice i
         WHERE i.dueDate < CURRENT_DATE
-        AND i.billStatus <> 'PAID'
+        AND i.billStatus NOT IN (com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID, com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED)
     """)
     Page<Invoice> findOverdueInvoices(Pageable pageable);
 
     /**
      * Returns overdue totals grouped by customer.
      */
-    @Query("""
+    @Query(value = """
         SELECT c.name,
-               SUM(i.totalAmount),
-               COUNT(i),
-               MIN(i.invoiceDate)
-        FROM Invoice i
-        JOIN i.order.customer c
-        WHERE i.dueDate < CURRENT_DATE
-        AND i.billStatus <> 'PAID'
+               SUM(i.total_amount - COALESCE(p.paid, 0)) as overdue_amount,
+               COUNT(i.id),
+               MIN(i.invoice_date)
+        FROM invoices i
+        JOIN orders o ON i.order_id = o.id
+        JOIN customer c ON o.customer_id = c.id
+        LEFT JOIN (
+            SELECT invoice_id, SUM(amount_paid) as paid
+            FROM payments
+            WHERE status IN ('SUCCESS', 'PARTIAL')
+            GROUP BY invoice_id
+        ) p ON i.id = p.invoice_id
+        WHERE i.due_date < CURRENT_DATE
+        AND i.bill_status IN ('UNPAID', 'PARTIALLY_PAID')
         GROUP BY c.name
-        ORDER BY SUM(i.totalAmount) DESC
-        """)
+        ORDER BY overdue_amount DESC
+        """, nativeQuery = true)
     List<Object[]> getCustomerOverdueSummary();
 
     /**
@@ -243,6 +266,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         SELECT COALESCE(SUM(i.totalAmount),0)
         FROM Invoice i
         WHERE i.invoiceDate BETWEEN :from AND :to
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
         """)
     BigDecimal getRevenue(LocalDate from, LocalDate to);
 
@@ -251,12 +275,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
      * Result: [month, totalRevenue]
      */
     @Query("""
-        SELECT FUNCTION('DATE_TRUNC','month',i.invoiceDate),
+        SELECT FUNCTION('DATE_TRUNC', 'month', i.invoiceDate),
                SUM(i.totalAmount)
         FROM Invoice i
         WHERE i.invoiceDate BETWEEN :from AND :to
-        GROUP BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
-        ORDER BY FUNCTION('DATE_TRUNC','month',i.invoiceDate)
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
+        GROUP BY FUNCTION('DATE_TRUNC', 'month', i.invoiceDate)
+        ORDER BY FUNCTION('DATE_TRUNC', 'month', i.invoiceDate)
         """)
     List<Object[]> getMonthlyRevenue(LocalDate from, LocalDate to);
 
@@ -275,6 +300,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
         FROM Invoice i
         JOIN i.order.customer c
         WHERE i.invoiceDate BETWEEN :from AND :to
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
         """)
     List<Object[]> getGstSales(LocalDate from, LocalDate to);
 
@@ -288,15 +314,36 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
                COALESCE(SUM(i.totalAmount),0)
         FROM Invoice i
         WHERE i.invoiceDate BETWEEN :from AND :to
+        AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED
         """)
     Object[] getOutputTaxSummary(LocalDate from, LocalDate to);
 
-    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED")
+    @Query(value = """
+        SELECT COALESCE(SUM(i.total_amount - COALESCE(p.paid, 0)), 0)
+        FROM invoices i
+        LEFT JOIN (
+            SELECT invoice_id, SUM(amount_paid) as paid
+            FROM payments
+            WHERE status IN ('SUCCESS', 'PARTIAL')
+            GROUP BY invoice_id
+        ) p ON i.id = p.invoice_id
+        WHERE i.bill_status IN ('UNPAID', 'PARTIALLY_PAID')
+        """, nativeQuery = true)
     BigDecimal sumTotalReceivables();
 
-    @Query("SELECT COUNT(i) FROM Invoice i WHERE i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED AND i.dueDate < :today")
+    @Query("SELECT COUNT(i) FROM Invoice i WHERE i.billStatus IN (com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.UNPAID, com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PARTIALLY_PAID) AND i.dueDate < :today")
     Long countOverdueInvoices(@Param("today") LocalDate today);
 
-    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.PAID AND i.billStatus <> com.kalibyte.foundry.billing.invoice.entity.enums.InvoiceStatus.CANCELLED AND i.dueDate < :today")
+    @Query(value = """
+        SELECT COALESCE(SUM(i.total_amount - COALESCE(p.paid, 0)), 0)
+        FROM invoices i
+        LEFT JOIN (
+            SELECT invoice_id, SUM(amount_paid) as paid
+            FROM payments
+            WHERE status IN ('SUCCESS', 'PARTIAL')
+            GROUP BY invoice_id
+        ) p ON i.id = p.invoice_id
+        WHERE i.bill_status IN ('UNPAID', 'PARTIALLY_PAID') AND i.due_date < :today
+        """, nativeQuery = true)
     BigDecimal sumOverdueInvoicesValue(@Param("today") LocalDate today);
 }

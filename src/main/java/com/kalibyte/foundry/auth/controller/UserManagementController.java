@@ -4,6 +4,7 @@ import com.kalibyte.foundry.auth.dto.UserRegistrationRequest;
 import com.kalibyte.foundry.auth.dto.UserResponse;
 import com.kalibyte.foundry.auth.service.AuthService;
 import com.kalibyte.foundry.common.response.ApiResponse;
+import com.kalibyte.foundry.common.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,14 +32,14 @@ public class UserManagementController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getAllUsers(
+    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true,
                         "Users retrieved successfully",
-                        authService.getAllUsers(page, size))
+                        PageResponse.from(authService.getAllUsers(page, size)))
         );
     }
 

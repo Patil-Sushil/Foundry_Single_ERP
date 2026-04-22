@@ -14,8 +14,7 @@ public record CreatePurchaseOrderRequest(
     LocalDate expectedDeliveryDate,
 
     @NotEmpty(message = "Order items cannot be empty")
-    @Valid
-    List<PurchaseOrderItemRequest> items,
+    List<@Valid PurchaseOrderItemRequest> items,
 
     String notes
 ) implements Serializable {}

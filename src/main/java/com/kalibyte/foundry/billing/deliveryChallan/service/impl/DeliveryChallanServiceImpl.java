@@ -35,8 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -148,10 +147,18 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         byte[] pdf = pdfGenerator.generateDeliveryChallanPdf(dc, items);
 
-        emailService.sendEmailWithAttachment(
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("customerName", customer.getName());
+        variables.put("dcNumber", dc.getDcNumber());
+        variables.put("dispatchDate", dc.getDispatchDate().toString());
+        variables.put("vehicleNumber", dc.getVehicleNumber());
+        variables.put("totalItems", dc.getTotalQuantity());
+
+        emailService.sendTemplatedEmailWithAttachment(
                 customer.getEmail(),
                 "Dispatch Notification - " + dc.getDcNumber(),
-                "Your order has been dispatched. Please find attached Delivery Challan.",
+                "dispatch",
+                variables,
                 pdf,
                 "DeliveryChallan-" + dc.getDcNumber() + ".pdf"
         );

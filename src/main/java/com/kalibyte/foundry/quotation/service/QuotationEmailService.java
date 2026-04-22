@@ -1,17 +1,18 @@
 package com.kalibyte.foundry.quotation.service;
 
+import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.quotation.entity.Quotation;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.javamail.*;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class QuotationEmailService {
 
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
     private final QuotationPdfService quotationPdfService;
 
     public void sendQuotationEmail(Quotation quotation) {
@@ -20,31 +21,20 @@ public class QuotationEmailService {
 
             byte[] pdfBytes = quotationPdfService.generatePdf(quotation);
 
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper =
-                    new MimeMessageHelper(message, true);
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("customerName", quotation.getCustomer().getName());
+            variables.put("quotationNumber", quotation.getQuotationNumber());
+            variables.put("quotationDate", quotation.getQuotationDate().toString());
+            variables.put("totalAmount", "₹ " + quotation.getTotalAmount()); // Should be formatted better if needed
 
-            helper.setTo(quotation.getCustomer().getEmail());
-            helper.setSubject("Quotation " + quotation.getQuotationNumber());
-
-            helper.setText("""
-                    Dear %s,
-
-                    Please find attached quotation %s.
-
-                    Regards,
-                    Kali-Byte Precision Steel Foundry
-                    """.formatted(
-                    quotation.getCustomer().getName(),
-                    quotation.getQuotationNumber()
-            ));
-
-            helper.addAttachment(
-                    "Quotation_" + quotation.getQuotationNumber() + ".pdf",
-                    new ByteArrayResource(pdfBytes)
+            emailService.sendTemplatedEmailWithAttachment(
+                    quotation.getCustomer().getEmail(),
+                    "Quotation " + quotation.getQuotationNumber(),
+                    "quotation",
+                    variables,
+                    pdfBytes,
+                    "Quotation_" + quotation.getQuotationNumber() + ".pdf"
             );
-
-            mailSender.send(message);
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to send quotation email", e);

@@ -19,7 +19,6 @@ public class EnquiryCreateRequest {
     @NotNull
     private LocalDate enquiryDate;
 
-    @Valid
     @NotEmpty(message = "At least one enquiry item is required")
-    private List<EnquiryItemCreateRequest> enquiryItems;
+    private List<@Valid EnquiryItemCreateRequest> enquiryItems;
 }

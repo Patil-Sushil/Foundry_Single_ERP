@@ -16,8 +16,7 @@ public record RecordIssueRequest(
     LocalDate issueDate,
 
     @NotEmpty(message = "Items list cannot be empty")
-    @Valid
-    List<IssueItemRequest> items,
+    List<@Valid IssueItemRequest> items,
 
     String notes
 ) implements Serializable {}
