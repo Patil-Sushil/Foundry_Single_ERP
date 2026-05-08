@@ -43,9 +43,17 @@ public abstract class FurnaceHeatMapper {
 
     @AfterMapping
     protected void calculateDerivedFields(FurnaceHeats entity, @MappingTarget FurnaceHeatResponse response) {
+        // Melting stage fields
+        response.setMeltingLoss(entity.getMeltingLoss());
+        response.setMeltingLossPercentage(entity.getMeltingLossPercentage());
+
         if (entity.getLiquidMetalWeight() != null && entity.getLiquidMetalWeight().compareTo(BigDecimal.ZERO) > 0) {
-            // Metal loss
-            response.setMetalLoss(entity.getMetalLoss());
+            // Pouring stage fields
+            response.setPouringLoss(entity.getPouringLoss());
+            response.setPouringLossPercentage(entity.getPouringLossPercentage());
+            
+            // Backward compatibility
+            response.setMetalLoss(entity.getPouringLoss());
 
             // Yield percentage = (castings / liquid metal) * 100
             BigDecimal castings = entity.getCastingsPouredWeight() != null

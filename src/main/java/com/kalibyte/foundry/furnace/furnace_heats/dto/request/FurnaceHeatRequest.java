@@ -34,7 +34,7 @@ public class FurnaceHeatRequest {
 //    @Max(value = 3, message = "the value is greater than 3 its unacceptable")
     private Double mgpercentage;
 
-    @Min(value = 0, message = "the electricity units too low it should be greater than 0 or greater")
+    @Min(value = 0, message = "the electricity units too low it should be greater than 0 ")
     private Double startReading;
 
     @Min(1)
@@ -69,6 +69,8 @@ public class FurnaceHeatRequest {
     private BigDecimal skullWeight;
 
     private BigDecimal spillageWeight;
+
+    private BigDecimal slagWeight;
 
     private Boolean autoReturnScrap;
 

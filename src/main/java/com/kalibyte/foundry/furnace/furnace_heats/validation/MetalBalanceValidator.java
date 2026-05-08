@@ -15,19 +15,32 @@ public class MetalBalanceValidator
         if (req == null) return true;
 
         BigDecimal liquid = safe(req.getLiquidMetalWeight());
+        BigDecimal slag = safe(req.getSlagWeight());
         BigDecimal chargeWeight = req.getTotalWeight() != null ? BigDecimal.valueOf(req.getTotalWeight()) : BigDecimal.ZERO;
 
-        // 1. Validate: Liquid metal (output) cannot exceed Total Weight (input charge)
-        if (chargeWeight.compareTo(BigDecimal.ZERO) > 0 && liquid.compareTo(chargeWeight) > 0) {
+        // 1. STAGE 1: MELTING BALANCE
+        // Validate: Liquid metal + slag (outputs) cannot exceed Total Weight (input charge)
+        if (chargeWeight.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal totalMeltingOutput = liquid.add(slag);
+            if (totalMeltingOutput.compareTo(chargeWeight) > 0) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate(
+                        String.format("Liquid metal + slag (%s kg) cannot exceed total charge weight (%s kg)",
+                                totalMeltingOutput, chargeWeight)
+                ).addConstraintViolation();
+                return false;
+            }
+        }
+
+        if (liquid.compareTo(BigDecimal.ZERO) <= 0) {
             context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate(
-                    String.format("Liquid metal weight (%s kg) cannot exceed total charge weight (%s kg)",
-                            liquid, chargeWeight)
-            ).addConstraintViolation();
+            context.buildConstraintViolationWithTemplate("Liquid metal weight must be greater than zero")
+                    .addConstraintViolation();
             return false;
         }
 
-        // 2. Validate: Metal breakdown vs Liquid Metal
+        // 2. STAGE 2: POURING BALANCE
+        // Validate: Metal breakdown vs Liquid Metal
         BigDecimal breakdown = safe(req.getCastingsPouredWeight())
                 .add(safe(req.getRunnerWeight()))
                 .add(safe(req.getRiserWeight()))
@@ -38,9 +51,10 @@ public class MetalBalanceValidator
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(
                     String.format(
-                            "Metal breakdown (%s kg) exceeds liquid metal weight (%s kg) " +
+                            "Metal balance exceeded! Liquid metal: %s kg, " +
+                                    "but breakdown totals: %s kg " +
                                     "(Castings: %s + Runners: %s + Risers: %s + Skull: %s + Spillage: %s)",
-                            breakdown, liquid,
+                            liquid, breakdown,
                             safe(req.getCastingsPouredWeight()),
                             safe(req.getRunnerWeight()),
                             safe(req.getRiserWeight()),

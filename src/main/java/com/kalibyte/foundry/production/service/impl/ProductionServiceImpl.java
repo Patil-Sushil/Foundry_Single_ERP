@@ -55,9 +55,6 @@ public class ProductionServiceImpl implements ProductionService {
     private final ProductionNumberGenerator numberGenerator;
     private final QaInspectionService qaInspectionService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
     // ── Allowed status transitions ──────────────────
     private static final Map<ProductionStatus, Set<ProductionStatus>> STATUS_TRANSITIONS = Map.of(
             IN_PROGRESS, Set.of(COMPLETED, ON_HOLD, CANCELLED),

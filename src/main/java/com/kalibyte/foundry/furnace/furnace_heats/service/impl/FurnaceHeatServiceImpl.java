@@ -203,10 +203,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
     }
 
     private void createProcessScrapEntry(FurnaceHeats heat) {
-        BigDecimal totalScrapWeight = heat.getRunnerWeight()
-                .add(heat.getRiserWeight())
-                .add(heat.getSkullWeight())
-                .add(heat.getSpillageWeight());
+        BigDecimal totalScrapWeight = heat.getRecoverableScrap();
 
         if (totalScrapWeight.compareTo(BigDecimal.ZERO) <= 0) return;
 
@@ -278,10 +275,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
 
     private void updateProcessScrapEntry(FurnaceHeats heat) {
         scrapEntryRepository.findById(heat.getProcessScrapEntryId()).ifPresent(entry -> {
-            BigDecimal totalScrapWeight = heat.getRunnerWeight()
-                    .add(heat.getRiserWeight())
-                    .add(heat.getSkullWeight())
-                    .add(heat.getSpillageWeight());
+            BigDecimal totalScrapWeight = heat.getRecoverableScrap();
             
             entry.setTotalWeight(totalScrapWeight);
             entry.setGrade(heat.getGrade());

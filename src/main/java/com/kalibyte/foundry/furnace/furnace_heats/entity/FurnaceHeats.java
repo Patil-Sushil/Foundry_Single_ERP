@@ -87,6 +87,14 @@ public class FurnaceHeats {
     @Column(name = "spillage_weight")
     private BigDecimal spillageWeight = BigDecimal.ZERO;
 
+    /**
+     * Weight of slag/impurity waste removed during melting.
+     * Slag is NOT recoverable scrap and is considered a non-recoverable loss.
+     */
+    @Builder.Default
+    @Column(name = "slag_weight")
+    private BigDecimal slagWeight = BigDecimal.ZERO;
+
     @Generated(event = INSERT)
     @Column(name = "total_process_scrap", insertable = false, updatable = false)
     private BigDecimal totalProcessScrap;
@@ -111,30 +119,41 @@ public class FurnaceHeats {
     private List<HeatOrderItem> heatOrderItems = new ArrayList<>();
 
     /**
-     * Validates the metal balance:
+     * Validates the metal balance in two stages:
      *
-     * liquidMetalWeight >= castingsPouredWeight + runnerWeight
-     *                      + riserWeight + skullWeight + spillageWeight
+     * STAGE 1: MELTING BALANCE
+     * Charge Weight >= Liquid Metal + Slag
+     * (Melting Loss is the difference)
      *
-     * And:
-     * sum(heatOrderItems.weightProduced) <= castingsPouredWeight
+     * STAGE 2: POURING BALANCE
+     * Liquid Metal >= Castings + Runner + Riser + Skull + Spillage
+     * (Pouring Loss is the difference)
+     *
+     * AND:
+     * sum(heatOrderItems.weightProduced) == castingsPouredWeight
      */
     public void validateMetalBalance() {
         BigDecimal liquid = safeValue(liquidMetalWeight);
+        BigDecimal slag = safeValue(slagWeight);
         BigDecimal chargeWeight = BigDecimal.valueOf(totalWeight);
 
-        // 1. Validate: Liquid metal (output) cannot exceed Total Weight (input charge)
-        if (chargeWeight.compareTo(BigDecimal.ZERO) > 0 && liquid.compareTo(chargeWeight) > 0) {
-             throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
-                    "Liquid metal weight (%s kg) cannot exceed total charge weight (%s kg).",
-                    liquid, chargeWeight));
+        // STAGE 1: MELTING BALANCE
+        // Validate: Liquid metal + slag (outputs) cannot exceed Total Weight (input charge)
+        if (chargeWeight.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal totalMeltingOutput = liquid.add(slag);
+            if (totalMeltingOutput.compareTo(chargeWeight) > 0) {
+                throw new com.kalibyte.foundry.common.exception.BusinessException(String.format(
+                        "Liquid metal + slag (%s kg) cannot exceed total charge weight (%s kg).",
+                        totalMeltingOutput, chargeWeight));
+            }
         }
 
         if (liquid.compareTo(BigDecimal.ZERO) <= 0) {
             throw new com.kalibyte.foundry.common.exception.BusinessException("Liquid metal weight must be greater than zero.");
         }
 
-        // 2. Validate: breakdown must not exceed liquid metal
+        // STAGE 2: POURING BALANCE
+        // Validate: breakdown must not exceed liquid metal
         BigDecimal totalBreakdown = safeValue(castingsPouredWeight)
                 .add(safeValue(runnerWeight))
                 .add(safeValue(riserWeight))
@@ -180,10 +199,28 @@ public class FurnaceHeats {
     }
 
     /**
-     * Returns the unaccounted metal (potential additional loss or measurement error).
-     * liquidMetalWeight - (castings + runners + risers + skull + spillage)
+     * Calculates Melting Loss.
+     * Formula: Total Charge Weight - Liquid Metal Weight - Slag Weight
+     * Represents losses due to oxidation, moisture, and fine dust during the melting stage.
      */
-    public BigDecimal getMetalLoss() {
+    public BigDecimal getMeltingLoss() {
+        BigDecimal chargeWeight = BigDecimal.valueOf(totalWeight);
+        if (chargeWeight.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+
+        BigDecimal loss = chargeWeight
+                .subtract(safeValue(liquidMetalWeight))
+                .subtract(safeValue(slagWeight));
+
+        return loss.compareTo(BigDecimal.ZERO) > 0 ? loss : BigDecimal.ZERO;
+    }
+
+    /**
+     * Calculates Pouring Loss (formerly metalLoss).
+     * Formula: Liquid Metal Weight - (Castings + Runner + Riser + Skull + Spillage)
+     * Represents unaccounted pouring/process loss, hidden weighing inaccuracies, 
+     * or oxidation during pouring.
+     */
+    public BigDecimal getPouringLoss() {
         if (liquidMetalWeight == null) return BigDecimal.ZERO;
 
         BigDecimal totalBreakdown = safeValue(castingsPouredWeight)
@@ -192,7 +229,58 @@ public class FurnaceHeats {
                 .add(safeValue(skullWeight))
                 .add(safeValue(spillageWeight));
 
-        return liquidMetalWeight.subtract(totalBreakdown);
+        BigDecimal loss = liquidMetalWeight.subtract(totalBreakdown);
+        return loss.compareTo(BigDecimal.ZERO) > 0 ? loss : BigDecimal.ZERO;
+    }
+
+    /**
+     * Alias for getPouringLoss to maintain backward compatibility with existing APIs.
+     * @deprecated Use getPouringLoss() for clearer intent.
+     */
+    @Deprecated
+    public BigDecimal getMetalLoss() {
+        return getPouringLoss();
+    }
+
+    /**
+     * Calculates Melting Loss Percentage.
+     * Formula: (Melting Loss / Total Charge Weight) * 100
+     */
+    @Transient
+    public BigDecimal getMeltingLossPercentage() {
+        BigDecimal chargeWeight = BigDecimal.valueOf(totalWeight);
+        if (chargeWeight.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+
+        return getMeltingLoss()
+                .multiply(BigDecimal.valueOf(100))
+                .divide(chargeWeight, 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Calculates Pouring Loss Percentage.
+     * Formula: (Pouring Loss / Liquid Metal Weight) * 100
+     */
+    @Transient
+    public BigDecimal getPouringLossPercentage() {
+        BigDecimal liquid = safeValue(liquidMetalWeight);
+        if (liquid.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+
+        return getPouringLoss()
+                .multiply(BigDecimal.valueOf(100))
+                .divide(liquid, 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Returns total recoverable/remeltable process scrap.
+     * Formula: Runner + Riser + Skull + Spillage
+     * Slag is NOT included as it is metallurgical waste.
+     */
+    @Transient
+    public BigDecimal getRecoverableScrap() {
+        return safeValue(runnerWeight)
+                .add(safeValue(riserWeight))
+                .add(safeValue(skullWeight))
+                .add(safeValue(spillageWeight));
     }
 
     /**
