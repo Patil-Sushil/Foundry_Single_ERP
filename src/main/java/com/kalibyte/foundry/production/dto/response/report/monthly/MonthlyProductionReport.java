@@ -10,5 +10,6 @@ public record MonthlyProductionReport(
         int year,
         int totalProduction,
         int totalDispatch,
+        int totalRejected,
         List<MonthlyDaySummary> dailyData
 ) {}

@@ -8,6 +8,7 @@ public record OrderProductionReport(
         int totalOrderedQuantity,
         int totalProduced,
         int totalDispatched,
+        int totalRejected,
         int pendingDispatch,
         List<OrderItemProgress> items
 ) {}

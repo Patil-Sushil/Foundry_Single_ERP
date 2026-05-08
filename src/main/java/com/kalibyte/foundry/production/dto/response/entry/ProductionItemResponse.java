@@ -35,6 +35,7 @@ public class ProductionItemResponse {
     private Integer totalShotBlasting;
     private Integer totalFettling;
     private Integer totalDispatched;
+    private Integer totalRejected;
 
     //------------------------------------------------
     // PENDING

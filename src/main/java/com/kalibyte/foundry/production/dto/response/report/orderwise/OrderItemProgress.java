@@ -12,5 +12,6 @@ public record OrderItemProgress(
         int totalShotBlasting,
         int totalFettling,
         int totalDispatched,
+        int totalRejected,
         int pendingDispatch
 ) {}

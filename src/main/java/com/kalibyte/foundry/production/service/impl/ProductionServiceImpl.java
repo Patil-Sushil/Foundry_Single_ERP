@@ -486,12 +486,15 @@ public class ProductionServiceImpl implements ProductionService {
         int cumPoured   = cumulative.totalPouredMoulds();
         int cumShot     = cumulative.totalShotBlasting();
         int cumFettling = cumulative.totalFettling();
+        int totalRejected = cumulative.totalRejected();
 
-        // ── Cumulative + today must not exceed ordered quantity ──
-        if (cumCores + cores > ordered) {
+        int allowedQuantity = ordered + totalRejected;
+
+        // ── Cumulative + today must not exceed allowed quantity (ordered + rejected) ──
+        if (cumCores + cores > allowedQuantity) {
             throw new BusinessException(String.format(
-                    "[%s] Ready cores would exceed ordered qty. Ordered: %d, Already: %d, Today: %d, Max today: %d",
-                    itemName, ordered, cumCores, cores, ordered - cumCores
+                    "[%s] Ready cores would exceed allowed qty (Ordered: %d + Rejected: %d = %d). Already: %d, Today: %d, Max today: %d",
+                    itemName, ordered, totalRejected, allowedQuantity, cumCores, cores, allowedQuantity - cumCores
             ));
         }
 
@@ -546,7 +549,7 @@ public class ProductionServiceImpl implements ProductionService {
             return PipelineTotals.ZERO;
         }
         Object[] raw = results.get(0);
-        if (raw == null || raw.length < 5) {
+        if (raw == null || raw.length < 6) {
             return PipelineTotals.ZERO;
         }
         return new PipelineTotals(
@@ -554,7 +557,8 @@ public class ProductionServiceImpl implements ProductionService {
                 toInt(raw[1]),
                 toInt(raw[2]),
                 toInt(raw[3]),
-                toInt(raw[4])
+                toInt(raw[4]),
+                toInt(raw[5])
         );
     }
 
@@ -654,9 +658,10 @@ public class ProductionServiceImpl implements ProductionService {
             int cumShot     = before.totalShotBlasting()  + item.getShotBlastingQuantity();
             int cumFettling = before.totalFettling()      + item.getFettlingQuantity();
             int cumDispatch = before.totalDispatched()    + item.getDispatchedQuantity();
+            int cumRejected = before.totalRejected()      + item.getRejectedQuantity();
 
             itemResponses.add(buildItemResponse(item, ordered,
-                    cumCores, cumPoured, cumShot, cumFettling, cumDispatch));
+                    cumCores, cumPoured, cumShot, cumFettling, cumDispatch, cumRejected));
         }
 
         return buildEntryResponse(entry, itemResponses);
@@ -683,7 +688,8 @@ public class ProductionServiceImpl implements ProductionService {
                     totals.totalPouredMoulds(),
                     totals.totalShotBlasting(),
                     totals.totalFettling(),
-                    totals.totalDispatched()));
+                    totals.totalDispatched(),
+                    totals.totalRejected()));
         }
 
         return buildEntryResponse(entry, itemResponses);
@@ -697,7 +703,7 @@ public class ProductionServiceImpl implements ProductionService {
 
     private ProductionItemResponse buildItemResponse(
             ProductionItem item, int ordered,
-            int cumCores, int cumPoured, int cumShot, int cumFettling, int cumDispatch
+            int cumCores, int cumPoured, int cumShot, int cumFettling, int cumDispatch, int cumRejected
     ) {
         return ProductionItemResponse.builder()
                 .id(item.getId())
@@ -718,6 +724,7 @@ public class ProductionServiceImpl implements ProductionService {
                 .totalShotBlasting(cumShot)
                 .totalFettling(cumFettling)
                 .totalDispatched(cumDispatch)
+                .totalRejected(cumRejected)
                 // ── pending (ordered minus completed at each stage) ──
                 .pendingCores(ordered - cumCores)
                 .pendingPouring(cumCores - cumPoured)
@@ -753,6 +760,10 @@ public class ProductionServiceImpl implements ProductionService {
                 .totalShotBlastingQuantity(entry.getTotalShotBlastingQuantity())
                 .totalFettlingQuantity(entry.getTotalFettlingQuantity())
                 .totalDispatchedQuantity(entry.getTotalDispatchedQuantity())
+                .totalInspectedQuantity(entry.getTotalInspectedQuantity())
+                .totalAcceptedQuantity(entry.getTotalAcceptedQuantity())
+                .totalRejectedQuantity(entry.getTotalRejectedQuantity())
+                .totalReworkQuantity(entry.getTotalReworkQuantity())
                 .items(itemResponses)
                 .build();
     }
@@ -778,6 +789,10 @@ public class ProductionServiceImpl implements ProductionService {
                 entry.getTotalShotBlastingQuantity(),
                 entry.getTotalFettlingQuantity(),
                 entry.getTotalDispatchedQuantity(),
+                entry.getTotalInspectedQuantity(),
+                entry.getTotalAcceptedQuantity(),
+                entry.getTotalRejectedQuantity(),
+                entry.getTotalReworkQuantity(),
                 entry.getCreatedAt()
         );
     }

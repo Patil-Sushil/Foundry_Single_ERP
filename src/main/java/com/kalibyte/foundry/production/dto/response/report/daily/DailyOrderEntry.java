@@ -4,5 +4,6 @@ public record DailyOrderEntry(
         String orderNumber,
         String customerName,
         int produced,
-        int dispatched
+        int dispatched,
+        int rejected
 ) {}

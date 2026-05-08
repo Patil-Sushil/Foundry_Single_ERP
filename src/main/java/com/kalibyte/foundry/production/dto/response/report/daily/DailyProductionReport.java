@@ -8,5 +8,6 @@ public record DailyProductionReport(
         LocalDate date,
         int totalProduction,
         int totalDispatch,
+        int totalRejected,
         List<DailyOrderEntry> orders
 ) {}

@@ -5,5 +5,6 @@ import java.time.LocalDate;
 public record MonthlyDaySummary(
         LocalDate date,
         int produced,
-        int dispatched
+        int dispatched,
+        int rejected
 ) {}

@@ -45,6 +45,8 @@ public class ProductionReportServiceImpl implements ProductionReportService {
 
         List<OrderItemProgress> items = new ArrayList<>();
         int totalDispatched = 0;
+        int totalProduced = 0;
+        int totalRejected = 0;
         int totalOrdered = 0;
 
         for (OrderItem item : order.getItems()) {
@@ -53,6 +55,8 @@ public class ProductionReportServiceImpl implements ProductionReportService {
             PipelineTotals totals = getCumulativeTotals(item.getId());
 
             totalDispatched += totals.totalDispatched();
+            totalProduced += totals.totalFettling();
+            totalRejected += totals.totalRejected();
             totalOrdered += item.getQuantity();
 
             items.add(new OrderItemProgress(
@@ -65,6 +69,7 @@ public class ProductionReportServiceImpl implements ProductionReportService {
                     totals.totalShotBlasting(),
                     totals.totalFettling(),
                     totals.totalDispatched(),
+                    totals.totalRejected(),
                     item.getQuantity() - totals.totalDispatched()
             ));
         }
@@ -73,8 +78,9 @@ public class ProductionReportServiceImpl implements ProductionReportService {
                 order.getOrderNumber(),
                 order.getCustomer().getName(),
                 totalOrdered,
+                totalProduced,
                 totalDispatched,
-                totalDispatched,
+                totalRejected,
                 totalOrdered - totalDispatched,
                 items
         );
@@ -88,12 +94,12 @@ public class ProductionReportServiceImpl implements ProductionReportService {
             return PipelineTotals.ZERO;
         }
         Object[] raw = results.get(0);
-        if (raw == null || raw.length < 5) {
+        if (raw == null || raw.length < 6) {
             return PipelineTotals.ZERO;
         }
         return new PipelineTotals(
                 toInt(raw[0]), toInt(raw[1]), toInt(raw[2]),
-                toInt(raw[3]), toInt(raw[4])
+                toInt(raw[3]), toInt(raw[4]), toInt(raw[5])
         );
     }
 
@@ -112,24 +118,28 @@ public class ProductionReportServiceImpl implements ProductionReportService {
 
         int totalProd = 0;
         int totalDispatch = 0;
+        int totalRejected = 0;
         List<DailyOrderEntry> orders = new ArrayList<>();
 
         for (ProductionEntry entry : entries) {
             int produced = entry.getTotalFettlingQuantity();
             int dispatched = entry.getTotalDispatchedQuantity();
+            int rejected = entry.getTotalRejectedQuantity();
 
             totalProd += produced;
             totalDispatch += dispatched;
+            totalRejected += rejected;
 
             orders.add(new DailyOrderEntry(
                     entry.getOrder().getOrderNumber(),
                     entry.getOrder().getCustomer().getName(),
                     produced,
-                    dispatched
+                    dispatched,
+                    rejected
             ));
         }
 
-        return new DailyProductionReport(date, totalProd, totalDispatch, orders);
+        return new DailyProductionReport(date, totalProd, totalDispatch, totalRejected, orders);
     }
 
     // ================================================================
@@ -148,27 +158,31 @@ public class ProductionReportServiceImpl implements ProductionReportService {
         Map<LocalDate, int[]> map = new LinkedHashMap<>();
         int totalProd = 0;
         int totalDispatch = 0;
+        int totalRejected = 0;
 
         for (ProductionEntry entry : entries) {
             LocalDate date = entry.getReportDate();
-            int[] vals = map.computeIfAbsent(date, k -> new int[2]);
+            int[] vals = map.computeIfAbsent(date, k -> new int[3]);
 
             int produced = entry.getTotalFettlingQuantity();
             int dispatched = entry.getTotalDispatchedQuantity();
+            int rejected = entry.getTotalRejectedQuantity();
 
             vals[0] += produced;
             vals[1] += dispatched;
+            vals[2] += rejected;
 
             totalProd += produced;
             totalDispatch += dispatched;
+            totalRejected += rejected;
         }
 
         List<MonthlyDaySummary> dailyData = map.entrySet().stream()
-                .map(e -> new MonthlyDaySummary(e.getKey(), e.getValue()[0], e.getValue()[1]))
+                .map(e -> new MonthlyDaySummary(e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2]))
                 .sorted(Comparator.comparing(MonthlyDaySummary::date))
                 .toList();
 
-        return new MonthlyProductionReport(month, year, totalProd, totalDispatch, dailyData);
+        return new MonthlyProductionReport(month, year, totalProd, totalDispatch, totalRejected, dailyData);
     }
 
     // ================================================================
@@ -187,6 +201,8 @@ public class ProductionReportServiceImpl implements ProductionReportService {
                 .mapToInt(ProductionEntry::getTotalFettlingQuantity).sum();
         int todayDispatch = todayEntries.stream()
                 .mapToInt(ProductionEntry::getTotalDispatchedQuantity).sum();
+        int todayRejected = todayEntries.stream()
+                .mapToInt(ProductionEntry::getTotalRejectedQuantity).sum();
 
         // month
         List<ProductionEntry> monthEntries = entryRepo.findByDateRangeWithOrder(startOfMonth, today);
@@ -194,14 +210,16 @@ public class ProductionReportServiceImpl implements ProductionReportService {
                 .mapToInt(ProductionEntry::getTotalFettlingQuantity).sum();
         int monthDispatch = monthEntries.stream()
                 .mapToInt(ProductionEntry::getTotalDispatchedQuantity).sum();
+        int monthRejected = monthEntries.stream()
+                .mapToInt(ProductionEntry::getTotalRejectedQuantity).sum();
 
         // active orders & pending dispatch
         int activeOrders = (int) entryRepo.countDistinctOrdersByStatus(ProductionStatus.IN_PROGRESS);
         int pendingDispatch = entryRepo.calculateTotalPendingDispatch();
 
         return new ProductionDashboardSummary(
-                todayProd, todayDispatch,
-                monthProd, monthDispatch,
+                todayProd, todayDispatch, todayRejected,
+                monthProd, monthDispatch, monthRejected,
                 pendingDispatch,
                 activeOrders
         );

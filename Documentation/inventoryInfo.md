@@ -8,218 +8,13 @@ The inventory module is located under `com.kalibyte.foundry.inventory` and is or
 
 - `common/`: Shared utilities and base classes.
     - `BaseInventoryEntity`: Mapped superclass with common fields (id, audit timestamps, created/updated by).
-    - `NumberGenerators`: Services to generate unique id# Furnace Module Documentation
-
-## Overview
-
-The **Furnace Module** is a critical part of the production tracking system in the Foundry ERP.
-It manages daily furnace operation reports, individual melting cycles (heats), chemical composition tracking, energy consumption analysis, and automatic material issuance from inventory.
-
-This module ensures that every kilogram of metal melted is accounted for, both in terms of energy and raw material consumption.
-
----
-
-## 1. Furnace Report
-
-A **Furnace Report** represents a collection of heats performed during a specific shift by an operator.
-
-### Core Fields
-- **Furnace Reference No**: A unique identifier (e.g., `FUR-2026-0001`) generated automatically.
-- **Operator Name**: The person responsible for the furnace during the shift.
-- **Shift**: `DAY` or `NIGHT`.
-- **Incharge Name**: The supervisor on duty.
-- **Date**: The date of operation.
-
-### Lifecycle
-A report acts as an aggregate for multiple **Heats**. When a report is created or updated, its associated heats are managed via the `FurnaceHeatService`.
-
----
-
-## 2. Furnace Heats
-
-A **Furnace Heat** represents a single melting cycle. It captures technical data required for quality control and efficiency analysis.
-
-### Technical Parameters
-- **Chemical Composition**: Tracks percentages of Silicon (`sipercentage`), Carbon (`cpcpercentage`), and Magnesium (`mgpercentage`).
-- **Energy Readings**:
-  - `startReading`: Electricity meter reading at the start of the heat.
-  - `stopReading`: Electricity meter reading at the end of the heat.
-  - `differenceReading`: Calculated as `stopReading - startReading`.
-- **Production Data**:
-  - `totalWeight`: Total weight of the metal melted in the heat.
-  - `powerToWeight`: Efficiency metric calculated as `differenceReading / totalWeight`.
-  - `liquidMetalWeight`: Actual tapped liquid metal weight.
-  - `castingsPouredWeight`: Total weight of castings poured (excluding gating).
-- **Process Scrap Breakdown**:
-  - `runnerWeight`: Weight of runners (gating system).
-  - `riserWeight`: Weight of risers/feeders.
-  - `skullWeight`: Weight of furnace residue.
-  - `spillageWeight`: Weight of metal spillage during pouring.
-  - `totalProcessScrap`: Auto-calculated sum of the above scrap types.
-- **Yield Calculations**:
-  - **Furnace Yield %**: `(Liquid Metal Weight / Total Charge Weight) * 100`. Measures melting efficiency.
-  - **Pouring Yield %**: `(Castings Poured Weight / Liquid Metal Weight) * 100`. Measures pouring efficiency.
-- **Temperature & Timing**:
-  - `pouringTemp`: The temperature of the metal when poured.
-  - `pouringStartTime` & `pouringEndTime`: Duration of the pouring process.
-
-### Reference to Orders & Items
-A heat is linked to a **Customer Order** and specific **Order Items** via the `heat_order_items` junction table.
-- **Grade Validation**: The system ensures the heat's material grade (e.g., FG260) matches the grade of all linked order items.
-- **Production Tracking**: Tracks exactly how many pieces and what weight was produced for each order item within a specific heat.
-
----
-
-## 3. Service Layer & Business Logic
-
-The Furnace module employs a dual-service architecture to manage the complexity of reports and individual melting cycles.
-
-### Furnace Report Service (`FurnaceService`)
-- **Orchestration**: Manages the lifecycle of daily reports and ensures that all associated heats are correctly initialized through the `FurnaceHeatService`.
-- **Reference Numbering**: Automatically generates unique, sequence-based reference numbers (e.g., `FUR-2026-0001`).
-- **Reporting & Analytics**: Aggregates material consumption and cost data across all heats in a shift to provide operator-level efficiency summaries.
-
-### Furnace Heat Service (`FurnaceHeatService`)
-- **Melting Efficiency Calculations**: Automatically computes energy consumption (`differenceReading`) and energy efficiency (`powerToWeight`) during heat creation and updates.
-- **Automated Material Issuance**:
-  - Validates available inventory stock before allowing a heat to be saved.
-  - Triggers the `MaterialIssueService` to deduct raw materials (Pig Iron, Scrap, Alloys) from the **FURNACE** department.
-- **Grade & Order Validation**: Enforces metallurgical integrity by ensuring the heat's material grade matches the `material_grade` specified in the customer's `OrderItem`.
-- **Heat Update Logic (Delta Handling)**: When a heat is modified, the service calculates the difference (delta) in material usage, either issuing more stock or returning unused material to the inventory.
-- **Scrap Synchronization**: Automatically synchronizes the associated `ScrapEntry` weights whenever a heat's process scrap breakdown is updated.
-
----
-
-## 4. Heat Material Items
-
-Every heat consumes raw materials (Pig Iron, Scrap, Ferro-Alloys, etc.). These are tracked in the `heat_material_items` table.
-
-### Fields
-- **Item ID & Name**: Reference to the inventory item.
-- **Material Type**: Classified as `PIG_IRON`, `SCRAP`, `ADDITIVE`, etc.
-- **Quantity Used**: The amount of material consumed.
-- **Unit Rate & Total Cost**: Captured at the time of usage based on the inventory's **Weighted Average Cost (WAC)**.
-
----
-
-## 5. Inventory & Scrap Integration
-
-### Automatic Material Issuance
-1. When a Heat is saved, the system identifies all materials used.
-2. It validates if enough stock is available in the inventory.
-3. It automatically records a **Material Issue** in the inventory system for the `FURNACE` department.
-
-### Automatic Scrap Generation
-1. If `autoReturnScrap` is enabled, saving a heat automatically creates a **Scrap Entry**.
-2. This entry captures the runner, riser, skull, and spillage weights.
-3. The scrap is categorized by the heat's grade to ensure metallurgical integrity when remelted.
-4. **Just-in-Time Linking**: The system automatically links the scrap to a "Scrap Item" in the inventory. If an item for that specific grade doesn't exist, it is created automatically (e.g., "FG260 Process Scrap").
-
----
-
-## 6. API Endpoints
-
-### Furnace Reports
-- `POST /api/furnace/reports`: Create a new daily report with multiple heats.
-- `GET /api/furnace/reports/{id}`: Get report details.
-- `PUT /api/furnace/reports/{id}`: Update report and its heats.
-
-### Furnace Heats
-- `GET /api/furnace/reports/{reportId}/heats`: List all heats for a specific report.
-- `GET /api/furnace/heats/by-order/{orderId}`: List all heats associated with a specific customer order.
-- `POST /api/furnace/reports/{reportId}/heats`: Create a heat manually within a report.
-
----
-
-## 7. Business Logic & Calculations
-
-### Power Consumption
-```
-Difference Reading = Stop Reading - Start Reading
-Power to Weight = Difference Reading / Total Weight
-```
-
-### Material Costing
-```
-Total Cost = Quantity Used × Avg Unit Rate (from Inventory)
-```
-
----
-
-## 8. Database Schema
-
-The following tables define the structure of the Furnace module and its integration with orders and inventory.
-
-### `furnace_reports`
-Stores shift-level operation data.
-
-| Column         | Type        | Constraints        | Description         |
-|----------------|-------------|--------------------|---------------------|
-| id             | BIGSERIAL   | PRIMARY KEY        | Unique identifier   |
-| furnace_ref_no | VARCHAR(50) | UNIQUE, NOT NULL   | e.g., FUR-2026-0001 |
-| operator_name  | VARCHAR(50) | NOT NULL           |                     |
-| shift          | VARCHAR(8)  | CHECK (DAY, NIGHT) |                     |
-| incharge_name  | VARCHAR(50) |                    | Supervisor name     |
-| date           | DATE        | NOT NULL           | Date of operation   |
-| created_at     | TIMESTAMP   | DEFAULT NOW()      |                     |
-
-### `furnace_heats`
-Stores individual melting cycle (heat) data.
-
-| Column             | Type      | Constraints          | Description                     |
-|--------------------|-----------|----------------------|---------------------------------|
-| id                 | BIGSERIAL | PRIMARY KEY          | Unique identifier               |
-| furnace_id         | BIGINT    | FK (furnace_reports) | Linked report                   |
-| sipercentage       | DOUBLE    |                      | Silicon percentage              |
-| cpcpercentage      | DOUBLE    |                      | Carbon percentage               |
-| mgpercentage       | DOUBLE    |                      | Magnesium percentage            |
-| total_weight       | DOUBLE    | NOT NULL             | Total metal weight melted       |
-| start_reading      | DOUBLE    | NOT NULL             | Meter start reading             |
-| stop_reading       | DOUBLE    | NOT NULL             | Meter stop reading              |
-| difference_reading | DOUBLE    |                      | Energy consumed                 |
-| power_to_weight    | DOUBLE    |                      | Efficiency metric               |
-| pouring_temp       | DOUBLE    |                      | Metal temperature               |
-| pouring_start_time | TIME      |                      |                                 |
-| pouring_end_time   | TIME      |                      |                                 |
-| order_id           | UUID      | FK (orders)          | Optional link to customer order |
-
-### `heat_material_items`
-Tracks raw materials consumed for each heat.
-
-| Column        | Type         | Constraints            | Description                 |
-|---------------|--------------|------------------------|-----------------------------|
-| id            | BIGSERIAL    | PRIMARY KEY            | Unique identifier           |
-| heat_id       | BIGINT       | FK (furnace_heats)     | Parent heat                 |
-| item_id       | BIGINT       |                        | Reference to Inventory Item |
-| item_name     | VARCHAR(255) | NOT NULL               | Name at time of use         |
-| material_type | VARCHAR(20)  | DEFAULT 'RAW_MATERIAL' |                             |
-| quantity_used | DOUBLE       | NOT NULL               | Amount consumed             |
-| unit_rate     | DOUBLE       |                        | Cost at time of issue       |
-| total_cost    | DOUBLE       |                        | quantity * unit_rate        |
-
-### `orders`
-Linked table for customer requirements.
-
-| Column       | Type        | Constraints      | Description              |
-|--------------|-------------|------------------|--------------------------|
-| id           | UUID        | PRIMARY KEY      |                          |
-| order_number | VARCHAR(50) | UNIQUE, NOT NULL |                          |
-| customer_id  | UUID        | FK (customer)    |                          |
-| order_date   | DATE        |                  |                          |
-| status       | VARCHAR(30) |                  | e.g., PENDING, COMPLETED |
-| order_type   | VARCHAR(20) | NOT NULL         | QUOTATION or DIRECT      |
-
----
-
-## Summary
-
-The Furnace module bridges the gap between raw material inventory and finished goods production. By automating material issuance and tracking energy efficiency per heat, it provides the foundry with accurate costing and operational insights.
-entifiers for POs, Inwards, and Issues.
+    - `NumberGenerators`: Services to generate unique identifiers for POs, Inwards, and Issues.
 - `department/`: Internal departments that consume materials.
-- `item/`: The core of the inventory system. Defines items, categories, and handles stock calculations.
+- `item/`: The core of the inventory system. Defines items, categories, and handles stock calculations and adjustments.
 - `vendor/`: External suppliers.
-- `ledger/`: Financial tracking for vendor transactions.
-- `purchaseorder/`: Procurement process, tracking what is ordered from vendors.
+- `ledger/`: Financial tracking for vendor transactions (accounts payable).
+- `purchaseorder/`: Procurement process, tracking what is ordered from vendors and historical rates.
+- `purchaseinvoice/`: Vendor invoice recording, verification, and GST reporting.
 - `inward/`: Material reception, updating stock and financial ledgers.
 - `issue/`: Internal material distribution to departments.
 - `report/`: Analytics and business intelligence, generating stock and financial reports.
@@ -239,6 +34,13 @@ The central entity representing a stockable material.
 - **Key Logic**: 
     - `receiveStock(qty, rate)`: Increases `currentStock` and recalculates `avgRate` using a Weighted Average Cost (WAC) method. Updates `lastPurchaseRate`.
     - `issueStock(qty)`: Decreases `currentStock`. Throws `BusinessException` if stock is insufficient.
+    - `adjustStock(qty, rate)`: Handles manual stock corrections (positive or negative).
+
+### Stock Adjustment (`item.entity.StockAdjustment`)
+Records manual corrections to stock levels.
+- **Attributes**: Adjustment Number, Date, Reason.
+- **Mappings**:
+    - `OneToMany` with `AdjustmentItem`.
 
 ### Purchase Order (`purchaseorder.entity.PurchaseOrder`)
 Represents a formal request to a vendor for materials.
@@ -246,13 +48,10 @@ Represents a formal request to a vendor for materials.
 - **Mappings**: 
     - `ManyToOne` with `Vendor`.
     - `OneToMany` with `OrderItem` (Composition).
-- **Key Logic**: Tracks the lifecycle of procurement. Status is updated automatically during the inward process.
 
-### Order Item (`purchaseorder.entity.OrderItem`)
-Individual lines within a Purchase Order.
-- **Attributes**: Ordered Quantity, Received Quantity, Unit Rate.
-- **Mappings**: 
-    - `ManyToOne` with `Item`.
+### Item Vendor Rate (`purchaseorder.entity.ItemVendorRate`)
+Tracks the historical/last purchase rate for a specific item from a specific vendor.
+- **Attributes**: Last Rate, Last Purchase Date.
 
 ### Material Inward (`inward.entity.MaterialInward`)
 Records the reception of materials.
@@ -261,14 +60,6 @@ Records the reception of materials.
     - `ManyToOne` with `PurchaseOrder` (Optional).
     - `ManyToOne` with `Vendor`.
     - `OneToMany` with `ReceivedItem` (Composition).
-- **Key Logic**: Confirmation of an inward triggers stock updates and ledger entries.
-
-### Received Item (`inward.entity.ReceivedItem`)
-Individual lines within an Inward document.
-- **Mappings**:
-    - `ManyToOne` with `Item`.
-    - `ManyToOne` with `OrderItem` (Links back to PO if applicable).
-- **Key Logic**: Calculates `ReceiptStatus` (OK, SHORT, EXCESS) by comparing `receivedQuantity` with `poQuantity`.
 
 ### Material Issue (`issue.entity.MaterialIssue`)
 Records the consumption of material by an internal department.
@@ -276,159 +67,72 @@ Records the consumption of material by an internal department.
     - `ManyToOne` with `Department`.
     - `OneToMany` with `IssuedItem` (Composition).
 
-### Issued Item (`issue.entity.IssuedItem`)
-Individual lines within an Issue document.
+### Purchase Invoice (`purchaseinvoice.entity.PurchaseInvoice`)
+Records the vendor's official invoice for received materials.
+- **Attributes**: Vendor Invoice Number, Date, Invoice Amount, Verification Status, Source (AUTO/MANUAL).
 - **Mappings**:
-    - `ManyToOne` with `Item`.
-- **Key Logic**: Captures the `avgRate` of the item at the exact moment of issuance to track consumption value accurately.
+    - `ManyToOne` with `Vendor`.
+    - `ManyToOne` with `PurchaseOrder` (Optional).
+    - `ManyToOne` with `MaterialInward` (Optional).
+- **Key Logic**:
+    - `verify(userId)`: Marks the invoice as verified for payment processing.
+    - `getAmountMismatch()`: Calculates variance between invoice amount and inward value.
 
 ### Vendor Ledger (`ledger.entity.VendorLedger`)
 Tracks financial obligations to vendors.
 - **Mappings**:
     - `ManyToOne` with `Vendor`.
     - `ManyToOne` with `MaterialInward`.
-- **Key Logic**: Records the total value of confirmed material inwards as a credit/payable to the vendor.
 
 ---
 
 ## 3. Core Business Workflows
 
 ### A. The Procurement & Reception Flow
-1. **Create PO**: A `PurchaseOrder` is created with multiple `OrderItems`. Status is `OPEN`.
-2. **Start Inward**: A `MaterialInward` is initialized, usually referencing a `PO`. It copies items from the PO into `ReceivedItems` with a `DRAFT` status.
-3. **Confirm Inward**: When the physical material is verified:
+1. **Create PO**: A `PurchaseOrder` is created. Status is `OPEN`.
+2. **Start Inward**: A `MaterialInward` is initialized, referencing a `PO`.
+3. **Confirm Inward**: When physical material is verified:
     - `MaterialInward` status becomes `CONFIRMED`.
-    - For each `ReceivedItem`:
-        - `Item.receiveStock()` is called: `currentStock` increases, `avgRate` is recalculated.
-        - `OrderItem.receivedQuantity` is updated.
-        - `ItemVendorRate` (price history) is updated/created.
-    - `VendorLedger` records a new entry for the total inward amount.
-    - `PurchaseOrder` status is updated to `PARTIALLY_RECEIVED` or `RECEIVED`.
+    - `Item.receiveStock()` is called: `currentStock` increases, `avgRate` is recalculated.
+    - `ItemVendorRate` is updated with the latest price.
+    - `VendorLedger` records a credit/payable.
+    - `PurchaseInvoice` is automatically generated (if configured).
 
 ### B. The Internal Consumption Flow
-1. **Record Issue**: A `MaterialIssue` is created for a specific `Department`.
-2. **Process Items**: For each item requested:
-    - `Item.issueStock()` is called: Validates availability and decreases `currentStock`.
-    - The current `Item.avgRate` is captured in `IssuedItem.unitRate`.
-3. **Reporting**: Consumption reports aggregate `IssuedItem` data to show total value consumed by departments over a date range.
+1. **Record Issue**: A `MaterialIssue` is created for a `Department`.
+2. **Process Items**: For each item, `Item.issueStock()` validates availability and decreases stock. The current `avgRate` is captured for costing.
 
 ### C. Internal Returns (Scrap Recycling)
-1. **Source**: Generated automatically from Furnace Heats (Process Scrap) or Quality Inspections (Rejections).
-2. **Just-in-Time Creation**: If a specific scrap item for a grade (e.g., `SCR-FG260`) does not exist during a return, the system creates it automatically.
-3. **Automated Inward**: Upon approval of a Scrap Entry for remelt, the system creates an `INTERNAL_RETURN` inward.
-4. **Auto-Confirmation**: Unlike PO-based inwards, internal returns are automatically confirmed to ensure immediate stock availability.
+- Generated from Furnace Heats or Quality Inspections.
+- Uses automated `INTERNAL_RETURN` inwards to return material to stock.
 
-### D. Financial Tracking
-- The system doesn't just track quantities; it tracks **Value**.
-- **Stock Valuation**: Done using the `avgRate` (Weighted Average Cost).
-- **Vendor Balance**: Derived from `VendorLedger` entries. Every confirmed Inward creates a payable.
+### D. Stock Adjustment Flow
+1. **Identify Discrepancy**: Physical stock doesn't match system stock.
+2. **Record Adjustment**: Create a `StockAdjustment` with the delta quantity.
+3. **Update Item**: `Item.adjustStock()` updates the balance and WAC if adding stock.
 
-### D. Furnace Integration (Automatic Issuance)
-- When a **Furnace Heat** is recorded, the system automatically triggers a material issuance.
-- **Flow**: Heat recorded → Validate stock availability → Create `MaterialIssue` for the `FURNACE` department.
-- This ensures that raw material consumption (Pig Iron, Scrap, Alloys) is automatically deducted from inventory without manual entry by store personnel.
-- For more details, refer to the [Furnace Module Documentation](furnaceDocument.md).
+### E. Purchase Invoice Verification
+1. **Record Invoice**: Invoices are captured (either auto-generated from Inwards or manually entered).
+2. **Reconciliation**: System flags mismatches between the vendor's invoice amount and the system's recorded inward value.
+3. **Verification**: Authorized users verify invoices once discrepancies are resolved.
+
+### F. Furnace Integration (Automatic Issuance)
+- **Flow**: Heat recorded → Validate stock → Create `MaterialIssue` for `FURNACE` department.
+- Automated raw material deduction ensures real-time inventory accuracy without manual store entry.
 
 ---
 
 ## 4. Technical Implementation Details
 
-- **Concurrency**: Services use `@Transactional` to ensure atomicity. Stock updates and ledger entries happen in the same transaction as document confirmation.
-- **Audit**: All entities extending `BaseInventoryEntity` automatically track `createdAt`, `updatedAt`, `createdBy`, and `updatedBy`.
-- **Soft Deletes/Activation**: `Item` and `Vendor` have `isActive` flags instead of hard deletes to maintain referential integrity with historical documents.
-- **Number Generation**: Custom generators (`PONumberGenerator`, etc.) ensure human-readable unique IDs for documents (e.g., `PO-2024-001`).
-- **Data Integrity**: Database-level constraints (foreign keys, unique constraints on codes/numbers) complement Java-side business logic validation.
+- **Concurrency**: Services use `@Transactional` for atomic operations.
+- **Audit**: `BaseInventoryEntity` tracks audit timestamps and users.
+- **Weighted Average Cost (WAC)**: Stock valuation is recalculated on every receipt using the formula:
+  `New Avg Rate = (Existing Value + Incoming Value) / (Existing Qty + Incoming Qty)`
+- **Number Generation**: Sequence-based identifiers (e.g., `PO-2026-0001`, `INW-2026-0001`).
 
 ---
 
-## 5. Reporting & Analytics
-
-The system provides a suite of reports for operational and financial visibility via the `InventoryReportController` and `MaterialIssueController`.
-
-### A. Operational Reports
-
-#### 1. Material Inward Report
-- **Endpoint**: `GET /api/inventory/reports/inwards`
-- **Description**: Tracks material receipts from vendors.
-- **Parameters**:
-    - `startDate` (Optional, LocalDate): defaults to the first day of the current month.
-    - `endDate` (Optional, LocalDate): defaults to today.
-    - `vendorId` (Optional, Long): filter by a specific vendor.
-    - `itemId` (Optional, Long): filter by a specific item.
-    - `purchaseOrderId` (Optional, Long): filter by a specific PO.
-
-#### 2. Material Issue Report
-- **Endpoint**: `GET /api/inventory/reports/issues`
-- **Description**: Monitors internal material distribution to departments.
-- **Parameters**:
-    - `startDate` (Optional, LocalDate): defaults to the first day of the current month.
-    - `endDate` (Optional, LocalDate): defaults to today.
-    - `departmentId` (Optional, Long): filter by a specific department.
-    - `itemId` (Optional, Long): filter by a specific item.
-
-#### 3. Department Consumption Report
-- **Endpoint**: `GET /api/material-issues/consumption-report`
-- **Description**: Aggregates total quantity and value of items consumed by a department.
-- **Parameters**:
-    - `departmentId` (Required, Long)
-    - `from` (Required, LocalDate)
-    - `to` (Required, LocalDate)
-
-#### 4. Stock Summary Report
-- **Endpoint**: `GET /api/inventory/reports/stock-summary`
-- **Description**: Snapshot of current stock levels across the inventory.
-- **Parameters**:
-    - `category` (Optional, String): filter by item category (e.g., RAW_MATERIAL).
-    - `belowReorderLevel` (Optional, Boolean): filter for items needing replenishment.
-    - `departmentId` (Optional, Long): filter by primary department.
-
-#### 5. Daily Stock Movement Report
-- **Endpoint**: `GET /api/inventory/reports/daily-movement`
-- **Description**: Reconciliation tool showing opening balance, daily inflows/outflows, and closing balance.
-- **Parameters**:
-    - `date` (Optional, LocalDate): defaults to today.
-    - `category` (Optional, String): filter by item category.
-
-### B. Financial & Analytical Reports
-
-#### 1. Item Ledger Report
-- **Endpoint**: `GET /api/inventory/reports/items/{itemId}/ledger`
-- **Description**: Historical log for a specific item showing every IN/OUT transaction and running balance.
-- **Parameters**:
-    - `itemId` (Required, Path Variable)
-    - `startDate` (Optional, LocalDate): defaults to one month ago.
-    - `endDate` (Optional, LocalDate): defaults to today.
-
-#### 2. Vendor Summary Report
-- **Endpoint**: `GET /api/inventory/reports/vendor-summary`
-- **Description**: Analyzes vendor performance, total PO vs. Inward value, and outstanding balances.
-- **Parameters**:
-    - `startDate` (Optional, LocalDate): defaults to first day of current month.
-    - `endDate` (Optional, LocalDate): defaults to today.
-    - `vendorId` (Optional, Long): filter for a specific vendor.
-
-### C. Technical Implementation of Reports
-- **Confirmed Document Basis**: All reports are generated from **Confirmed** documents. Drafts are excluded.
-- **Opening Stock Calculation**: Dynamically calculated for Ledger and Movement reports by aggregating all transactions prior to the start date.
-- **Real-time Aggregation**: Reports perform stream-based aggregation of line items (ReceivedItems/IssuedItems) for real-time accuracy.
-
----
-
-## 6. Architectural Context: Unused Repositories
-
-In the current implementation, you may notice that `ReceivedItemRepository` is defined but rarely (or never) used directly in service logic or report generation.
-
-### Why ReceivedItemRepository is Bypasssed:
-1. **Aggregate Root Pattern**: The `MaterialInward` entity acts as the **Aggregate Root**. Following Domain-Driven Design (DDD) principles, operations on `ReceivedItems` are managed through the parent `MaterialInward` document.
-2. **JPA Cascading**: `MaterialInward` is configured with `cascade = CascadeType.ALL` and `orphanRemoval = true` for its `receivedItems` collection. This means when you save or delete a `MaterialInward`, all its line items are automatically handled by the JPA provider (Hibernate).
-3. **Document-Centric Reporting**: Reports are generated by fetching `MaterialInward` documents with their items eagerly (using JOIN FETCH or similar patterns). This ensures that items are always viewed in the context of their parent document (vendor, date, challan number), which is essential for audit trails.
-4. **Data Integrity**: By not exposing direct CRUD operations on `ReceivedItem` via its own repository, the system prevents "orphaned" items or modifications to line items that haven't been validated by the parent document's state (e.g., ensuring items can't be added to a 'CONFIRMED' inward).
-
-The repository exists primarily for future extensibility or specific low-level queries that might bypass the aggregate root for performance optimization in very large datasets, but the current business logic intentionally routes all interactions through `MaterialInwardRepository`.
-
----
-
-## 7. Database Schema
+## 6. Database Schema
 
 The following tables define the structure of the Inventory module and its financial tracking.
 
@@ -447,92 +151,64 @@ Stores external supplier information.
 ### `items`
 The central table for stockable materials.
 
-| Column        | Type          | Constraints      | Description               |
-|---------------|---------------|------------------|---------------------------|
-| id            | BIGSERIAL     | PRIMARY KEY      |                           |
-| name          | VARCHAR(255)  | NOT NULL         |                           |
-| code          | VARCHAR(50)   | UNIQUE, NOT NULL | Unique item code          |
-| category      | VARCHAR(30)   | NOT NULL         | RAW_MATERIAL, ALLOY, etc. |
-| department_id | BIGINT        | FK (departments) | Primary department        |
-| unit          | VARCHAR(20)   | NOT NULL         | KG, PCS, etc.             |
-| current_stock | DECIMAL(15,3) | DEFAULT 0        | Current quantity on hand  |
-| avg_rate      | DECIMAL(12,2) | DEFAULT 0        | Weighted Average Cost     |
-| reorder_level | DECIMAL(15,3) | DEFAULT 0        |                           |
+| Column             | Type          | Constraints      | Description               |
+|--------------------|---------------|------------------|---------------------------|
+| id                 | BIGSERIAL     | PRIMARY KEY      |                           |
+| name               | VARCHAR(255)  | NOT NULL         |                           |
+| code               | VARCHAR(50)   | UNIQUE, NOT NULL | Unique item code          |
+| category           | VARCHAR(30)   | NOT NULL         | RAW_MATERIAL, ALLOY, etc. |
+| department_id      | BIGINT        | FK (departments) | Primary department        |
+| unit               | VARCHAR(20)   | NOT NULL         | KG, PCS, etc.             |
+| current_stock      | DECIMAL(15,3) | DEFAULT 0        | Current quantity on hand  |
+| avg_rate           | DECIMAL(12,2) | DEFAULT 0        | Weighted Average Cost     |
+| last_purchase_rate | DECIMAL(12,2) | DEFAULT 0        |                           |
+| reorder_level      | DECIMAL(15,3) | DEFAULT 0        |                           |
 
 ### `purchase_orders` & `purchase_order_items`
 Tracks formal procurement requests.
 
-### **purchase_orders**
-| Column    | Type        | Constraints      | Description          |
-|-----------|-------------|------------------|----------------------|
-| id        | BIGSERIAL   | PRIMARY KEY      |                      |
-| po_number | VARCHAR(50) | UNIQUE, NOT NULL | e.g., PO-2024-001    |
-| vendor_id | BIGINT      | FK (vendors)     |                      |
-| status    | VARCHAR(30) | NOT NULL         | OPEN, RECEIVED, etc. |
-| po_date   | DATE        | NOT NULL         |                      |
-
-### **purchase_order_items**
-| Column            | Type          | Constraints          | Description |
-|-------------------|---------------|----------------------|-------------|
-| id                | BIGSERIAL     | PRIMARY KEY          |             |
-| po_id             | BIGINT        | FK (purchase_orders) | Parent PO   |
-| item_id           | BIGINT        | FK (items)           |             |
-| ordered_quantity  | DECIMAL(15,3) | NOT NULL             |             |
-| received_quantity | DECIMAL(15,3) | DEFAULT 0            |             |
-| unit_rate         | DECIMAL(12,2) | NOT NULL             |             |
+| Table | Description |
+|-------|-------------|
+| `purchase_orders` | Header with `po_number`, `vendor_id`, `status`, `po_date`. |
+| `purchase_order_items` | Lines with `item_id`, `ordered_quantity`, `received_quantity`, `unit_rate`. |
 
 ### `material_inwards` & `received_items`
 Tracks reception of materials.
 
-### **material_inwards**
-| Column        | Type        | Constraints          | Description      |
-|---------------|-------------|----------------------|------------------|
-| id            | BIGSERIAL   | PRIMARY KEY          |                  |
-| inward_number | VARCHAR(50) | UNIQUE, NOT NULL     |                  |
-| po_id         | BIGINT      | FK (purchase_orders) | Optional         |
-| vendor_id     | BIGINT      | FK (vendors)         |                  |
-| inward_date   | DATE        | NOT NULL             |                  |
-| status        | VARCHAR(20) | DEFAULT 'DRAFT'      | DRAFT, CONFIRMED |
-
-### **received_items**
-| Column             | Type          | Constraints           | Description          |
-|--------------------|---------------|-----------------------|----------------------|
-| id                 | BIGSERIAL     | PRIMARY KEY           |                      |
-| material_inward_id | BIGINT        | FK (material_inwards) | Parent Inward        |
-| item_id            | BIGINT        | FK (items)            |                      |
-| received_quantity  | DECIMAL(15,3) | NOT NULL              |                      |
-| unit_rate          | DECIMAL(12,2) | NOT NULL              |                      |
-| amount             | DECIMAL(15,2) | GENERATED             | quantity * unit_rate |
+| Table | Description |
+|-------|-------------|
+| `material_inwards` | Header with `inward_number`, `vendor_id`, `status`, `inward_date`. |
+| `received_items` | Lines with `item_id`, `received_quantity`, `unit_rate`. |
 
 ### `material_issues` & `issued_items`
 Tracks internal consumption by departments.
 
-### **material_issues**
-| Column        | Type        | Constraints      | Description          |
-|---------------|-------------|------------------|----------------------|
-| id            | BIGSERIAL   | PRIMARY KEY      |                      |
-| issue_number  | VARCHAR(50) | UNIQUE, NOT NULL |                      |
-| department_id | BIGINT      | FK (departments) | Consuming department |
-| issue_date    | DATE        | NOT NULL         |                      |
+| Table | Description |
+|-------|-------------|
+| `material_issues` | Header with `issue_number`, `department_id`, `issue_date`. |
+| `issued_items` | Lines with `item_id`, `issued_quantity`, `unit_rate`. |
 
-### **issued_items**
-| Column            | Type          | Constraints          | Description               |
-|-------------------|---------------|----------------------|---------------------------|
-| id                | BIGSERIAL     | PRIMARY KEY          |                           |
-| material_issue_id | BIGINT        | FK (material_issues) | Parent Issue              |
-| item_id           | BIGINT        | FK (items)           |                           |
-| issued_quantity   | DECIMAL(15,3) | NOT NULL             |                           |
-| unit_rate         | DECIMAL(12,2) | NOT NULL             | Captured at time of issue |
+### `purchase_invoices`
+Records vendor invoices.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | BIGSERIAL | |
+| vendor_invoice_number | VARCHAR(50) | |
+| vendor_invoice_date | DATE | |
+| invoice_amount | DECIMAL(12,2) | |
+| vendor_id | BIGINT | |
+| material_inward_id | BIGINT | |
+| is_verified | BOOLEAN | |
+
+### `stock_adjustments` & `adjustment_items`
+Records manual stock corrections.
+
+| Table | Description |
+|-------|-------------|
+| `stock_adjustments` | Header with `adjustment_number`, `adjustment_date`, `reason`. |
+| `adjustment_items` | Lines with `item_id`, `adjusted_quantity`, `unit_rate`. |
 
 ### `vendor_ledger`
-Tracks financial obligations to vendors.
-
-| Column             | Type          | Constraints           | Description |
-|--------------------|---------------|-----------------------|-------------|
-| id                 | BIGSERIAL     | PRIMARY KEY           |             |
-| vendor_id          | BIGINT        | FK (vendors)          |             |
-| material_inward_id | BIGINT        | FK (material_inwards) | Optional    |
-| entry_type         | VARCHAR(10)   | CHECK (CREDIT, DEBIT) |             |
-| amount             | DECIMAL(15,2) | NOT NULL              |             |
-| entry_date         | DATE          | NOT NULL              |             |
+Tracks financial obligations (payables) to vendors.
 

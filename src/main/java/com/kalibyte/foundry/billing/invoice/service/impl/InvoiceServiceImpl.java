@@ -129,9 +129,9 @@ public class InvoiceServiceImpl implements InvoiceService {
         // PROCESS AUTOMATIC PAYMENT
         //------------------------------------------------
 
-        if (request.getAmountPaid() != null && request.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
-            invoicePaymentService.processAutomaticPayment(invoice, request.getAmountPaid());
-        }
+//        if (request.getAmountPaid() != null && request.getAmountPaid().compareTo(BigDecimal.ZERO) > 0) {
+//            invoicePaymentService.processAutomaticPayment(invoice, request.getAmountPaid());
+//        }
 
         //------------------------------------------------
         // CREATE INVOICE ITEMS WITH GST

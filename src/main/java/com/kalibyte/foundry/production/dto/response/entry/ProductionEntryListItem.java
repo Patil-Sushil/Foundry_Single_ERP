@@ -34,6 +34,10 @@ public class ProductionEntryListItem {
     private int totalShotBlasting;
     private int totalFettling;
     private int totalDispatched;
+    private int totalInspected;
+    private int totalAccepted;
+    private int totalRejected;
+    private int totalRework;
 
     private LocalDateTime createdAt;
 }

@@ -34,6 +34,10 @@ public class ProductionEntryResponse {
     private Integer totalShotBlastingQuantity;
     private Integer totalFettlingQuantity;
     private Integer totalDispatchedQuantity;
+    private Integer totalInspectedQuantity;
+    private Integer totalAcceptedQuantity;
+    private Integer totalRejectedQuantity;
+    private Integer totalReworkQuantity;
 
     private List<ProductionItemResponse> items;
 }

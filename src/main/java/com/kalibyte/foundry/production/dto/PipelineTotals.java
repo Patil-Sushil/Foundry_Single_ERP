@@ -6,7 +6,8 @@ public record PipelineTotals(
         int totalPouredMoulds,
         int totalShotBlasting,
         int totalFettling,
-        int totalDispatched
+        int totalDispatched,
+        int totalRejected
 ) {
-    public static final PipelineTotals ZERO = new PipelineTotals(0, 0, 0, 0, 0);
+    public static final PipelineTotals ZERO = new PipelineTotals(0, 0, 0, 0, 0, 0);
 }

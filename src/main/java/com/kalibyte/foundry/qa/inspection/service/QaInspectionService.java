@@ -72,6 +72,8 @@ public class QaInspectionService {
         // Ensure all entities are loaded
         fetchRelatedEntities(inspection);
         
+        validateInspectionQuantity(inspection);
+        
         QaInspection saved = repository.save(inspection);
         // Map inside transaction to avoid lazy loading issues
         return mapper.toResponse(repository.findWithDetailsById(saved.getId()).get());
@@ -103,6 +105,8 @@ public class QaInspectionService {
         // Ensure all entities are loaded
         fetchRelatedEntities(existing);
         
+        validateInspectionQuantity(existing);
+        
         // Update findings
         if (updated.getFindings() != null) {
             existing.getFindings().clear();
@@ -126,6 +130,8 @@ public class QaInspectionService {
         if (inspection.getStatus() != InspectionStatus.DRAFT) {
             throw new BusinessException("Inspection is already " + inspection.getStatus());
         }
+
+        validateInspectionQuantity(inspection);
 
         // 1. Recalculate totals from findings
         int totalRejected = 0;
@@ -226,6 +232,8 @@ public class QaInspectionService {
                 .findings(new ArrayList<>())
                 .build();
 
+        validateInspectionQuantity(inspection);
+
         QaInspection saved = repository.save(inspection);
         trackingLogService.log(TrackingReferenceType.INSPECTION, saved.getId(), null, saved.getStatus().name(), TrackingAction.CREATED, "SYSTEM", "Auto-created from Production Entry.");
         return mapper.toResponse(repository.findWithDetailsById(saved.getId()).get());
@@ -280,6 +288,40 @@ public class QaInspectionService {
                     finding.setDefect(defectCatalogService.getById(finding.getDefect().getId()));
                 }
             }
+        }
+    }
+
+    private void validateInspectionQuantity(QaInspection inspection) {
+        ProductionItem prodItem = inspection.getProductionItem();
+        if (prodItem == null) return;
+
+        int baseProducedQty = switch (inspection.getInspectionStage()) {
+            case AFTER_POURING -> prodItem.getPouredMoulds();
+            case AFTER_SHOT_BLASTING -> prodItem.getShotBlastingQuantity();
+            case AFTER_FETTLING, FINAL -> prodItem.getFettlingQuantity();
+            case CUSTOMER_COMPLAINT -> prodItem.getDispatchedQuantity();
+        };
+
+        // Allowed inspections = base produced + total items previously marked for rework
+        int allowedQty = baseProducedQty + prodItem.getReworkQuantity();
+
+        int alreadyInspected;
+        if (inspection.getId() == null) {
+            alreadyInspected = repository.sumInspectedQuantityByItemAndStage(prodItem.getId(), inspection.getInspectionStage());
+        } else {
+            alreadyInspected = repository.sumInspectedQuantityByItemAndStageExcluding(prodItem.getId(), inspection.getInspectionStage(), inspection.getId());
+        }
+
+        if (alreadyInspected + inspection.getTotalInspected() > allowedQty) {
+            throw new BusinessException(String.format(
+                    "Total inspection quantity (%d) for stage %s exceeds allowed quantity (%d) (Produced: %d + Rework: %d) for Production Item %s.",
+                    alreadyInspected + inspection.getTotalInspected(),
+                    inspection.getInspectionStage(),
+                    allowedQty,
+                    baseProducedQty,
+                    prodItem.getReworkQuantity(),
+                    prodItem.getItemName()
+            ));
         }
     }
 }

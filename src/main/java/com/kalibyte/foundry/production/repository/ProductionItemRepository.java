@@ -49,7 +49,8 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
             COALESCE(SUM(pi.pouredMoulds), 0),
             COALESCE(SUM(pi.shotBlastingQuantity), 0),
             COALESCE(SUM(pi.fettlingQuantity), 0),
-            COALESCE(SUM(pi.dispatchedQuantity), 0)
+            COALESCE(SUM(pi.dispatchedQuantity), 0),
+            COALESCE(SUM(pi.rejectedQuantity), 0)
         FROM ProductionItem pi
         WHERE pi.orderItem.id = :orderItemId
         AND pi.isDeleted = false
@@ -63,7 +64,8 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
             COALESCE(SUM(pi.pouredMoulds), 0),
             COALESCE(SUM(pi.shotBlastingQuantity), 0),
             COALESCE(SUM(pi.fettlingQuantity), 0),
-            COALESCE(SUM(pi.dispatchedQuantity), 0)
+            COALESCE(SUM(pi.dispatchedQuantity), 0),
+            COALESCE(SUM(pi.rejectedQuantity), 0)
         FROM ProductionItem pi
         WHERE pi.orderItem.id = :orderItemId
         AND pi.productionEntry.id != :excludeEntryId
@@ -73,4 +75,4 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
             @Param("orderItemId") UUID orderItemId,
             @Param("excludeEntryId") UUID excludeEntryId
     );
-}
+    }

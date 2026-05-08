@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.qa.inspection.repository;
 
+import com.kalibyte.foundry.qa.common.enums.InspectionStage;
 import com.kalibyte.foundry.qa.inspection.entity.QaInspection;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -35,4 +36,14 @@ public interface QaInspectionRepository extends JpaRepository<QaInspection, Long
 
     @Query("SELECT d.code, COUNT(f) FROM InspectionFinding f JOIN f.defect d JOIN f.inspection qi WHERE qi.inspectionDate BETWEEN :start AND :end GROUP BY d.code ORDER BY COUNT(f) DESC")
     List<Object[]> findTopDefectsByDate(@Param("start") java.time.LocalDate start, @Param("end") java.time.LocalDate end, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(qi.totalInspected), 0) FROM QaInspection qi " +
+           "WHERE qi.productionItem.id = :itemId AND qi.inspectionStage = :stage " +
+           "AND qi.status != 'CANCELLED'")
+    int sumInspectedQuantityByItemAndStage(@Param("itemId") UUID itemId, @Param("stage") InspectionStage stage);
+
+    @Query("SELECT COALESCE(SUM(qi.totalInspected), 0) FROM QaInspection qi " +
+           "WHERE qi.productionItem.id = :itemId AND qi.inspectionStage = :stage " +
+           "AND qi.status != 'CANCELLED' AND qi.id != :excludeId")
+    int sumInspectedQuantityByItemAndStageExcluding(@Param("itemId") UUID itemId, @Param("stage") InspectionStage stage, @Param("excludeId") Long excludeId);
 }
