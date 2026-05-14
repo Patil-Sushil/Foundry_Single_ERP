@@ -16,7 +16,12 @@ public class CacheConfig {
             "dashboardSummary", 
             "report_profit_loss", 
             "report_overdue", 
-            "report_revenue"
+            "report_revenue",
+            "customers",
+            "departments",
+            "vendors",
+            "items",
+            "castingProcesses"
         );
     }
 }

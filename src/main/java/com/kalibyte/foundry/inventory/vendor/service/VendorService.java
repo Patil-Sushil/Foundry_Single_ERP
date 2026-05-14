@@ -11,6 +11,8 @@ import com.kalibyte.foundry.inventory.vendor.exception.DuplicateVendorException;
 import com.kalibyte.foundry.inventory.vendor.mapper.VendorMapper;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,7 @@ public class VendorService {
     private final VendorMapper vendorMapper;
 
     @Transactional
+    @CacheEvict(value = "vendors", allEntries = true)
     public VendorResponse create(CreateVendorRequest request) {
         if (vendorRepository.findByPhone(request.phone()) != null) {
             throw new DuplicateVendorException("Vendor by the phone :" + request.phone() + " is already in database");
@@ -37,6 +40,7 @@ public class VendorService {
     }
 
     @Transactional
+    @CacheEvict(value = "vendors", allEntries = true)
     public VendorResponse update(Long id, UpdateVendorRequest request) {
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));
@@ -47,6 +51,7 @@ public class VendorService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "vendors", key = "#id")
     public VendorResponse getById(Long id) {
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));
@@ -65,6 +70,7 @@ public class VendorService {
     }
 
     @Transactional
+    @CacheEvict(value = "vendors", allEntries = true)
     public void deactivate(Long id) {
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));

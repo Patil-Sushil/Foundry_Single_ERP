@@ -8,6 +8,8 @@ import com.kalibyte.foundry.common.castingprocess.mapper.CastingProcessMapper;
 import com.kalibyte.foundry.common.castingprocess.repository.CastingProcessRepository;
 import com.kalibyte.foundry.common.castingprocess.service.CastingProcessService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class CastingProcessServiceImpl implements CastingProcessService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "castingProcesses", allEntries = true)
     public CastingProcessResponse create(CastingProcessRequest request) {
         validateUnique(request.getName(), request.getCode(), null);
         
@@ -36,6 +39,7 @@ public class CastingProcessServiceImpl implements CastingProcessService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "castingProcesses", allEntries = true)
     public CastingProcessResponse update(UUID id, CastingProcessRequest request) {
         CastingProcessMaster entity = getEntity(id);
         validateUnique(request.getName(), request.getCode(), id);
@@ -49,12 +53,14 @@ public class CastingProcessServiceImpl implements CastingProcessService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "castingProcesses", key = "#id")
     public CastingProcessResponse get(UUID id) {
         return mapper.toResponse(getEntity(id));
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "castingProcesses")
     public List<CastingProcessResponse> getAll() {
         return repository.findAll().stream()
                 .map(mapper::toResponse)
@@ -66,6 +72,7 @@ public class CastingProcessServiceImpl implements CastingProcessService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "castingProcesses")
     public List<CastingProcessResponse> getAllActive() {
         return repository.findAllByActiveTrueOrderByNameAsc().stream()
                 .map(mapper::toResponse)
@@ -74,6 +81,7 @@ public class CastingProcessServiceImpl implements CastingProcessService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "castingProcesses", allEntries = true)
     public void delete(UUID id) {
         CastingProcessMaster entity = getEntity(id);
         entity.setActive(false);

@@ -18,6 +18,7 @@ The inventory module is located under `com.kalibyte.foundry.inventory` and is or
 - `inward/`: Material reception, updating stock and financial ledgers.
 - `issue/`: Internal material distribution to departments.
 - `report/`: Analytics and business intelligence, generating stock and financial reports.
+- `gstreport/`: Specialized module for tax compliance, providing GSTR-style summaries and audit logs.
 
 ---
 
@@ -45,6 +46,7 @@ Records manual corrections to stock levels.
 ### Purchase Order (`purchaseorder.entity.PurchaseOrder`)
 Represents a formal request to a vendor for materials.
 - **Status**: `OPEN`, `PARTIALLY_RECEIVED`, `RECEIVED`, `CANCELLED`.
+- **Taxation**: Tracks `totalTaxableAmount`, GST breakdown (`cgst`, `sgst`, `igst`), and `grandTotal`.
 - **Mappings**: 
     - `ManyToOne` with `Vendor`.
     - `OneToMany` with `OrderItem` (Composition).
@@ -56,6 +58,8 @@ Tracks the historical/last purchase rate for a specific item from a specific ven
 ### Material Inward (`inward.entity.MaterialInward`)
 Records the reception of materials.
 - **Status**: `DRAFT`, `CONFIRMED`.
+- **Attributes**: `inwardNumber`, `inwardType` (e.g., VENDOR_PURCHASE, INTERNAL_RETURN), `scrapEntryId` (for internal returns), `vendorInvoiceNumber`, `vendorInvoiceDate`.
+- **Taxation**: Tracks totals for taxable amount, tax amount, and grand total.
 - **Mappings**:
     - `ManyToOne` with `PurchaseOrder` (Optional).
     - `ManyToOne` with `Vendor`.
@@ -80,6 +84,7 @@ Records the vendor's official invoice for received materials.
 
 ### Vendor Ledger (`ledger.entity.VendorLedger`)
 Tracks financial obligations to vendors.
+- **Attributes**: `entryType` (CREDIT/DEBIT), `amount`, `entryDate`.
 - **Mappings**:
     - `ManyToOne` with `Vendor`.
     - `ManyToOne` with `MaterialInward`.
@@ -89,14 +94,14 @@ Tracks financial obligations to vendors.
 ## 3. Core Business Workflows
 
 ### A. The Procurement & Reception Flow
-1. **Create PO**: A `PurchaseOrder` is created. Status is `OPEN`.
-2. **Start Inward**: A `MaterialInward` is initialized, referencing a `PO`.
+1. **Create PO**: A `PurchaseOrder` is created. Status is `OPEN`. Tax breakdown (CGST/SGST vs IGST) is determined by vendor location.
+2. **Start Inward**: A `MaterialInward` is initialized, referencing a `PO`. Quantities can be adjusted based on physical delivery.
 3. **Confirm Inward**: When physical material is verified:
     - `MaterialInward` status becomes `CONFIRMED`.
     - `Item.receiveStock()` is called: `currentStock` increases, `avgRate` is recalculated.
     - `ItemVendorRate` is updated with the latest price.
-    - `VendorLedger` records a credit/payable.
-    - `PurchaseInvoice` is automatically generated (if configured).
+    - `VendorLedger` records a credit/payable for the **actually received amount**.
+    - `PurchaseInvoice` is automatically generated if invoice details are provided.
 
 ### B. The Internal Consumption Flow
 1. **Record Issue**: A `MaterialIssue` is created for a `Department`.
@@ -105,6 +110,7 @@ Tracks financial obligations to vendors.
 ### C. Internal Returns (Scrap Recycling)
 - Generated from Furnace Heats or Quality Inspections.
 - Uses automated `INTERNAL_RETURN` inwards to return material to stock.
+- Links to original `scrap_entry_id` for traceability.
 
 ### D. Stock Adjustment Flow
 1. **Identify Discrepancy**: Physical stock doesn't match system stock.
@@ -120,6 +126,11 @@ Tracks financial obligations to vendors.
 - **Flow**: Heat recorded → Validate stock → Create `MaterialIssue` for `FURNACE` department.
 - Automated raw material deduction ensures real-time inventory accuracy without manual store entry.
 
+### G. GST Compliance & Reporting
+- Specialized module tracks all tax-related transactions.
+- Provides reports like GSTR1 Full, HSN Summary, and Sales Register.
+- Includes audit logs to track when tax data is accessed or exported.
+
 ---
 
 ## 4. Technical Implementation Details
@@ -129,6 +140,7 @@ Tracks financial obligations to vendors.
 - **Weighted Average Cost (WAC)**: Stock valuation is recalculated on every receipt using the formula:
   `New Avg Rate = (Existing Value + Incoming Value) / (Existing Qty + Incoming Qty)`
 - **Number Generation**: Sequence-based identifiers (e.g., `PO-2026-0001`, `INW-2026-0001`).
+- **GST Logic**: Automatic determination of IGST vs CGST/SGST based on vendor state relative to the company state.
 
 ---
 
@@ -143,6 +155,7 @@ Stores external supplier information.
 |------------|--------------|--------------|-------------------|
 | id         | BIGSERIAL    | PRIMARY KEY  | Unique identifier |
 | name       | VARCHAR(255) | NOT NULL     |                   |
+| state      | VARCHAR(50)  |              | Used for GST logic|
 | phone      | VARCHAR(20)  |              |                   |
 | gst_number | VARCHAR(20)  |              |                   |
 | address    | TEXT         |              |                   |
@@ -163,52 +176,63 @@ The central table for stockable materials.
 | avg_rate           | DECIMAL(12,2) | DEFAULT 0        | Weighted Average Cost     |
 | last_purchase_rate | DECIMAL(12,2) | DEFAULT 0        |                           |
 | reorder_level      | DECIMAL(15,3) | DEFAULT 0        |                           |
+| gst_rate           | DECIMAL(5,2)  | DEFAULT 0        | Item's GST percentage     |
 
 ### `purchase_orders` & `purchase_order_items`
 Tracks formal procurement requests.
 
-| Table | Description |
-|-------|-------------|
-| `purchase_orders` | Header with `po_number`, `vendor_id`, `status`, `po_date`. |
-| `purchase_order_items` | Lines with `item_id`, `ordered_quantity`, `received_quantity`, `unit_rate`. |
+| Table                  | Description                                                                                                         |
+|------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `purchase_orders`      | Header with `po_number`, `vendor_id`, `status`, `po_date`, plus tax totals (`cgst`, `sgst`, `igst`, `grand_total`). |
+| `purchase_order_items` | Lines with `item_id`, `ordered_quantity`, `received_quantity`, `unit_rate`, `tax_amount`.                           |
 
 ### `material_inwards` & `received_items`
 Tracks reception of materials.
 
-| Table | Description |
-|-------|-------------|
-| `material_inwards` | Header with `inward_number`, `vendor_id`, `status`, `inward_date`. |
-| `received_items` | Lines with `item_id`, `received_quantity`, `unit_rate`. |
+| Table              | Description                                                                                           |
+|--------------------|-------------------------------------------------------------------------------------------------------|
+| `material_inwards` | Header with `inward_number`, `vendor_id`, `status`, `inward_date`, `total_tax_amount`, `grand_total`. |
+| `received_items`   | Lines with `item_id`, `received_quantity`, `unit_rate`, `tax_amount`.                                 |
 
 ### `material_issues` & `issued_items`
 Tracks internal consumption by departments.
 
-| Table | Description |
-|-------|-------------|
+| Table             | Description                                                |
+|-------------------|------------------------------------------------------------|
 | `material_issues` | Header with `issue_number`, `department_id`, `issue_date`. |
-| `issued_items` | Lines with `item_id`, `issued_quantity`, `unit_rate`. |
+| `issued_items`    | Lines with `item_id`, `issued_quantity`, `unit_rate`.      |
 
 ### `purchase_invoices`
 Records vendor invoices.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | BIGSERIAL | |
-| vendor_invoice_number | VARCHAR(50) | |
-| vendor_invoice_date | DATE | |
-| invoice_amount | DECIMAL(12,2) | |
-| vendor_id | BIGINT | |
-| material_inward_id | BIGINT | |
-| is_verified | BOOLEAN | |
+| Column                | Type          | Description |
+|-----------------------|---------------|-------------|
+| id                    | BIGSERIAL     |             |
+| vendor_invoice_number | VARCHAR(50)   |             |
+| vendor_invoice_date   | DATE          |             |
+| invoice_amount        | DECIMAL(12,2) |             |
+| vendor_id             | BIGINT        |             |
+| material_inward_id    | BIGINT        |             |
+| is_verified           | BOOLEAN       |             |
 
 ### `stock_adjustments` & `adjustment_items`
 Records manual stock corrections.
 
-| Table | Description |
-|-------|-------------|
+| Table               | Description                                                   |
+|---------------------|---------------------------------------------------------------|
 | `stock_adjustments` | Header with `adjustment_number`, `adjustment_date`, `reason`. |
-| `adjustment_items` | Lines with `item_id`, `adjusted_quantity`, `unit_rate`. |
+| `adjustment_items`  | Lines with `item_id`, `adjusted_quantity`, `unit_rate`.       |
 
 ### `vendor_ledger`
 Tracks financial obligations (payables) to vendors.
+
+| Column             | Type          | Constraints           | Description |
+|--------------------|---------------|-----------------------|-------------|
+| id                 | BIGSERIAL     | PRIMARY KEY           |             |
+| vendor_id          | BIGINT        | FK (vendors)          |             |
+| material_inward_id | BIGINT        | FK (material_inwards) |             |
+| entry_type         | VARCHAR(10)   | CREDIT, DEBIT         |             |
+| amount             | DECIMAL(15,2) |                       |             |
+| entry_date         | DATE          |                       |             |
+| description        | VARCHAR(500)  |                       |             |
 

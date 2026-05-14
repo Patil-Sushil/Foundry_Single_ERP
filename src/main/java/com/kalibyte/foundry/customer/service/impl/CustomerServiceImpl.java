@@ -14,6 +14,8 @@ import com.kalibyte.foundry.customer.service.CustomerService;
 import com.kalibyte.foundry.customer.service.CustomerValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +37,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "customers", allEntries = true)
     public CustomerResponse createCustomer(CustomerRequest request) {
         validator.validate(request);
 
@@ -65,6 +68,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "customers", key = "#customerId")
     public CustomerResponse getCustomerById(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
@@ -81,6 +85,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "customers", allEntries = true)
     public CustomerResponse updateCustomer(UUID customerId, CustomerRequest request) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
@@ -100,6 +105,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "customers", allEntries = true)
     public void deleteCustomer(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
@@ -116,6 +122,7 @@ public class CustomerServiceImpl implements CustomerService {
 
 
     @Override
+    @Cacheable(value = "customers", key = "#phone")
     public Optional<CustomerResponse> findByPhone(String phone) {
 
         return customerRepository.findByPhone(phone)

@@ -7,6 +7,8 @@ import com.kalibyte.foundry.inventory.department.entity.Department;
 import com.kalibyte.foundry.inventory.department.exception.DuplicateDepartmentException;
 import com.kalibyte.foundry.inventory.department.mapper.DepartmentMapper;
 import com.kalibyte.foundry.inventory.department.repository.DepartmentRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class DepartmentService {
 	}
 
 	@Transactional(readOnly = true)
+    @Cacheable(value = "departments")
     public List<DepartmentResponse> getAll() {
         return departmentRepository.findAll().stream()
                 .map(departmentMapper::toResponse)
@@ -31,6 +34,7 @@ public class DepartmentService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "departments", key = "#id")
     public DepartmentResponse getById(Long id) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + id));
@@ -38,6 +42,7 @@ public class DepartmentService {
     }
 
     @Transactional
+    @CacheEvict(value = "departments", allEntries = true)
     public DepartmentResponse createDepartment(DepartmentRequest departmentRequest) {
         Department dept=departmentRepository.findByCode(departmentRequest.getCode());
         if(dept!=null){

@@ -39,6 +39,7 @@ import com.kalibyte.foundry.scrap.enums.ScrapStatus;
 import com.kalibyte.foundry.scrap.enums.VerificationMethod;
 import com.kalibyte.foundry.scrap.repository.ScrapEntryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,6 +87,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public FurnaceHeatResponse createHeat(Long reportId, FurnaceHeatRequest request) {
         Furnace furnace = furnaceRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + reportId));
@@ -142,6 +144,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public FurnaceHeatResponse updateHeat(Long heatId, FurnaceHeatRequest request) {
         FurnaceHeats existingHeat = furnaceHeatsRepository.findById(heatId)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace heat not found with id: " + heatId));
@@ -316,6 +319,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public void deleteHeat(Long heatId) {
         FurnaceHeats heat = furnaceHeatsRepository.findById(heatId)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace heat not found with id: " + heatId));
@@ -326,6 +330,7 @@ public class FurnaceHeatServiceImpl implements FurnaceHeatService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public void deleteAllHeatsByReportId(Long reportId) {
         List<FurnaceHeats> heats = furnaceHeatsRepository.findByFurnaceId(reportId);
         for (FurnaceHeats heat : heats) {

@@ -12,6 +12,8 @@ import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
 import com.kalibyte.foundry.inventory.item.mapper.ItemMapper;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.item.service.ItemService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +40,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public ItemResponse create(CreateItemRequest request) {
         Department department = null;
         if (request.departmentId() != null) {
@@ -52,6 +55,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public ItemResponse update(Long id, UpdateItemRequest request) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + id));
@@ -86,6 +90,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "items", key = "#id")
     public ItemResponse getById(Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + id));
@@ -118,6 +123,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional
     @Modifying
+    @CacheEvict(value = "items", allEntries = true)
     public ItemResponse toggleStatus(Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + id));

@@ -11,6 +11,7 @@ import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.item.repository.StockAdjustmentRepository;
 import com.kalibyte.foundry.inventory.item.service.StockAdjustmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ public class StockAdjustmentServiceImpl implements StockAdjustmentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public ItemResponse adjustStock(Long itemId, StockAdjustmentRequest request, UserPrincipal userPrincipal) {
         // 1. Fetch Item
         Item item = itemRepository.findById(itemId)

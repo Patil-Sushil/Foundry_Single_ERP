@@ -125,30 +125,35 @@ The application uses a single PostgreSQL schema (`public`).
 - **Environment Variables**: Sensitive data like `SPRING_DATASOURCE_URL`, `JWT_SECRET`, and `SPRING_DATASOURCE_PASSWORD` are managed via environment variables.
 ---
 
-## 9. Future Improvements: Caching Strategy
+## 9. Caching Strategy
 
-The application currently utilizes Spring's cache abstraction to optimize performance for high-latency report generation.
+The application utilizes Spring's cache abstraction to optimize performance for high-latency report generation and frequently accessed master data.
 
-### Current Implementation
+### Implementation Details
 - **Provider:** In-memory caching via `ConcurrentMapCacheManager` (defined in `CacheConfig.java`).
-- **Active Caches:**
-  - `dashboardSummary`: Aggregated dashboard metrics.
-  - `report_profit_loss`, `report_overdue`, `report_revenue`: Financial and analytical reports.
-- **Strategy:** Cache-aside pattern using `@Cacheable`.
+- **Strategy:** Cache-aside pattern using `@Cacheable` for retrieval and `@CacheEvict` for consistency.
 
-### Future Caching Candidates
-To further improve responsiveness, especially for master data and lookups, the following candidates have been identified:
-1.  **Customer Module:**
-    *   `CustomerServiceImpl.getCustomerById`: Frequently accessed by ID.
-    *   `CustomerServiceImpl.findByPhone`: Quick lookup for existing customers.
-2.  **Inventory Module (Master Data):**
-    *   `DepartmentService.getAll` / `getById`: Static organizational structure.
-    *   `VendorService.getById`: Vendor profiles for purchase orders.
-    *   `ItemService.getById`: Common item master lookups.
-3.  **Common Configuration:**
-    *   `CastingProcessServiceImpl.getAll` / `getAllActive`: Static list of foundry processes.
+### Active Caches
+1.  **Reports & Analytics:**
+    - `dashboardSummary`: Aggregated dashboard metrics.
+    - `report_profit_loss`, `report_overdue`, `report_revenue`: Financial and analytical reports.
+2.  **Master Data & Lookups:**
+    - `customers`: Customer profiles and phone number lookups.
+    - `departments`: Organizational structure master data.
+    - `vendors`: Supplier profile information.
+    - `items`: Item master data and current stock levels.
+    - `castingProcesses`: Static foundry process configurations.
 
-### Architectural Threshold (Distributed Caching)
-The current in-memory `ConcurrentMapCacheManager` is suitable for the current single-instance deployment. If the application evolves to a multi-instance, horizontally scaled deployment, the following changes are recommended:
-- **Migration to Redis:** Implement a distributed cache like Redis to ensure cache consistency across all application nodes.
-- **Cache Eviction Strategy:** Implement rigorous `@CacheEvict` or `@CachePut` policies to prevent stale data in a high-concurrency environment.
+### Data Consistency & Eviction
+To ensure cache integrity, the system employs rigorous eviction policies:
+- **Master Data Eviction:** Updates or deletions to Customers, Vendors, or Items automatically trigger `@CacheEvict` for their respective caches.
+- **Cross-Module Stock Consistency:** The `items` cache (which includes real-time stock levels) is automatically evicted whenever inventory-modifying actions occur in:
+    - **Material Inwards:** On confirmation of new stock or internal returns.
+    - **Material Issues:** On internal consumption by departments.
+    - **Stock Adjustments:** On manual stock corrections.
+    - **Furnace Production:** On raw material consumption during heats.
+
+### Future Considerations (Distributed Caching)
+While the current in-memory manager is sufficient for single-instance deployments, the following path is recommended for horizontal scaling:
+- **Migration to Redis:** Replace `ConcurrentMapCacheManager` with a Redis-based implementation to ensure cache synchronization across multiple application nodes.
+- **TTL Policies:** Implement Time-To-Live (TTL) settings for report caches to ensure periodic refresh of complex analytical data.

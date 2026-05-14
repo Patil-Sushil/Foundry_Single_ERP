@@ -28,6 +28,7 @@ import com.kalibyte.foundry.inventory.purchaseorder.repository.ItemVendorRateRep
 import com.kalibyte.foundry.inventory.purchaseorder.repository.PurchaseOrderRepository;
 import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseOrderService;
 import com.kalibyte.foundry.inventory.vendor.repository.VendorRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -189,6 +190,7 @@ public class MaterialInwardService {
     }
 
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public InwardResponse confirm(Long inwardId, ConfirmInwardRequest request) {
         MaterialInward inward = materialInwardRepository.findWithFullDetails(inwardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inward not found with id: " + inwardId));
@@ -340,6 +342,7 @@ public class MaterialInwardService {
     }
 
     @Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public InwardResponse createInternalReturnInward(InternalReturnRequest request) {
         com.kalibyte.foundry.inventory.vendor.entity.Vendor internalVendor = vendorRepository.findByName("INTERNAL")
                 .orElseGet(() -> {

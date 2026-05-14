@@ -14,6 +14,7 @@ import com.kalibyte.foundry.inventory.issue.mapper.MaterialIssueMapper;
 import com.kalibyte.foundry.inventory.issue.repository.MaterialIssueRepository;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class MaterialIssueService {
 	}
 
 	@Transactional
+    @CacheEvict(value = "items", allEntries = true)
     public MaterialIssueResponse recordIssue(RecordIssueRequest request) {
         Department department = departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + request.departmentId()));
