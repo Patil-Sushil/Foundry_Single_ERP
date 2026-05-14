@@ -43,6 +43,7 @@ public class Laborer {
     @Column(name = "hourly_rate",precision = 19, scale = 2)
     private BigDecimal hourlyRate;
 
+    @Builder.Default
     @Column(name = "is_active")
     private Boolean isActive = true;
 }

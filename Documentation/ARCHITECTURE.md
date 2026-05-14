@@ -14,7 +14,7 @@
 - **Migrations:** Flyway
 - **Security:** Spring Security + JSON Web Tokens (JWT)
 - **Documentation:** SpringDoc OpenAPI (Swagger UI)
-- **Utilities:** Lombok, MapStruct, ModelMapper
+- **Utilities:** Lombok, MapStruct
 - **Validation:** Jakarta Validation (Hibernate Validator)
 
 ---
@@ -123,4 +123,32 @@ The application uses a single PostgreSQL schema (`public`).
 ## 8. Development & Deployment
 - **Profiles**: `dev` (Local development with `DataSeeder`), `prod` (Production environment).
 - **Environment Variables**: Sensitive data like `SPRING_DATASOURCE_URL`, `JWT_SECRET`, and `SPRING_DATASOURCE_PASSWORD` are managed via environment variables.
-- **Flyway**: Migrations are automatically executed on application startup from `src/main/resources/db/migration`.
+---
+
+## 9. Future Improvements: Caching Strategy
+
+The application currently utilizes Spring's cache abstraction to optimize performance for high-latency report generation.
+
+### Current Implementation
+- **Provider:** In-memory caching via `ConcurrentMapCacheManager` (defined in `CacheConfig.java`).
+- **Active Caches:**
+  - `dashboardSummary`: Aggregated dashboard metrics.
+  - `report_profit_loss`, `report_overdue`, `report_revenue`: Financial and analytical reports.
+- **Strategy:** Cache-aside pattern using `@Cacheable`.
+
+### Future Caching Candidates
+To further improve responsiveness, especially for master data and lookups, the following candidates have been identified:
+1.  **Customer Module:**
+    *   `CustomerServiceImpl.getCustomerById`: Frequently accessed by ID.
+    *   `CustomerServiceImpl.findByPhone`: Quick lookup for existing customers.
+2.  **Inventory Module (Master Data):**
+    *   `DepartmentService.getAll` / `getById`: Static organizational structure.
+    *   `VendorService.getById`: Vendor profiles for purchase orders.
+    *   `ItemService.getById`: Common item master lookups.
+3.  **Common Configuration:**
+    *   `CastingProcessServiceImpl.getAll` / `getAllActive`: Static list of foundry processes.
+
+### Architectural Threshold (Distributed Caching)
+The current in-memory `ConcurrentMapCacheManager` is suitable for the current single-instance deployment. If the application evolves to a multi-instance, horizontally scaled deployment, the following changes are recommended:
+- **Migration to Redis:** Implement a distributed cache like Redis to ensure cache consistency across all application nodes.
+- **Cache Eviction Strategy:** Implement rigorous `@CacheEvict` or `@CachePut` policies to prevent stale data in a high-concurrency environment.

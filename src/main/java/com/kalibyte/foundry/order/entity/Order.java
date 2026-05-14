@@ -58,6 +58,7 @@ public class Order extends BaseEntity {
     private String placeOfSupply;
     private String poReference;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.CREATED;
 
@@ -74,6 +75,7 @@ public class Order extends BaseEntity {
     //------------------------------------------------
     // AMOUNTS
     //------------------------------------------------
+    @Builder.Default
     private BigDecimal subTotal = BigDecimal.ZERO;
 
     //------------------------------------------------
@@ -83,21 +85,27 @@ public class Order extends BaseEntity {
     @Column(name = "gst_type")
     private GstType gstType;
 
+    @Builder.Default
     @Column(name = "gst_percentage", precision = 5, scale = 2)
     private BigDecimal gstPercentage = BigDecimal.valueOf(18);
 
+    @Builder.Default
     @Column(name = "cgst", precision = 19, scale = 2)
     private BigDecimal cgst = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "sgst", precision = 19, scale = 2)
     private BigDecimal sgst = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "igst", precision = 19, scale = 2)
     private BigDecimal igst = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "total_gst", precision = 19, scale = 2)
     private BigDecimal totalGst = BigDecimal.ZERO;
 
+    @Builder.Default
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
     //------------------------------------------------

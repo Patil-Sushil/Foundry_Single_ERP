@@ -30,7 +30,8 @@ public class OrderItemResponse {
     // Metal & Casting
     private String metalType;
     private String metalCategory;
-    private String castingProcess;
+    private UUID castingProcessId;
+    private String castingProcessName;
     private Boolean isMachiningRequired;
 
     private BigDecimal netWeightKg;

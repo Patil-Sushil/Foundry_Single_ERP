@@ -1,7 +1,7 @@
-// src/main/java/com/kalibyte/foundry/auth/security/config/SecurityConfig.java
 package com.kalibyte.foundry.auth.security.config;
 
 import com.kalibyte.foundry.auth.security.filter.JwtAuthenticationFilter;
+import com.kalibyte.foundry.auth.security.filter.RateLimitingFilter;
 import com.kalibyte.foundry.auth.security.handler.JwtAuthenticationEntryPoint;
 import com.kalibyte.foundry.auth.security.token.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +35,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -63,7 +64,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/gst/**")
                         .hasAnyRole("CA", "ADMIN")
 
-                        .requestMatchers("/actuator/**").permitAll()
+                        // Actuator Security
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
 
                         // Reports
                         .requestMatchers("/api/reports/**")
@@ -120,6 +123,7 @@ public class SecurityConfig {
                 )
 
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -128,7 +132,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // Restrict origins in production, allow localhost for development
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://*.kalibytefoundry.com"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));

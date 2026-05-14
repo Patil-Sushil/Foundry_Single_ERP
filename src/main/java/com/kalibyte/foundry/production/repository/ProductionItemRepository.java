@@ -42,6 +42,25 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
     """)
     int getTotalAcceptedQuantity(@Param("orderItemId") UUID orderItemId);
 
+    @Query("""
+        SELECT COALESCE(SUM(pi.acceptedQuantity), 0) / 7.0
+        FROM ProductionItem pi
+        WHERE pi.orderItem.id = :orderItemId
+        AND pi.productionEntry.reportDate >= :startDate
+        AND pi.isDeleted = false
+    """)
+    Double getAverageAcceptedQuantity(@Param("orderItemId") UUID orderItemId, @Param("startDate") java.time.LocalDate startDate);
+
+    @Query("""
+        SELECT 
+            COALESCE(SUM(pi.pouredMoulds) - SUM(pi.shotBlastingQuantity), 0),
+            COALESCE(SUM(pi.shotBlastingQuantity) - SUM(pi.fettlingQuantity), 0),
+            COALESCE(SUM(pi.fettlingQuantity) - SUM(pi.inspectedQuantity), 0)
+        FROM ProductionItem pi
+        WHERE pi.isDeleted = false
+    """)
+    List<Object[]> getOverallWipTotals();
+
     // ── Pipeline totals for an order item ──
     @Query("""
         SELECT
@@ -50,7 +69,9 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
             COALESCE(SUM(pi.shotBlastingQuantity), 0),
             COALESCE(SUM(pi.fettlingQuantity), 0),
             COALESCE(SUM(pi.dispatchedQuantity), 0),
-            COALESCE(SUM(pi.rejectedQuantity), 0)
+            COALESCE(SUM(pi.rejectedQuantity), 0),
+            COALESCE(SUM(pi.inspectedQuantity), 0),
+            COALESCE(SUM(pi.acceptedQuantity), 0)
         FROM ProductionItem pi
         WHERE pi.orderItem.id = :orderItemId
         AND pi.isDeleted = false
@@ -65,7 +86,9 @@ public interface ProductionItemRepository extends JpaRepository<ProductionItem, 
             COALESCE(SUM(pi.shotBlastingQuantity), 0),
             COALESCE(SUM(pi.fettlingQuantity), 0),
             COALESCE(SUM(pi.dispatchedQuantity), 0),
-            COALESCE(SUM(pi.rejectedQuantity), 0)
+            COALESCE(SUM(pi.rejectedQuantity), 0),
+            COALESCE(SUM(pi.inspectedQuantity), 0),
+            COALESCE(SUM(pi.acceptedQuantity), 0)
         FROM ProductionItem pi
         WHERE pi.orderItem.id = :orderItemId
         AND pi.productionEntry.id != :excludeEntryId

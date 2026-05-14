@@ -17,7 +17,7 @@ This module ensures data consistency, prevents duplicate entries, and provides a
 | ORM               | Spring Data JPA / Hibernate |
 | Database          | PostgreSQL                  |
 | Migration Tool    | Flyway                      |
-| DTO Mapping       | ModelMapper                 |
+| DTO Mapping       | MapStruct                   |
 | Validation        | Custom Validator            |
 | API Documentation | Swagger / OpenAPI           |
 

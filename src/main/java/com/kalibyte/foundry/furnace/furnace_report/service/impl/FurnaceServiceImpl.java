@@ -23,13 +23,19 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class FurnaceServiceImpl implements FurnaceService {
 
     private final FurnaceRepository furnaceRepository;
     private final FurnaceMapper furnaceMapper;
     private final FurnaceRefNoGenerator furnaceRefNoGenerator;
     private final FurnaceHeatService furnaceHeatService;
+
+    public FurnaceServiceImpl(FurnaceRepository furnaceRepository, FurnaceMapper furnaceMapper, FurnaceRefNoGenerator furnaceRefNoGenerator, FurnaceHeatService furnaceHeatService) {
+        this.furnaceRepository = furnaceRepository;
+        this.furnaceMapper = furnaceMapper;
+        this.furnaceRefNoGenerator = furnaceRefNoGenerator;
+        this.furnaceHeatService = furnaceHeatService;
+    }
 
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")

@@ -49,6 +49,12 @@ public class FurnaceHeats {
 
 	private double pouringTemp;
 
+    @Column(name = "tilting_temp")
+    private double tiltingTemp;
+
+    @Column(name = "tapping_temp")
+    private double tappingTemp;
+
 	private double powerToWeight;
 
 	@OneToMany(mappedBy = "heat", cascade = CascadeType.ALL, orphanRemoval = true)

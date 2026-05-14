@@ -57,7 +57,7 @@ Detailed part specifications for an enquiry.
 | `required_quantity`      | INT           | Number of pieces                              |
 | `approx_piece_weight_kg` | NUMERIC(10,3) | Estimated weight per piece                    |
 | `total_weight_kg`        | NUMERIC(12,3) | `required_quantity * approx_piece_weight_kg`  |
-| `casting_process`        | VARCHAR(50)   | e.g., Sand Casting, Investment Casting        |
+| `casting_process_id`    | UUID          | Link to `casting_processes` master table      |
 | `pattern_provided_by`    | VARCHAR(20)   | `CUSTOMER` or `COMPANY`                       |
 | `machine_required`       | BOOLEAN       | Indicates if post-casting machining is needed |
 
@@ -99,7 +99,7 @@ Detailed pricing for each part in a quotation.
 | `drawing_number`     | VARCHAR(100)  | Customer drawing reference                               |
 | `material_grade`     | VARCHAR(100)  | Material grade                                           |
 | `metal_type`         | VARCHAR(50)   | Metal type                                               |
-| `casting_process`    | VARCHAR(50)   | Casting method                                           |
+| `casting_process_id` | UUID          | Link to `casting_processes` master table                 |
 | `net_weight_kg`      | DECIMAL(10,3) | Actual net weight of the casting                         |
 | `quantity`           | INTEGER       | Number of pieces                                         |
 | `unit_price`         | DECIMAL(19,2) | Price per piece (or KG based on business rule)           |
@@ -163,7 +163,7 @@ When a customer revises their requirements (e.g., changes quantities or specific
       "partName": "Gear Housing",
       "metalType": "SG_IRON",
       "materialGrade": "SG500/7",
-      "castingProcess": "Sand Casting",
+      "castingProcessId": "uuid",
       "requiredQuantity": 1000,
       "approxPieceWeightKg": 12.5,
       "machineRequired": true,

@@ -22,10 +22,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/production")
-@RequiredArgsConstructor
 public class ProductionController {
 
     private final ProductionService service;
+
+    public ProductionController(ProductionService service) {
+        this.service = service;
+    }
 
     // ── CREATE ──────────────────────────────────────
 

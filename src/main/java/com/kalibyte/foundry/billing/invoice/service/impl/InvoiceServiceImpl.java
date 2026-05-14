@@ -13,6 +13,7 @@ import com.kalibyte.foundry.billing.invoice.repository.InvoiceRepository;
 import com.kalibyte.foundry.billing.invoice.service.InvoicePaymentService;
 import com.kalibyte.foundry.billing.invoice.service.InvoiceService;
 import com.kalibyte.foundry.billing.util.GstCalculationResult;
+import com.kalibyte.foundry.billing.util.InvoiceNumberGenerator;
 import com.kalibyte.foundry.billing.util.PdfGenerator;
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.common.response.PageResponse;
@@ -33,7 +34,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
@@ -44,6 +44,19 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final PdfGenerator pdfGenerator;
     private final EmailService emailService;
     private final InvoicePaymentService invoicePaymentService;
+    private final InvoiceNumberGenerator invoiceNumberGenerator;
+
+    public InvoiceServiceImpl(InvoiceRepository invoiceRepository, InvoiceItemRepository invoiceItemRepository, DeliveryChallanItemRepository deliveryChallanItemRepository, OrderRepository orderRepository, InvoiceMapper invoiceMapper, PdfGenerator pdfGenerator, EmailService emailService, InvoicePaymentService invoicePaymentService, InvoiceNumberGenerator invoiceNumberGenerator) {
+        this.invoiceRepository = invoiceRepository;
+        this.invoiceItemRepository = invoiceItemRepository;
+        this.deliveryChallanItemRepository = deliveryChallanItemRepository;
+        this.orderRepository = orderRepository;
+        this.invoiceMapper = invoiceMapper;
+        this.pdfGenerator = pdfGenerator;
+        this.emailService = emailService;
+        this.invoicePaymentService = invoicePaymentService;
+        this.invoiceNumberGenerator = invoiceNumberGenerator;
+    }
 
     //------------------------------------------------
     // GENERATE INVOICE
@@ -108,7 +121,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         //------------------------------------------------
 
         Invoice invoice = Invoice.builder()
-                .invoiceNumber(generateInvoiceNumber())
+                .invoiceNumber(invoiceNumberGenerator.generateInvoiceNumber())
                 .order(order)
                 .vehicleNumber(request.getVehicleNumber())
                 .subtotal(subtotal)
@@ -220,30 +233,6 @@ public class InvoiceServiceImpl implements InvoiceService {
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return dispatchedQty.compareTo(orderedQty) >= 0;
-    }
-
-    //------------------------------------------------
-    // INVOICE NUMBER GENERATOR
-    //------------------------------------------------
-
-    private String generateInvoiceNumber() {
-
-        int year = Year.now().getValue();
-        String prefix = "INV-" + year + "-";
-
-        Optional<Invoice> last =
-                invoiceRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(prefix);
-
-        int next = 1;
-
-        if (last.isPresent()) {
-
-            String lastNo = last.get().getInvoiceNumber();
-            String seq = lastNo.substring(prefix.length());
-            next = Integer.parseInt(seq) + 1;
-        }
-
-        return prefix + String.format("%05d", next);
     }
 
     //------------------------------------------------

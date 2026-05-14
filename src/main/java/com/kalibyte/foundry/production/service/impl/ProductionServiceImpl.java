@@ -546,7 +546,7 @@ public class ProductionServiceImpl implements ProductionService {
             return PipelineTotals.ZERO;
         }
         Object[] raw = results.get(0);
-        if (raw == null || raw.length < 6) {
+        if (raw == null || raw.length < 8) {
             return PipelineTotals.ZERO;
         }
         return new PipelineTotals(
@@ -555,7 +555,9 @@ public class ProductionServiceImpl implements ProductionService {
                 toInt(raw[2]),
                 toInt(raw[3]),
                 toInt(raw[4]),
-                toInt(raw[5])
+                toInt(raw[5]),
+                toInt(raw[6]),
+                toInt(raw[7])
         );
     }
 

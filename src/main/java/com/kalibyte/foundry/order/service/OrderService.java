@@ -52,7 +52,7 @@ public interface OrderService {
             OrderStatus orderStatus,
             String partName,
             MetalType metalType,
-            String castingProcess,
+            UUID castingProcessId,
             Boolean pendingOnly,
             Pageable pageable
     );

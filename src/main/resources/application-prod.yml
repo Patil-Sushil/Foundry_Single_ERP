@@ -42,7 +42,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET_KEY}
-  expiration: ${JWT_EXP_TIME}
+  expiration: ${JWT_EXP_TIME:1800000}
 
 app:
   company-state: ${COMPANY_STATE:Maharashtra}

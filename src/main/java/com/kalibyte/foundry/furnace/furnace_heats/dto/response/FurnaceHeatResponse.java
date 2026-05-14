@@ -25,6 +25,8 @@ public class FurnaceHeatResponse {
     private double totalWeight;
     private double powerToWeight;
     private double pouringTemp;
+    private double tiltingTemp;
+    private double tappingTemp;
     private List<HeatMaterialItemResponse> materialsUsed;
     private LocalTime pouringStartTime;
     private LocalTime pouringEndTime;

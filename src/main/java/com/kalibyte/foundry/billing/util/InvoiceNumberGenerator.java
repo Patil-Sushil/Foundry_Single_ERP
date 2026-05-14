@@ -14,7 +14,7 @@ public class InvoiceNumberGenerator {
 
     private final InvoiceRepository invoiceRepository;
 
-    public String generateInvoiceNumber() {
+    public synchronized String generateInvoiceNumber() {
 
         int year = Year.now().getValue();
         String prefix = "INV-" + year + "-";

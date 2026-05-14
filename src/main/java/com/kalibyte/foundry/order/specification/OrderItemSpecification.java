@@ -23,7 +23,7 @@ public class OrderItemSpecification {
             OrderStatus orderStatus,
             String partName,
             MetalType metalType,
-            String castingProcess,
+            UUID castingProcessId,
             Boolean pendingOnly) {
 
         return (root, query, cb) -> {
@@ -62,10 +62,9 @@ public class OrderItemSpecification {
             }
 
             // Filter by casting process
-            if (castingProcess != null && !castingProcess.isBlank()) {
-                predicates.add(cb.like(
-                        cb.lower(root.get("castingProcess")),
-                        "%" + castingProcess.toLowerCase() + "%"));
+            if (castingProcessId != null) {
+                predicates.add(cb.equal(
+                        root.get("castingProcess").get("id"), castingProcessId));
             }
 
             // Filter pending items only (produced < quantity)

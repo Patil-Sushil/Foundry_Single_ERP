@@ -24,7 +24,7 @@ public class QuotationItemRequest {
     // Metal & Casting
     private MetalType metalType;
     private MetalCategory metalCategory;
-    private String castingProcess;
+    private UUID castingProcessId;
 
     private Boolean isMachiningRequired;
 

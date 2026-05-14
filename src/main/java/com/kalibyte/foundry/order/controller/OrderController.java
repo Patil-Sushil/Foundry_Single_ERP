@@ -150,8 +150,8 @@ public class OrderController {
             @Parameter(description = "Filter by metal type")
             @RequestParam(required = false) MetalType metalType,
 
-            @Parameter(description = "Filter by casting process")
-            @RequestParam(required = false) String castingProcess,
+            @Parameter(description = "Filter by casting process ID")
+            @RequestParam(required = false) UUID castingProcessId,
 
             @Parameter(description = "Show only pending items (produced < quantity)")
             @RequestParam(required = false) Boolean pendingOnly,
@@ -161,7 +161,7 @@ public class OrderController {
 
         PageResponse<OrderItemResponse> response = orderService.getAllOrderItems(
                 orderId, customerId, orderStatus, partName,
-                metalType, castingProcess, pendingOnly, pageable);
+                metalType, castingProcessId, pendingOnly, pageable);
 
         return ApiResponse.success(response);
     }

@@ -8,9 +8,9 @@ import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.enquiry.entity.Enquiry;
 import com.kalibyte.foundry.enquiry.entity.EnquiryItem;
 import com.kalibyte.foundry.enquiry.entity.enums.EnquiryStatus;
-import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
 import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
+import com.kalibyte.foundry.common.castingprocess.service.CastingProcessService;
 import com.kalibyte.foundry.pattern.dto.request.PatternReceiptRequest;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.PatternReceipt;
@@ -35,7 +35,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,6 +49,7 @@ public class QuotationServiceImpl implements QuotationService {
     private final PatternRepository patternRepository;
     private final QuotationMapper quotationMapper;
     private final QuotationEmailService quotationEmailService;
+    private final CastingProcessService castingProcessService;
 
     // =========================================================
     //  CREATE QUOTATION
@@ -219,8 +219,8 @@ public class QuotationServiceImpl implements QuotationService {
             if (itemReq.getMetalCategory() != null) {
                 item.setMetalCategory(itemReq.getMetalCategory());
             }
-            if (itemReq.getCastingProcess() != null && !itemReq.getCastingProcess().isBlank()) {
-                item.setCastingProcess(itemReq.getCastingProcess());
+            if (itemReq.getCastingProcessId() != null) {
+                item.setCastingProcess(castingProcessService.getEntity(itemReq.getCastingProcessId()));
             }
             if (itemReq.getIsMachiningRequired() != null) {
                 item.setIsMachiningRequired(itemReq.getIsMachiningRequired());
@@ -262,7 +262,9 @@ public class QuotationServiceImpl implements QuotationService {
         item.setMaterialGrade(itemReq.getMaterialGrade());
         item.setMetalType(itemReq.getMetalType());
         item.setMetalCategory(itemReq.getMetalCategory());
-        item.setCastingProcess(itemReq.getCastingProcess());
+        if (itemReq.getCastingProcessId() != null) {
+            item.setCastingProcess(castingProcessService.getEntity(itemReq.getCastingProcessId()));
+        }
         item.setDrawingNumber(itemReq.getDrawingNumber());
         item.setNetWeightKg(itemReq.getNetWeightKg());
         item.setPatternStatus(itemReq.getPatternStatus());

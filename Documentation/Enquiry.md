@@ -286,7 +286,8 @@ Used to manually change enquiry status if required.
       "metalType": "CAST_IRON",
       "requiredQuantity": 100,
       "approxPieceWeightKg": 5.5,
-      "castingProcess": "SAND_CASTING",
+      "castingProcessId": "uuid",
+      "castingProcessName": "SAND_CASTING",
       "patternProvidedByCustomer": true,
       "patternReceipt": {
         "inwardDate": "2026-02-20",
@@ -320,7 +321,9 @@ Used to manually change enquiry status if required.
      "requiredQuantity": 100,
      "approxPieceWeightKg": 5.5,
      "totalWeightKg": 550.0,
-     "castingProcess": "SAND_CASTING",
+     "castingProcessId": "uuid",
+     "castingProcessName": "SAND_CASTING",
+
      "patternName": "Customer Valve Pattern",
      "machineRequired": true
    }

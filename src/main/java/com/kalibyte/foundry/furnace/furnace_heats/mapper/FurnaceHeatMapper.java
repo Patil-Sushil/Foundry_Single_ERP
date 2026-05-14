@@ -3,6 +3,7 @@ package com.kalibyte.foundry.furnace.furnace_heats.mapper;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.FurnaceHeatResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.dto.response.HeatMaterialItemResponse;
+import com.kalibyte.foundry.furnace.furnace_heats.entity.ElectricityRate;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.FurnaceHeats;
 import com.kalibyte.foundry.furnace.furnace_heats.repository.ElectricityRateRepository;
@@ -81,7 +82,7 @@ public abstract class FurnaceHeatMapper {
                 .or(() -> electricityRateRepository.findFirstByEffectiveFromGreaterThanOrderByEffectiveFromAsc(heatDate))
                 .or(() -> electricityRateRepository.findFirstByEffectiveFromLessThanOrderByEffectiveFromDesc(heatDate))
                 .or(() -> electricityRateRepository.findFirstByActiveTrueOrderByIdDesc())
-                .map(er -> er.getRatePerUnit())
+                .map(ElectricityRate::getRatePerUnit)
                 .orElse(0.0);
 
         HeatMaterialItemResponse electricityItem = HeatMaterialItemResponse.builder()

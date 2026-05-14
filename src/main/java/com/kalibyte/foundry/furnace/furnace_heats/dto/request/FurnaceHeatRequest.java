@@ -48,6 +48,10 @@ public class FurnaceHeatRequest {
 
     private Double pouringTemp;
 
+    private Double tiltingTemp;
+
+    private Double tappingTemp;
+
     private List<@Valid HeatMaterialItemRequest> materialsUsed;
 
     private LocalTime pouringStartTime;

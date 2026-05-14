@@ -22,6 +22,7 @@ import com.kalibyte.foundry.order.mapper.OrderMapper;
 import com.kalibyte.foundry.order.repository.OrderItemRepository;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 import com.kalibyte.foundry.order.service.OrderService;
+import com.kalibyte.foundry.common.castingprocess.service.CastingProcessService;
 import com.kalibyte.foundry.order.specification.OrderItemSpecification;
 import com.kalibyte.foundry.order.specification.OrderSpecification;
 import com.kalibyte.foundry.order.validation.OrderStatusTransitionValidator;
@@ -62,6 +63,7 @@ public class OrderServiceImpl implements OrderService {
     private final PatternRepository patternRepository;
     private final OrderMapper orderMapper;
     private final EmailService emailService;
+    private final CastingProcessService castingProcessService;
 
     private static final String COMPANY_STATE = "Maharashtra";
 
@@ -206,7 +208,7 @@ public class OrderServiceImpl implements OrderService {
             if (item.getMetalType() == null) {
                 item.setMetalType(eItem.getMetalType());
             }
-            if (item.getCastingProcess() == null || item.getCastingProcess().isBlank()) {
+            if (item.getCastingProcess() == null) {
                 item.setCastingProcess(eItem.getCastingProcess());
             }
         }
@@ -299,7 +301,7 @@ public class OrderServiceImpl implements OrderService {
                 .materialGrade(req.getMaterialGrade())
                 .metalType(req.getMetalType())
                 .metalCategory(req.getMetalCategory())
-                .castingProcess(req.getCastingProcess())
+                .castingProcess(req.getCastingProcessId() != null ? castingProcessService.getEntity(req.getCastingProcessId()) : null)
                 .isMachiningRequired(req.getIsMachiningRequired())
                 .netWeightKg(req.getNetWeightKg())
                 .grossWeightKg(req.getGrossWeightKg())
@@ -516,13 +518,13 @@ public class OrderServiceImpl implements OrderService {
             OrderStatus orderStatus,
             String partName,
             MetalType metalType,
-            String castingProcess,
+            UUID castingProcessId,
             Boolean pendingOnly,
             Pageable pageable) {
 
         Specification<OrderItem> spec = OrderItemSpecification.filter(
                 orderId, customerId, orderStatus, partName,
-                metalType, castingProcess, pendingOnly);
+                metalType, castingProcessId, pendingOnly);
 
         Page<OrderItem> page = orderItemRepository.findAll(spec, pageable);
 

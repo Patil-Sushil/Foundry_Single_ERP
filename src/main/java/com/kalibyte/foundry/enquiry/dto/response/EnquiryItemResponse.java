@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Enquiry Item Response
@@ -24,7 +25,8 @@ public class EnquiryItemResponse {
     private Integer requiredQuantity;
     private BigDecimal approxPieceWeightKg;
     private BigDecimal totalWeightKg;
-    private String castingProcess;
+    private UUID castingProcessId;
+    private String castingProcessName;
 
     private PatternProvidedBy patternProvidedBy;
 

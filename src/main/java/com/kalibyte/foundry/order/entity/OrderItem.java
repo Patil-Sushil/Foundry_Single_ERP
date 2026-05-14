@@ -3,6 +3,7 @@ package com.kalibyte.foundry.order.entity;
 import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
+import com.kalibyte.foundry.common.castingprocess.entity.CastingProcessMaster;
 import com.kalibyte.foundry.pattern.entity.Pattern;
 import com.kalibyte.foundry.pattern.entity.PatternReceipt;
 import jakarta.persistence.*;
@@ -44,9 +45,11 @@ public class OrderItem extends BaseEntity {
     @Column(name = "metal_category", length = 50)
     private MetalCategory metalCategory;
 
-    @Column(name = "casting_process", length = 50)
-    private String castingProcess;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "casting_process_id")
+    private CastingProcessMaster castingProcess;
 
+    @Builder.Default
     @Column(name = "is_machining_required")
     private Boolean isMachiningRequired = false;
 

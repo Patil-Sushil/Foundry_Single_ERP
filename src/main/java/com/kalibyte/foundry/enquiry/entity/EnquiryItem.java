@@ -4,8 +4,7 @@ import com.kalibyte.foundry.common.base.BaseEntity;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalCategory;
 import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.enquiry.entity.enums.PatternProvidedBy;
-import com.kalibyte.foundry.pattern.entity.Pattern;
-import com.kalibyte.foundry.pattern.entity.PatternReceipt;
+import com.kalibyte.foundry.common.castingprocess.entity.CastingProcessMaster;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -47,8 +46,9 @@ public class EnquiryItem extends BaseEntity {
     @Column(name = "total_weight_kg", nullable = false)
     private BigDecimal totalWeightKg;
 
-    @Column(name = "casting_process", nullable = false)
-    private String castingProcess;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "casting_process_id")
+    private CastingProcessMaster castingProcess;
 
     // ===== Pattern Logic =====
 

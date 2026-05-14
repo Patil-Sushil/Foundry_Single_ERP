@@ -34,6 +34,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     Page<Order> findByStatusIn(List<OrderStatus> statuses, Pageable pageable);
 
+    List<Order> findByStatusIn(List<OrderStatus> statuses);
+
     long countByStatus(OrderStatus status);
 
     Optional<Order> findTopByOrderNumberStartingWithOrderByOrderNumberDesc(String prefix);

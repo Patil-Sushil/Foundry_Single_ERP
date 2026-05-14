@@ -27,6 +27,8 @@ public interface QuotationMapper {
     //--------------------------------------------------
     @Mapping(source = "metalType.displayName", target = "metalType")
     @Mapping(source = "metalCategory.displayName", target = "metalCategory")
+    @Mapping(source = "castingProcess.id", target = "castingProcessId")
+    @Mapping(source = "castingProcess.name", target = "castingProcessName")
     @Mapping(source = "isMachiningRequired", target = "isMachiningRequired")
     @Mapping(source = "patternStatus", target = "patternStatus")
     @Mapping(source = "patternProvidedByCustomer", target = "patternProvidedByCustomer")

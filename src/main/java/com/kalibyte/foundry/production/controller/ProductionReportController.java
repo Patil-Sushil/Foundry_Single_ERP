@@ -18,6 +18,11 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.kalibyte.foundry.production.dto.response.report.orderwise.OrderItemProgress;
+import com.kalibyte.foundry.production.dto.response.report.dashboard.WipDashboardResponse;
+import com.kalibyte.foundry.production.dto.response.report.dashboard.DelayedOrderResponse;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/reports/production")
 @RequiredArgsConstructor
@@ -25,6 +30,26 @@ import java.util.UUID;
 public class ProductionReportController {
 
     private final ProductionReportService service;
+
+    // ── DASHBOARD ENHANCEMENTS ──────────────────────
+
+    @GetMapping("/dashboard/order-progress")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<List<OrderItemProgress>>> orderProgressDashboard() {
+        return ResponseEntity.ok(ApiResponse.success(service.getAllOrderProgress()));
+    }
+
+    @GetMapping("/dashboard/wip")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<WipDashboardResponse>> wipDashboard() {
+        return ResponseEntity.ok(ApiResponse.success(service.getWipDashboard()));
+    }
+
+    @GetMapping("/dashboard/delayed")
+    @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
+    public ResponseEntity<ApiResponse<List<DelayedOrderResponse>>> delayedOrders() {
+        return ResponseEntity.ok(ApiResponse.success(service.getDelayedOrders()));
+    }
 
     // ── ORDER REPORT ────────────────────────────────
 

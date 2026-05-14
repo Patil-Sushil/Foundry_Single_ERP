@@ -4,6 +4,7 @@ import com.kalibyte.foundry.quotation.entity.enums.QuotationPatternStatus;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -19,7 +20,8 @@ public class QuotationItemResponse {
     // Metal & Casting
     private String metalType;
     private String metalCategory;
-    private String castingProcess;
+    private UUID castingProcessId;
+    private String castingProcessName;
     private Boolean isMachiningRequired;
 
     private BigDecimal netWeightKg;

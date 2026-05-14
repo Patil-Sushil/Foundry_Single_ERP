@@ -16,6 +16,7 @@ import com.kalibyte.foundry.enquiry.entity.enums.MetalType;
 import com.kalibyte.foundry.enquiry.mapper.EnquiryMapper;
 import com.kalibyte.foundry.enquiry.repository.EnquiryRepository;
 import com.kalibyte.foundry.enquiry.service.EnquiryService;
+import com.kalibyte.foundry.common.castingprocess.service.CastingProcessService;
 import com.kalibyte.foundry.quotation.entity.enums.QuotationStatus;
 import com.kalibyte.foundry.quotation.repository.QuotationRepository;
 import jakarta.transaction.Transactional;
@@ -36,6 +37,7 @@ public class EnquiryServiceImpl implements EnquiryService {
     private final CustomerRepository customerRepository;
     private final EnquiryMapper enquiryMapper;
     private final QuotationRepository quotationRepository;
+    private final CastingProcessService castingProcessService;
 
     @Override
     public EnquiryResponse create(EnquiryCreateRequest request) {
@@ -77,7 +79,7 @@ public class EnquiryServiceImpl implements EnquiryService {
             item.setMetalCategory(category);
             item.setMaterialGrade(itemReq.getMaterialGrade());
             item.setMetalType(type);
-            item.setCastingProcess(itemReq.getCastingProcess());
+            item.setCastingProcess(castingProcessService.getEntity(itemReq.getCastingProcessId()));
             item.setRequiredQuantity(itemReq.getRequiredQuantity());
             item.setApproxPieceWeightKg(itemReq.getApproxPieceWeightKg());
             item.setTotalWeightKg(itemWeight);
@@ -208,7 +210,7 @@ public class EnquiryServiceImpl implements EnquiryService {
                     .metalCategory(category)
                     .materialGrade(itemReq.getMaterialGrade())
                     .metalType(type)
-                    .castingProcess(itemReq.getCastingProcess())
+                    .castingProcess(castingProcessService.getEntity(itemReq.getCastingProcessId()))
                     .requiredQuantity(itemReq.getRequiredQuantity())
                     .approxPieceWeightKg(itemReq.getApproxPieceWeightKg())
                     .totalWeightKg(itemWeight)

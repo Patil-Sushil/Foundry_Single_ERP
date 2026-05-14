@@ -8,6 +8,7 @@ import com.kalibyte.foundry.customer.entity.Customer;
 import com.kalibyte.foundry.customer.exception.CustomerNotFoundException;
 import com.kalibyte.foundry.customer.exception.DuplicateCustomerException;
 import com.kalibyte.foundry.customer.exception.DuplicateGstException;
+import com.kalibyte.foundry.customer.mapper.CustomerMapper;
 import com.kalibyte.foundry.customer.repository.CustomerRepository;
 import com.kalibyte.foundry.customer.service.CustomerService;
 import com.kalibyte.foundry.customer.service.CustomerValidator;
@@ -30,7 +31,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
     private final CustomerValidator validator;
-    private final org.modelmapper.ModelMapper modelMapper;
+    private final CustomerMapper customerMapper;
 
     @Override
     @Transactional
@@ -50,7 +51,7 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
 
-        Customer customer = modelMapper.map(request, Customer.class);
+        Customer customer = customerMapper.toEntity(request);
         if (customer.getCountry() == null) {
             customer.setCountry("India");
         }
@@ -59,7 +60,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer saved = customerRepository.save(customer);
 
         
-        return modelMapper.map(saved, CustomerResponse.class);
+        return customerMapper.toResponse(saved);
     }
 
     @Override
@@ -67,7 +68,7 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerResponse getCustomerById(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with ID: " + customerId));
-        return modelMapper.map(customer, CustomerResponse.class);
+        return customerMapper.toResponse(customer);
     }
 
     @Override
@@ -75,7 +76,7 @@ public class CustomerServiceImpl implements CustomerService {
     public PageResponse<CustomerResponse> listCustomers(int page, int size, String sort) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         Page<Customer> customerPage = customerRepository.findAll(pageable);
-        return PageResponse.from(customerPage, customer -> modelMapper.map(customer, CustomerResponse.class));
+        return PageResponse.from(customerPage, customerMapper::toResponse);
     }
 
     @Override
@@ -86,7 +87,7 @@ public class CustomerServiceImpl implements CustomerService {
         
 
         validator.validate(request);
-        modelMapper.map(request, customer);
+        customerMapper.updateEntity(request, customer);
         
         if (customer.getCountry() == null) {
             customer.setCountry("India");
@@ -94,7 +95,7 @@ public class CustomerServiceImpl implements CustomerService {
 
         customer.setUpdatedBy(SecurityUtils.getCurrentUsername());
         Customer updated = customerRepository.save(customer);
-        return modelMapper.map(updated, CustomerResponse.class);
+        return customerMapper.toResponse(updated);
     }
 
     @Override
@@ -118,7 +119,7 @@ public class CustomerServiceImpl implements CustomerService {
     public Optional<CustomerResponse> findByPhone(String phone) {
 
         return customerRepository.findByPhone(phone)
-                .map(customer -> modelMapper.map(customer, CustomerResponse.class));
+                .map(customerMapper::toResponse);
     }
 
 

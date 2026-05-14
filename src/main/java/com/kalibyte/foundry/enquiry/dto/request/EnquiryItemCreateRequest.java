@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Enquiry Item Create Request
@@ -29,8 +30,8 @@ public class EnquiryItemCreateRequest {
     @NotBlank(message = "Material grade is required")
     private String materialGrade;
 
-    @NotBlank(message = "Casting process is required")
-    private String castingProcess;
+    @NotNull(message = "Casting process is required")
+    private UUID castingProcessId;
 
     @NotNull(message = "Required quantity is mandatory")
     @Min(value = 1, message = "Quantity must be greater than zero")

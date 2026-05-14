@@ -14,7 +14,7 @@ public class DCNumberGenerator {
 
     private final DeliveryChallanRepository repository;
 
-    public String generateDCNumber() {
+    public synchronized String generateDCNumber() {
 
         int year = Year.now().getValue();
 

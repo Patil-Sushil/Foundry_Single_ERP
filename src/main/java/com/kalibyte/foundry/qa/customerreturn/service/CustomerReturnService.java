@@ -168,7 +168,7 @@ public class CustomerReturnService {
                 .partName(originalItem.getPartName())
                 .materialGrade(originalItem.getMaterialGrade())
                 .metalType(originalItem.getMetalType())
-                .castingProcess(originalItem.getCastingProcess())
+                .castingProcessId(originalItem.getCastingProcess() != null ? originalItem.getCastingProcess().getId() : null)
                 .netWeightKg(originalItem.getNetWeightKg())
                 .grossWeightKg(originalItem.getGrossWeightKg())
                 .quantity(returnEntry.getReturnedQuantity())

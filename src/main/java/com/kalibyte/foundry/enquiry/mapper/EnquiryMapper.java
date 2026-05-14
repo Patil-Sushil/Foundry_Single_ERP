@@ -33,6 +33,8 @@ public interface EnquiryMapper {
     @Mapping(source = "metalCategory.displayName", target = "metalCategory")
     @Mapping(source = "metalType.displayName", target = "metalType")
     @Mapping(source = "materialGrade", target = "materialGrade")
+    @Mapping(source = "castingProcess.id", target = "castingProcessId")
+    @Mapping(source = "castingProcess.name", target = "castingProcessName")
 
 
     // IMPORTANT FIX

@@ -14,7 +14,7 @@ public class FurnaceRefNoGenerator {
     private final FurnaceRepository furnaceRepository;
 
     @Transactional
-    public String generate() {
+    public synchronized String generate() {
         int year = LocalDate.now().getYear();
         long count = furnaceRepository.countByYear(year);
         String furnaceRefNo;
