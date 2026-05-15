@@ -11,7 +11,7 @@ spring:
 #     password: ${SPRING_DATASOURCE_PASSWORD:1422}
 #     driver-class-name: org.postgresql.Driver
 
-      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-gentle-waterfall-a1tvsw0l-poxoler.ap-southeast-1.aws.neon.tech:5432/neon_db?sslmode=require&user=neondb_owner&password=npg_Qg0h7AnrVNvz}
+      url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-gentle-waterfall-a1tvsw0l-pooler.ap-southeast-1.aws.neon.tech/neon_db?user=neondb_owner&password=npg_Qg0h7AnrVNvz&sslmode=require&channelBinding=require}
 #      username: ${SPRING_DATASOURCE_USERNAME:devuser}
 #      password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
       driver-class-name: org.postgresql.Driver

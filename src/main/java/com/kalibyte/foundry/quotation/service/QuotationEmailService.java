@@ -2,18 +2,23 @@ package com.kalibyte.foundry.quotation.service;
 
 import com.kalibyte.foundry.common.email.EmailService;
 import com.kalibyte.foundry.quotation.entity.Quotation;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class QuotationEmailService {
 
     private final EmailService emailService;
     private final QuotationPdfService quotationPdfService;
+
+    public QuotationEmailService(EmailService emailService, QuotationPdfService quotationPdfService) {
+        this.emailService = emailService;
+        this.quotationPdfService = quotationPdfService;
+    }
 
     public void sendQuotationEmail(Quotation quotation) {
 

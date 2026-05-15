@@ -43,12 +43,26 @@ spring:
 jwt:
   secret: ${JWT_SECRET_KEY}
   expiration: ${JWT_EXP_TIME:1800000}
+  refresh-expiration: ${JWT_REFRESH_EXP_TIME:604800000}
 
 app:
   company-state: ${COMPANY_STATE:Maharashtra}
   default-admin:
     email: admin@foundry.com
     password: Admin@123
+  company:
+    name: ${COMPANY_NAME:KALI-BYTE PRECISION STEEL FOUNDRY}
+    address: ${COMPANY_ADDRESS:Plot NoA-12, MIDC Industrial Area, Sangli - 416234}
+    gstNo: ${COMPANY_GST_NO:27AACM1234P125}
+    contact: ${COMPANY_CONTACT:0214-2654321}
+    email: ${COMPANY_EMAIL:info@kalibytefoundry.com}
+    logoPath: ${COMPANY_LOGO_PATH:static/logo.png}
+    bankName: ${COMPANY_BANK_NAME:HDFC Bank}
+    branch: ${COMPANY_BRANCH:Vishrambag (Sangli)}
+    accountNo: ${COMPANY_ACCOUNT_NO:5010012345678}
+    ifsc: ${COMPANY_IFSC:HDFC0000123}
+    termsPayment: ${COMPANY_TERMS_PAYMENT:50% Advance, 50% Before Dispatch}
+    termsDelivery: ${COMPANY_TERMS_DELIVERY:Ex-Works Sangli}
 
 springdoc:
   api-docs:
