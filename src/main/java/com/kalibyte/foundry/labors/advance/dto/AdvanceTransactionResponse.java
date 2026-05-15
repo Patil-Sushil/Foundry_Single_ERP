@@ -9,10 +9,11 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AdvanceTransactionRequestDTO {
+public class AdvanceTransactionResponse {
+    private Long id;
     private Long laborerId;
     private LocalDate transactionDate;
     private BigDecimal amount;
-    private TransactionType transactionType; // 'GIVEN' or 'DEDUCTED'
+    private TransactionType transactionType;
     private String notes;
 }

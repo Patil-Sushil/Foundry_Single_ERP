@@ -11,6 +11,8 @@ import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseExportServic
 import com.kalibyte.foundry.inventory.purchaseorder.service.PurchaseOrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Pageable;
@@ -26,19 +28,16 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/purchase-orders")
 @Tag(name = "Purchase Orders", description = "Purchase Order Management APIs")
 @PreAuthorize("hasAnyRole('ADMIN', 'STORE', 'FINANCE')")
+@RequiredArgsConstructor
 public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
     private final PurchaseExportService purchaseExportService;
-
-    public PurchaseOrderController(PurchaseOrderService purchaseOrderService, PurchaseExportService purchaseExportService) {
-        this.purchaseOrderService = purchaseOrderService;
-        this.purchaseExportService = purchaseExportService;
-    }
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportPurchaseReport(

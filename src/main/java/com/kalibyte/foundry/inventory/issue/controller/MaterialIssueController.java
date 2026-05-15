@@ -11,6 +11,7 @@ import com.kalibyte.foundry.inventory.issue.service.MaterialIssueService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,16 +19,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/material-issues")
 @Tag(name = "Material Issue", description = "Material Issue Management APIs")
+@RequiredArgsConstructor
 public class MaterialIssueController {
 
     private final MaterialIssueService materialIssueService;
-
-	public MaterialIssueController(MaterialIssueService materialIssueService) {
-		this.materialIssueService = materialIssueService;
-	}
 
 	@PostMapping
     @ResponseStatus(HttpStatus.CREATED)

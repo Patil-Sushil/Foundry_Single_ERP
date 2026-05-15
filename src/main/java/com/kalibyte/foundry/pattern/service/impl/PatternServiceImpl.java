@@ -9,20 +9,24 @@ import com.kalibyte.foundry.pattern.dto.request.PatternUpdateRequest;
 import com.kalibyte.foundry.pattern.dto.response.PatternResponse;
 import com.kalibyte.foundry.pattern.entity.enums.PatternStatus;
 import com.kalibyte.foundry.pattern.entity.Pattern;
+import com.kalibyte.foundry.pattern.mapper.PatternMapper;
 import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import com.kalibyte.foundry.pattern.service.PatternService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PatternServiceImpl implements PatternService {
 
     private final PatternRepository patternRepository;
+    private final PatternMapper patternMapper;
 
     @Override
     @Transactional
@@ -44,7 +48,7 @@ public class PatternServiceImpl implements PatternService {
 
         patternRepository.save(pattern);
 
-        return toResponse(pattern);
+        return patternMapper.toResponse(pattern);
     }
 
     @Override
@@ -70,14 +74,14 @@ public class PatternServiceImpl implements PatternService {
 
         Page<Pattern> patternPage = patternRepository.findAll(pageable);
 
-        return PageResponse.from(patternPage, this::toResponse);
+        return PageResponse.from(patternPage, patternMapper::toResponse);
     }
 
     @Override
     public PatternResponse getById(UUID id) {
         Pattern pattern = patternRepository.findById(id)
                 .orElseThrow(()-> new ResourceNotFoundException("Pattern not found"));
-        return toResponse(pattern);
+        return patternMapper.toResponse(pattern);
     }
 
     @Override
@@ -93,7 +97,7 @@ public class PatternServiceImpl implements PatternService {
 
         pattern.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
-        return toResponse(pattern);
+        return patternMapper.toResponse(pattern);
     }
 
     @Override
@@ -110,19 +114,7 @@ public class PatternServiceImpl implements PatternService {
         pattern.setStatus(newStatus);
         pattern.setUpdatedBy(SecurityUtils.getCurrentUsername());
 
-        return toResponse(pattern);
+        return patternMapper.toResponse(pattern);
 
-    }
-
-    private PatternResponse toResponse(Pattern pattern) {
-        return PatternResponse.builder()
-                .id(pattern.getId())
-                .patternNumber(pattern.getPatternNumber())
-                .name(pattern.getPatternName())
-                .type(pattern.getType())
-                .material(pattern.getMaterial())
-                .status(pattern.getStatus())
-                .rackNumber(pattern.getRackNumber())
-                .build();
     }
 }

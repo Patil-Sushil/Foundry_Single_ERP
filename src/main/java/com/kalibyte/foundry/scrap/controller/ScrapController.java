@@ -12,23 +12,22 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/scrap")
 @Tag(name = "Scrap Management", description = "APIs for managing scrap generation, verification, and approval")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class ScrapController {
 
     private final ScrapService scrapService;
-
-    public ScrapController(ScrapService scrapService) {
-        this.scrapService = scrapService;
-    }
 
     @GetMapping
     @Operation(summary = "Get all scrap entries", description = "Fetch all scrap entries, optionally filtered by status. Accessible by ADMIN, PRODUCTION, QUALITY.")

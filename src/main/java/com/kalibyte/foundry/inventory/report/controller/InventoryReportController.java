@@ -6,21 +6,20 @@ import com.kalibyte.foundry.inventory.report.service.InventoryReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/inventory/reports")
 @Tag(name = "Inventory Reports", description = "Endpoints for inventory analytics and reports")
+@RequiredArgsConstructor
 public class InventoryReportController {
 
     private final InventoryReportService reportService;
-
-	public InventoryReportController(InventoryReportService reportService) {
-		this.reportService = reportService;
-	}
 
 	@GetMapping("/inwards")
     @Operation(summary = "Material Inward Report")

@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.labors.labor.mapper;
 
-import com.kalibyte.foundry.labors.labor.dto.LaborerRequestDTO;
-import com.kalibyte.foundry.labors.labor.dto.LaborerResponseDTO;
+import com.kalibyte.foundry.labors.labor.dto.LaborerRequest;
+import com.kalibyte.foundry.labors.labor.dto.LaborerResponse;
 import com.kalibyte.foundry.labors.labor.entity.Laborer;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -13,16 +13,16 @@ import java.util.List;
 public interface LaborerMapper {
 
 	@Mapping(target = "id", ignore = true)
-	Laborer toEntity(LaborerRequestDTO request);
+	Laborer toEntity(LaborerRequest request);
 
 	@Mapping(target = "id", ignore = true)
-	void updateEntityFromDto(LaborerRequestDTO request, @org.mapstruct.MappingTarget Laborer entity);
+	void updateEntityFromDto(LaborerRequest request, @org.mapstruct.MappingTarget Laborer entity);
 
 	@Mapping(source = "phNumber", target = "phNumber")
 	@Mapping(source = "email", target = "email")
 	@Mapping(source = "address", target = "address")
-	LaborerResponseDTO toResponse(Laborer entity);
+	LaborerResponse toResponse(Laborer entity);
 
-	List<LaborerResponseDTO> toResponseDTOList(List<Laborer> laborers);
+	List<LaborerResponse> toResponseDTOList(List<Laborer> laborers);
 
 }

@@ -5,21 +5,21 @@ import com.kalibyte.foundry.inventory.department.dto.request.DepartmentRequest;
 import com.kalibyte.foundry.inventory.department.dto.response.DepartmentResponse;
 import com.kalibyte.foundry.inventory.department.service.DepartmentService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/departments")
 @Tag(name = "Departments", description = "Department Management APIs")
+@RequiredArgsConstructor
 public class DepartmentController {
 
     private final DepartmentService departmentService;
-
-	public DepartmentController(DepartmentService departmentService) {
-		this.departmentService = departmentService;
-	}
 
 	@GetMapping
     public ApiResponse<List<DepartmentResponse>> getAll() {

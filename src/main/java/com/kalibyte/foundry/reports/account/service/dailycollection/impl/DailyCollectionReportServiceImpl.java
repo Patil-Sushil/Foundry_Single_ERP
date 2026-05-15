@@ -6,6 +6,7 @@ import com.kalibyte.foundry.reports.account.dto.response.dailycollection.DailyCo
 import com.kalibyte.foundry.reports.account.dto.response.dailycollection.DailyCollectionReport;
 import com.kalibyte.foundry.reports.account.service.dailycollection.DailyCollectionReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import java.util.List;
 /**
  * Implementation of DailyCollectionReportService.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DailyCollectionReportServiceImpl implements DailyCollectionReportService {

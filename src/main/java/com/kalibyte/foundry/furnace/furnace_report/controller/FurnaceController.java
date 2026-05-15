@@ -2,11 +2,12 @@ package com.kalibyte.foundry.furnace.furnace_report.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
 import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
-import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponseDTO;
-import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequestDTO;
+import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponse;
+import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequest;
 import com.kalibyte.foundry.furnace.furnace_report.service.FurnaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,42 +16,40 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/furnace/reports")
+@RequiredArgsConstructor
 public class FurnaceController {
 
     private final FurnaceService furnaceService;
 
-	public FurnaceController(FurnaceService furnaceService) {
-		this.furnaceService = furnaceService;
-	}
-
 	@PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> createFurnace(@Valid @RequestBody FurnaceRequestDTO request) {
-        FurnaceResponseDTO response = furnaceService.createFurnace(request);
+    public ResponseEntity<ApiResponse<FurnaceResponse>> createFurnace(@Valid @RequestBody FurnaceRequest request) {
+        FurnaceResponse response = furnaceService.createFurnace(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, "Furnace report created successfully", response));
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-    public ResponseEntity<ApiResponse<List<FurnaceResponseDTO>>> findAll() {
-        List<FurnaceResponseDTO> responses = furnaceService.findAll();
+    public ResponseEntity<ApiResponse<List<FurnaceResponse>>> findAll() {
+        List<FurnaceResponse> responses = furnaceService.findAll();
         return ResponseEntity.ok(new ApiResponse<>(true, "Furnace reports fetched successfully", responses));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> findById(@PathVariable long id) {
-        FurnaceResponseDTO response = furnaceService.findById(id);
+    public ResponseEntity<ApiResponse<FurnaceResponse>> findById(@PathVariable long id) {
+        FurnaceResponse response = furnaceService.findById(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report fetched successfully", response));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> updateFurnace(@PathVariable Long id, @Valid @RequestBody FurnaceRequestDTO request) {
-        FurnaceResponseDTO response = furnaceService.updateFurnace(id, request);
+    public ResponseEntity<ApiResponse<FurnaceResponse>> updateFurnace(@PathVariable Long id, @Valid @RequestBody FurnaceRequest request) {
+        FurnaceResponse response = furnaceService.updateFurnace(id, request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report updated successfully", response));
     }
 
@@ -72,8 +71,8 @@ public class FurnaceController {
 
     @GetMapping("/ref/{refNo}")
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
-    public ResponseEntity<ApiResponse<FurnaceResponseDTO>> findByRefNo(@PathVariable String refNo) {
-        FurnaceResponseDTO response = furnaceService.findByFurnaceRefNo(refNo);
+    public ResponseEntity<ApiResponse<FurnaceResponse>> findByRefNo(@PathVariable String refNo) {
+        FurnaceResponse response = furnaceService.findByFurnaceRefNo(refNo);
         return ResponseEntity.ok(new ApiResponse<>(true, "Furnace report fetched successfully", response));
     }
 }

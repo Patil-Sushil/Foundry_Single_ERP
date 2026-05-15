@@ -15,6 +15,7 @@ import com.kalibyte.foundry.production.repository.ProductionEntryRepository;
 import com.kalibyte.foundry.reports.account.dto.response.profitloss.*;
 import com.kalibyte.foundry.reports.account.service.profitloss.ProfitLossReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

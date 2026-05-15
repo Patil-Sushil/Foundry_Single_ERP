@@ -3,6 +3,7 @@ package com.kalibyte.foundry.auth.service.impl;
 import com.kalibyte.foundry.auth.dto.*;
 import com.kalibyte.foundry.auth.entity.Role;
 import com.kalibyte.foundry.auth.entity.User;
+import com.kalibyte.foundry.auth.mapper.UserMapper;
 import com.kalibyte.foundry.auth.repository.RoleRepository;
 import com.kalibyte.foundry.auth.repository.UserRepository;
 import com.kalibyte.foundry.auth.security.token.CustomUserDetails;
@@ -12,6 +13,7 @@ import com.kalibyte.foundry.auth.service.RefreshTokenService;
 import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.util.PasswordValidator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -37,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -159,16 +163,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("User not found"));
 
-        return UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .enabled(user.isEnabled())
-                .roles(user.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .toList())
-                .build();
+        return userMapper.toResponse(user);
     }
 
     // Prevent users from deleting their own accounts
@@ -214,15 +209,6 @@ public class AuthServiceImpl implements AuthService {
 
         Page<User> users = userRepository.findAll(PageRequest.of(page, size));
 
-        return users.map(user -> UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .enabled(user.isEnabled())
-                .roles(user.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .toList())
-                .build());
+        return users.map(userMapper::toResponse);
     }
 }

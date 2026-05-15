@@ -11,6 +11,8 @@ import com.kalibyte.foundry.inventory.purchaseinvoice.service.PurchaseInvoiceSer
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Pageable;
@@ -25,20 +27,16 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/purchase-invoices")
 @Tag(name = "Purchase Invoice", description = "Vendor invoice tracking & GST reports")
 @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'STORE', 'CA')")
+@RequiredArgsConstructor
 public class PurchaseInvoiceController {
 
     private final PurchaseInvoiceService purchaseInvoiceService;
     private final PurchaseInvoiceExportService purchaseInvoiceExportService;
-
-    public PurchaseInvoiceController(PurchaseInvoiceService purchaseInvoiceService,
-                                     PurchaseInvoiceExportService purchaseInvoiceExportService) {
-        this.purchaseInvoiceService = purchaseInvoiceService;
-        this.purchaseInvoiceExportService = purchaseInvoiceExportService;
-    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

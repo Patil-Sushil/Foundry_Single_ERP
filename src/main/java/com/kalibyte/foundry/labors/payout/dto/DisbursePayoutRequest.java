@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DisbursePayoutRequestDTO {
+public class DisbursePayoutRequest {
     @NotNull(message = "Payment date is required")
     @PastOrPresent(message = "Payment date cannot be in the future")
     private LocalDate paymentDate;

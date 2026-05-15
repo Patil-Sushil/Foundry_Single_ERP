@@ -18,7 +18,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FurnaceRequestDTO {
+public class FurnaceRequest {
 	@NotBlank
 	private String operatorName;
 	@NotNull

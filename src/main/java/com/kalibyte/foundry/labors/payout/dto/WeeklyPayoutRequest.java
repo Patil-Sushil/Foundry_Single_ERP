@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WeeklyPayoutRequestDTO {
+public class WeeklyPayoutRequest {
     private Long laborerId;
     @PastOrPresent(message = "Date should be in past or todays")
     private LocalDate weekStartDate;

@@ -17,6 +17,8 @@ import com.kalibyte.foundry.production.entity.enums.ProductionStatus;
 import com.kalibyte.foundry.production.repository.ProductionEntryRepository;
 import com.kalibyte.foundry.production.repository.ProductionItemRepository;
 import com.kalibyte.foundry.production.service.ProductionReportService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,19 +30,15 @@ import com.kalibyte.foundry.production.dto.response.report.dashboard.WipDashboar
 import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import java.time.temporal.ChronoUnit;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class ProductionReportServiceImpl implements ProductionReportService {
 
     private final OrderRepository orderRepo;
     private final ProductionEntryRepository entryRepo;
     private final ProductionItemRepository itemRepo;
-
-    public ProductionReportServiceImpl(OrderRepository orderRepo, ProductionEntryRepository entryRepo, ProductionItemRepository itemRepo) {
-        this.orderRepo = orderRepo;
-        this.entryRepo = entryRepo;
-        this.itemRepo = itemRepo;
-    }
 
     // ================================================================
     //  ORDER REPORT

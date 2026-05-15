@@ -8,7 +8,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AttendanceRequestDTO {
+public class AttendanceRequest {
     private Long laborerId;
     private LocalDate workDate;
     private LocalTime checkInTime;

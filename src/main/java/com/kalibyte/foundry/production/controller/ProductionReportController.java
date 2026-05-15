@@ -9,6 +9,7 @@ import com.kalibyte.foundry.production.service.ProductionReportService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +24,7 @@ import com.kalibyte.foundry.production.dto.response.report.dashboard.WipDashboar
 import com.kalibyte.foundry.production.dto.response.report.dashboard.DelayedOrderResponse;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/reports/production")
 @RequiredArgsConstructor

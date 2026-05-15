@@ -10,6 +10,7 @@ import com.kalibyte.foundry.reports.account.dto.response.ledger.CustomerLedgerRe
 import com.kalibyte.foundry.reports.account.dto.response.ledger.LedgerTransaction;
 import com.kalibyte.foundry.reports.account.service.ledger.CustomerLedgerReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,6 +20,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomerLedgerReportServiceImpl implements CustomerLedgerReportService {

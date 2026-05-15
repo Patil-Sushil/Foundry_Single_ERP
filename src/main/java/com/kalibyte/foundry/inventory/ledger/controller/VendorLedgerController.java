@@ -6,6 +6,8 @@ import com.kalibyte.foundry.inventory.ledger.dto.response.VendorBalanceResponse;
 import com.kalibyte.foundry.inventory.ledger.dto.response.VendorLedgerResponse;
 import com.kalibyte.foundry.inventory.ledger.service.VendorLedgerService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,16 +17,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/vendors")
 @Tag(name = "Vendor Ledger", description = "Vendor Ledger & Payments")
+@RequiredArgsConstructor
 public class VendorLedgerController {
 
     private final VendorLedgerService vendorLedgerService;
-
-	public VendorLedgerController(VendorLedgerService vendorLedgerService) {
-		this.vendorLedgerService = vendorLedgerService;
-	}
 
     @GetMapping("/ledger/balances")
     @PreAuthorize("hasAnyRole('ADMIN','FINANCE')")

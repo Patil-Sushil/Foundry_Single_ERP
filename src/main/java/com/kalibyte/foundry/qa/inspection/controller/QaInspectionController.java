@@ -11,6 +11,7 @@ import com.kalibyte.foundry.qa.inspection.mapper.QaInspectionMapper;
 import com.kalibyte.foundry.qa.inspection.service.QaInspectionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/qa/inspections")
 @RequiredArgsConstructor

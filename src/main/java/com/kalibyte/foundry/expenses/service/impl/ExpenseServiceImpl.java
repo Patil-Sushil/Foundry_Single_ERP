@@ -13,6 +13,7 @@ import com.kalibyte.foundry.expenses.repository.ExpenseRepository;
 import com.kalibyte.foundry.expenses.service.ExpenseService;
 import com.kalibyte.foundry.expenses.util.ExpenseNumberGenerator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -20,6 +21,7 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ExpenseServiceImpl implements ExpenseService {

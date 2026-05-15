@@ -8,6 +8,10 @@ import org.mapstruct.*;
 
 import java.util.List;
 
+import com.kalibyte.foundry.inventory.purchaseinvoice.dto.response.PurchaseInvoiceResponse;
+import com.kalibyte.foundry.inventory.purchaseinvoice.dto.response.PurchaseInvoiceSummary;
+import com.kalibyte.foundry.inventory.purchaseinvoice.entity.PurchaseInvoice;
+
 @Mapper(
         componentModel = "spring",
         unmappedTargetPolicy = ReportingPolicy.IGNORE,
@@ -34,4 +38,25 @@ public interface InvoiceMapper {
     InvoiceItemResponse toItemResponse(InvoiceItem item);
 
     List<InvoiceItemResponse> toItemResponseList(List<InvoiceItem> items);
+
+    // =========================================================
+    //  PURCHASE INVOICE -> PURCHASE INVOICE RESPONSE/SUMMARY
+    // =========================================================
+
+    @Mapping(target = "vendorId", source = "vendor.id")
+    @Mapping(target = "vendorName", source = "vendor.name")
+    @Mapping(target = "vendorGstin", source = "vendor.gstNumber")
+    @Mapping(target = "purchaseOrderId", source = "purchaseOrder.id")
+    @Mapping(target = "poNumber", source = "purchaseOrder.poNumber")
+    @Mapping(target = "materialInwardId", source = "materialInward.id")
+    @Mapping(target = "inwardNumber", source = "materialInward.inwardNumber")
+    @Mapping(target = "inwardAmount", source = "materialInward.totalAmount")
+    @Mapping(target = "hasAmountMismatch", expression = "java(pi.hasAmountMismatch())")
+    PurchaseInvoiceResponse toPurchaseInvoiceResponse(PurchaseInvoice pi);
+
+    @Mapping(target = "vendorName", source = "vendor.name")
+    @Mapping(target = "poNumber", source = "purchaseOrder.poNumber")
+    @Mapping(target = "inwardNumber", source = "materialInward.inwardNumber")
+    @Mapping(target = "hasAmountMismatch", expression = "java(pi.hasAmountMismatch())")
+    PurchaseInvoiceSummary toPurchaseInvoiceSummary(PurchaseInvoice pi);
 }

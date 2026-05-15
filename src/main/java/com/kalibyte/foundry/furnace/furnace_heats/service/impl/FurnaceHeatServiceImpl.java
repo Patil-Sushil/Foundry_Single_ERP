@@ -39,6 +39,7 @@ import com.kalibyte.foundry.scrap.enums.ScrapStatus;
 import com.kalibyte.foundry.scrap.enums.VerificationMethod;
 import com.kalibyte.foundry.scrap.repository.ScrapEntryRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FurnaceHeatServiceImpl implements FurnaceHeatService {

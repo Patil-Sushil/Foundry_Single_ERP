@@ -9,7 +9,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LaborAttendanceReportDTO {
+public class LaborAttendanceReport {
     private LocalDate workDate;
     private LocalTime checkInTime;
     private LocalTime checkOutTime;

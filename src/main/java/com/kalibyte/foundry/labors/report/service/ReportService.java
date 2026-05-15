@@ -2,9 +2,9 @@ package com.kalibyte.foundry.labors.report.service;
 
 import com.kalibyte.foundry.labors.attendance.entity.Attendance;
 import com.kalibyte.foundry.labors.attendance.repository.AttendanceRepository;
-import com.kalibyte.foundry.labors.report.dto.LaborAttendanceReportDTO;
-import com.kalibyte.foundry.labors.report.dto.LaborDetailedReportDTO;
-import com.kalibyte.foundry.labors.report.dto.LaborExpenseReportDTO;
+import com.kalibyte.foundry.labors.report.dto.LaborAttendanceReport;
+import com.kalibyte.foundry.labors.report.dto.LaborDetailedReport;
+import com.kalibyte.foundry.labors.report.dto.LaborExpenseReport;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -27,7 +27,7 @@ public class ReportService {
 
     private final AttendanceRepository attendanceRepository;
 
-    public List<LaborDetailedReportDTO> getDetailedReport(LocalDate startDate, LocalDate endDate) {
+    public List<LaborDetailedReport> getDetailedReport(LocalDate startDate, LocalDate endDate) {
         List<Attendance> attendances = attendanceRepository.findByWorkDateBetween(startDate, endDate);
 
         return attendances.stream()
@@ -44,9 +44,9 @@ public class ReportService {
                             .map(Attendance::getEarnedAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                    List<LaborAttendanceReportDTO> attendanceDetails = laborerAttendances.stream()
+                    List<LaborAttendanceReport> attendanceDetails = laborerAttendances.stream()
                             .sorted(Comparator.comparing(Attendance::getWorkDate))
-                            .map(a -> LaborAttendanceReportDTO.builder()
+                            .map(a -> LaborAttendanceReport.builder()
                                     .workDate(a.getWorkDate())
                                     .checkInTime(a.getCheckInTime())
                                     .checkOutTime(a.getCheckOutTime())
@@ -56,31 +56,31 @@ public class ReportService {
                                     .build())
                             .collect(Collectors.toList());
 
-                    return LaborDetailedReportDTO.builder()
+                    return LaborDetailedReport.builder()
                             .laborerName(laborerName)
                             .totalHours(totalHours)
                             .totalEarned(totalEarned)
                             .attendanceDetails(attendanceDetails)
                             .build();
                 })
-                .sorted(Comparator.comparing(LaborDetailedReportDTO::getLaborerName))
+                .sorted(Comparator.comparing(LaborDetailedReport::getLaborerName))
                 .collect(Collectors.toList());
     }
 
-    public LaborExpenseReportDTO getAggregatedExpensesForPeriod(LocalDate startDate, LocalDate endDate, String periodLabel) {
-        List<LaborDetailedReportDTO> laborDetails = getDetailedReport(startDate, endDate);
+    public LaborExpenseReport getAggregatedExpensesForPeriod(LocalDate startDate, LocalDate endDate, String periodLabel) {
+        List<LaborDetailedReport> laborDetails = getDetailedReport(startDate, endDate);
 
         BigDecimal totalHours = laborDetails.stream()
-                .map(LaborDetailedReportDTO::getTotalHours)
+                .map(LaborDetailedReport::getTotalHours)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalLaborCost = laborDetails.stream()
-                .map(LaborDetailedReportDTO::getTotalEarned)
+                .map(LaborDetailedReport::getTotalEarned)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long totalWorkers = laborDetails.size();
 
-        return LaborExpenseReportDTO.builder()
+        return LaborExpenseReport.builder()
                 .period(periodLabel)
                 .totalHours(totalHours)
                 .totalLaborCost(totalLaborCost)
@@ -89,7 +89,7 @@ public class ReportService {
                 .build();
     }
 
-    public LaborExpenseReportDTO getWeeklyReport(LocalDate date) {
+    public LaborExpenseReport getWeeklyReport(LocalDate date) {
         LocalDate start = date.with(java.time.DayOfWeek.MONDAY);
         LocalDate end = date.with(java.time.DayOfWeek.SUNDAY);
         int week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
@@ -97,20 +97,20 @@ public class ReportService {
         return getAggregatedExpensesForPeriod(start, end, label);
     }
 
-    public LaborExpenseReportDTO getMonthlyReport(LocalDate date) {
+    public LaborExpenseReport getMonthlyReport(LocalDate date) {
         LocalDate start = date.withDayOfMonth(1);
         LocalDate end = date.withDayOfMonth(date.lengthOfMonth());
         String label = date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
         return getAggregatedExpensesForPeriod(start, end, label);
     }
 
-    public LaborExpenseReportDTO getYearlyReport(int year) {
+    public LaborExpenseReport getYearlyReport(int year) {
         LocalDate start = LocalDate.of(year, 1, 1);
         LocalDate end = LocalDate.of(year, 12, 31);
         return getAggregatedExpensesForPeriod(start, end, String.valueOf(year));
     }
 
-    public byte[] exportToExcel(List<LaborDetailedReportDTO> reports) throws IOException {
+    public byte[] exportToExcel(List<LaborDetailedReport> reports) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Labor Detailed Report");
 
@@ -135,8 +135,8 @@ public class ReportService {
 
             // Data Rows
             int rowIdx = 1;
-            for (LaborDetailedReportDTO laborReport : reports) {
-                for (LaborAttendanceReportDTO attendance : laborReport.getAttendanceDetails()) {
+            for (LaborDetailedReport laborReport : reports) {
+                for (LaborAttendanceReport attendance : laborReport.getAttendanceDetails()) {
                     Row row = sheet.createRow(rowIdx++);
                     row.createCell(0).setCellValue(laborReport.getLaborerName());
                     row.createCell(1).setCellValue(attendance.getWorkDate().toString());

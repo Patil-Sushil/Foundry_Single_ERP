@@ -6,6 +6,7 @@ import com.kalibyte.foundry.reports.account.dto.response.collectionsummary.Payme
 import com.kalibyte.foundry.reports.account.dto.response.collectionsummary.TopCustomerCollection;
 import com.kalibyte.foundry.reports.account.service.collectionsummary.CollectionSummaryReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import java.util.UUID;
 /**
  * Implementation of CollectionSummaryReportService.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CollectionSummaryReportServiceImpl implements CollectionSummaryReportService {

@@ -12,6 +12,8 @@ import com.kalibyte.foundry.inventory.item.entity.enums.ItemCategory;
 import com.kalibyte.foundry.inventory.item.mapper.ItemMapper;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.item.service.ItemService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -24,20 +26,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
     private final DepartmentRepository departmentRepository;
     private final ItemMapper itemMapper;
-
-    public ItemServiceImpl(ItemRepository itemRepository,
-                       DepartmentRepository departmentRepository, 
-                       ItemMapper itemMapper) {
-        this.itemRepository = itemRepository;
-        this.departmentRepository = departmentRepository;
-        this.itemMapper = itemMapper;
-    }
 
     @Transactional
     @CacheEvict(value = "items", allEntries = true)

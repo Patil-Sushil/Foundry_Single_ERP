@@ -5,11 +5,13 @@ import com.kalibyte.foundry.expenses.dto.request.ExpenseCreateRequest;
 import com.kalibyte.foundry.expenses.dto.response.ExpenseResponse;
 import com.kalibyte.foundry.expenses.service.ExpenseService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/expenses")
 @RequiredArgsConstructor

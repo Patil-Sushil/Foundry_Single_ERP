@@ -7,22 +7,26 @@ import com.kalibyte.foundry.inventory.item.dto.response.ItemResponse;
 import com.kalibyte.foundry.inventory.item.entity.AdjustmentItem;
 import com.kalibyte.foundry.inventory.item.entity.Item;
 import com.kalibyte.foundry.inventory.item.entity.StockAdjustment;
+import com.kalibyte.foundry.inventory.item.mapper.ItemMapper;
 import com.kalibyte.foundry.inventory.item.repository.ItemRepository;
 import com.kalibyte.foundry.inventory.item.repository.StockAdjustmentRepository;
 import com.kalibyte.foundry.inventory.item.service.StockAdjustmentService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StockAdjustmentServiceImpl implements StockAdjustmentService {
 
     private final ItemRepository itemRepository;
     private final StockAdjustmentRepository stockAdjustmentRepository;
+    private final ItemMapper itemMapper;
 
     @Override
     @Transactional
@@ -59,32 +63,6 @@ public class StockAdjustmentServiceImpl implements StockAdjustmentService {
         Item updatedItem = itemRepository.save(item);
 
         // 7. Return mapped ItemResponse
-        return toResponse(updatedItem);
-    }
-
-    private ItemResponse toResponse(Item item) {
-        return new ItemResponse(
-                item.getId(),
-                item.getName(),
-                item.getCode(),
-                item.getDescription(),
-                item.getCategory(),
-                item.getSubCategory(),
-                item.getDepartment() != null ? item.getDepartment().getName() : null,
-                item.getUnit(),
-                item.getCurrentStock(),
-                item.getReorderLevel(),
-                item.getMinStockLevel(),
-                item.getLocation(),
-                item.getLastPurchaseRate(),
-                item.getAvgRate(),
-                item.getStockValue(),
-                item.getStockStatus(),
-                item.getHsnCode(),
-                item.getGstRate(),
-                item.getIsActive(),
-                item.getIsScrap(),
-                item.getCreatedAt()
-        );
+        return itemMapper.toResponse(updatedItem);
     }
 }

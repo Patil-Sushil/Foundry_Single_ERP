@@ -28,6 +28,7 @@ import com.kalibyte.foundry.pattern.entity.enums.PatternStatus;
 import com.kalibyte.foundry.pattern.repository.PatternRepository;
 import com.kalibyte.foundry.production.repository.ProductionItemRepository;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
     private final DeliveryChallanRepository deliveryChallanRepository;
@@ -55,20 +57,6 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
     private final DeliveryChallanMapper deliveryChallanMapper;  // Injected MapStruct mapper
     private final EmailService emailService;
     private final PdfGenerator pdfGenerator;
-
-    public DeliveryChallanServiceImpl(DeliveryChallanRepository deliveryChallanRepository, DeliveryChallanItemRepository itemRepository, ProductionItemRepository productionItemRepository, DCNumberGenerator dcNumberGenerator, CustomerRepository customerRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository, PatternRepository patternRepository, DeliveryChallanMapper deliveryChallanMapper, EmailService emailService, PdfGenerator pdfGenerator) {
-        this.deliveryChallanRepository = deliveryChallanRepository;
-        this.itemRepository = itemRepository;
-        this.productionItemRepository = productionItemRepository;
-        this.dcNumberGenerator = dcNumberGenerator;
-        this.customerRepository = customerRepository;
-        this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
-        this.patternRepository = patternRepository;
-        this.deliveryChallanMapper = deliveryChallanMapper;
-        this.emailService = emailService;
-        this.pdfGenerator = pdfGenerator;
-    }
 
     //------------------------------------------------
     // CREATE DELIVERY CHALLAN

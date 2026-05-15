@@ -22,6 +22,7 @@ import com.kalibyte.foundry.order.entity.enums.OrderStatus;
 import com.kalibyte.foundry.order.entity.Order;
 import com.kalibyte.foundry.order.repository.OrderRepository;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class InvoiceServiceImpl implements InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
@@ -46,18 +48,6 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final EmailService emailService;
     private final InvoicePaymentService invoicePaymentService;
     private final InvoiceNumberGenerator invoiceNumberGenerator;
-
-    public InvoiceServiceImpl(InvoiceRepository invoiceRepository, InvoiceItemRepository invoiceItemRepository, DeliveryChallanItemRepository deliveryChallanItemRepository, OrderRepository orderRepository, InvoiceMapper invoiceMapper, PdfGenerator pdfGenerator, EmailService emailService, InvoicePaymentService invoicePaymentService, InvoiceNumberGenerator invoiceNumberGenerator) {
-        this.invoiceRepository = invoiceRepository;
-        this.invoiceItemRepository = invoiceItemRepository;
-        this.deliveryChallanItemRepository = deliveryChallanItemRepository;
-        this.orderRepository = orderRepository;
-        this.invoiceMapper = invoiceMapper;
-        this.pdfGenerator = pdfGenerator;
-        this.emailService = emailService;
-        this.invoicePaymentService = invoicePaymentService;
-        this.invoiceNumberGenerator = invoiceNumberGenerator;
-    }
 
     //------------------------------------------------
     // GENERATE INVOICE

@@ -5,10 +5,12 @@ import com.kalibyte.foundry.expenses.mapper.ExpenseHeadMapper;
 import com.kalibyte.foundry.expenses.repository.ExpenseHeadRepository;
 import com.kalibyte.foundry.expenses.service.ExpenseHeadService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ExpenseHeadServiceImpl implements ExpenseHeadService {

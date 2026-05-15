@@ -1,13 +1,14 @@
 package com.kalibyte.foundry.labors.report.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
-import com.kalibyte.foundry.labors.report.dto.LaborDetailedReportDTO;
-import com.kalibyte.foundry.labors.report.dto.LaborExpenseReportDTO;
+import com.kalibyte.foundry.labors.report.dto.LaborDetailedReport;
+import com.kalibyte.foundry.labors.report.dto.LaborExpenseReport;
 import com.kalibyte.foundry.labors.report.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/labor-reports")
 @RequiredArgsConstructor
@@ -31,21 +33,21 @@ public class ReportController {
 
     @GetMapping("/weekly")
     @Operation(summary = "Get weekly labor expense report", description = "Only accessible by ADMIN")
-    public ResponseEntity<ApiResponse<LaborExpenseReportDTO>> getWeeklyReport(
+    public ResponseEntity<ApiResponse<LaborExpenseReport>> getWeeklyReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getWeeklyReport(date)));
     }
 
     @GetMapping("/monthly")
     @Operation(summary = "Get monthly labor expense report", description = "Only accessible by ADMIN")
-    public ResponseEntity<ApiResponse<LaborExpenseReportDTO>> getMonthlyReport(
+    public ResponseEntity<ApiResponse<LaborExpenseReport>> getMonthlyReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getMonthlyReport(date)));
     }
 
     @GetMapping("/yearly/{year}")
     @Operation(summary = "Get yearly labor expense report", description = "Only accessible by ADMIN")
-    public ResponseEntity<ApiResponse<LaborExpenseReportDTO>> getYearlyReport(@PathVariable int year) {
+    public ResponseEntity<ApiResponse<LaborExpenseReport>> getYearlyReport(@PathVariable int year) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getYearlyReport(year)));
     }
 
@@ -55,7 +57,7 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws IOException {
         
-        List<LaborDetailedReportDTO> reports = reportService.getDetailedReport(startDate, endDate);
+        List<LaborDetailedReport> reports = reportService.getDetailedReport(startDate, endDate);
         
         byte[] excelContent = reportService.exportToExcel(reports);
         

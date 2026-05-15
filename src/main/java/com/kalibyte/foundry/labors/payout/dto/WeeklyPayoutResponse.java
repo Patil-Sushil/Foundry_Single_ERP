@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WeeklyPayoutResponseDTO {
+public class WeeklyPayoutResponse {
     private Long id;
     private Long laborerId;
     private String laborerName;

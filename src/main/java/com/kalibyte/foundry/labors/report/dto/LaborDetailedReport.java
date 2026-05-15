@@ -8,9 +8,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LaborDetailedReportDTO {
+public class LaborDetailedReport {
     private String laborerName;
     private BigDecimal totalHours;
     private BigDecimal totalEarned;
-    private List<LaborAttendanceReportDTO> attendanceDetails;
+    private List<LaborAttendanceReport> attendanceDetails;
 }

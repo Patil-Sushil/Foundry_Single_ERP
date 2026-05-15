@@ -7,6 +7,6 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BulkAttendanceRequestDTO {
-    private List<AttendanceRequestDTO> logs;
+public class BulkAttendanceRequest {
+    private List<AttendanceRequest> logs;
 }

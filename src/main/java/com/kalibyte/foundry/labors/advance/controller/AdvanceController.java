@@ -1,13 +1,14 @@
 package com.kalibyte.foundry.labors.advance.controller;
 
 import com.kalibyte.foundry.common.response.ApiResponse;
-import com.kalibyte.foundry.labors.advance.dto.AdvanceTransactionRequestDTO;
-import com.kalibyte.foundry.labors.advance.dto.AdvanceTransactionResponseDTO;
+import com.kalibyte.foundry.labors.advance.dto.AdvanceTransactionRequest;
+import com.kalibyte.foundry.labors.advance.dto.AdvanceTransactionResponse;
 import com.kalibyte.foundry.labors.advance.service.AdvanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/advances")
 @RequiredArgsConstructor
@@ -27,7 +29,7 @@ public class AdvanceController {
 
     @PostMapping("/grant")
     @Operation(summary = "Grant a cash advance", description = "Only accessible by ADMIN")
-    public ResponseEntity<ApiResponse<AdvanceTransactionResponseDTO>> grantAdvance(@RequestBody AdvanceTransactionRequestDTO request) {
+    public ResponseEntity<ApiResponse<AdvanceTransactionResponse>> grantAdvance(@RequestBody AdvanceTransactionRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Advance granted successfully", advanceService.grantAdvance(request)));
     }
 
@@ -39,7 +41,7 @@ public class AdvanceController {
 
     @GetMapping("/laborer/{laborerId}")
     @Operation(summary = "Get advance transaction history", description = "Only accessible by ADMIN")
-    public ResponseEntity<ApiResponse<List<AdvanceTransactionResponseDTO>>> getTransactionsByLaborer(@PathVariable Long laborerId) {
+    public ResponseEntity<ApiResponse<List<AdvanceTransactionResponse>>> getTransactionsByLaborer(@PathVariable Long laborerId) {
         return ResponseEntity.ok(ApiResponse.success(advanceService.getTransactionsByLaborer(laborerId)));
     }
 }

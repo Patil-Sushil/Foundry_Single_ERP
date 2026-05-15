@@ -14,6 +14,7 @@ import com.kalibyte.foundry.payment.repository.PaymentRepository;
 import com.kalibyte.foundry.production.repository.ProductionEntryRepository;
 import com.kalibyte.foundry.qa.inspection.repository.QaInspectionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

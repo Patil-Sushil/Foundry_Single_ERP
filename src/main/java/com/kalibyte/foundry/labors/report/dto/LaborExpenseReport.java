@@ -8,10 +8,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LaborExpenseReportDTO {
+public class LaborExpenseReport {
     private String period; // e.g., "2023-W42", "2023-10", "2023"
     private BigDecimal totalHours;
     private BigDecimal totalLaborCost;
     private Long totalWorkers;
-    private List<LaborDetailedReportDTO> laborDetails;
+    private List<LaborDetailedReport> laborDetails;
 }

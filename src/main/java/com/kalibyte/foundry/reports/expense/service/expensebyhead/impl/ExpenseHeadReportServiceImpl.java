@@ -5,6 +5,7 @@ import com.kalibyte.foundry.reports.expense.dto.response.expensebyhead.ExpenseHe
 import com.kalibyte.foundry.reports.expense.dto.response.expensebyhead.ExpenseHeadReport;
 import com.kalibyte.foundry.reports.expense.service.expensebyhead.ExpenseHeadReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import java.util.UUID;
  *
  * Responsible for generating expense report grouped by expense heads.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

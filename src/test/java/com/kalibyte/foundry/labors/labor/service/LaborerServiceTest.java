@@ -1,5 +1,6 @@
 package com.kalibyte.foundry.labors.labor.service;
 
+import com.kalibyte.foundry.labors.labor.dto.LaborerRequest;
 import com.kalibyte.foundry.labors.labor.dto.LaborerRequestDTO;
 import com.kalibyte.foundry.labors.labor.entity.Enum.WageType;
 import com.kalibyte.foundry.labors.labor.exception.LaborException;
@@ -26,11 +27,11 @@ public class LaborerServiceTest {
     @InjectMocks
     private LaborerService laborerService;
 
-    private LaborerRequestDTO requestDTO;
+    private LaborerRequest requestDTO;
 
     @BeforeEach
     void setUp() {
-        requestDTO = new LaborerRequestDTO();
+        requestDTO = new LaborerRequest();
         requestDTO.setName("John Doe");
         requestDTO.setWageType(WageType.DAILY);
         // phNumber is null by default

@@ -14,7 +14,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class FurnaceResponseDTO {
+public class FurnaceResponse {
 	private Long id;
 	private String furnaceRefNo;
 	private String operatorName;

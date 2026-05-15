@@ -21,6 +21,7 @@ import com.kalibyte.foundry.reports.account.service.profitloss.ProfitLossReportS
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.PastOrPresent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cglib.core.Local;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -42,6 +43,7 @@ import java.util.UUID;
  * - Receivables Aging
  * - Cash Flow
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/reports/accounts")
 @RequiredArgsConstructor

@@ -6,6 +6,7 @@ import com.kalibyte.foundry.reports.account.dto.response.outstanding.CustomerOut
 import com.kalibyte.foundry.reports.account.dto.response.outstanding.CustomerOutstandingReport;
 import com.kalibyte.foundry.reports.account.service.outstanding.CustomerOutstandingReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 /**
  * Implementation for Customer Outstanding Report.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomerOutstandingReportServiceImpl implements CustomerOutstandingReportService {

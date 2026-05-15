@@ -1,6 +1,6 @@
 package com.kalibyte.foundry.labors.payout.mapper;
 
-import com.kalibyte.foundry.labors.payout.dto.WeeklyPayoutResponseDTO;
+import com.kalibyte.foundry.labors.payout.dto.WeeklyPayoutResponse;
 import com.kalibyte.foundry.labors.payout.entity.WeeklyPayout;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -11,5 +11,5 @@ public interface WeeklyPayoutMapper {
 
     @Mapping(target = "laborerId", source = "laborer.id")
     @Mapping(target = "laborerName", source = "laborer.name")
-    WeeklyPayoutResponseDTO toResponse(WeeklyPayout entity);
+    WeeklyPayoutResponse toResponse(WeeklyPayout entity);
 }

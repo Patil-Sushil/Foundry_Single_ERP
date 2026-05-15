@@ -9,6 +9,7 @@ import com.kalibyte.foundry.reports.account.dto.response.overdueinvoice.OverdueS
 import com.kalibyte.foundry.reports.account.dto.response.overdueinvoice.enums.OverdueSeverity;
 import com.kalibyte.foundry.reports.account.service.overdueinvoice.OverdueInvoiceReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +29,7 @@ import java.util.UUID;
  *
  * Generates the complete overdue invoice analytics report.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

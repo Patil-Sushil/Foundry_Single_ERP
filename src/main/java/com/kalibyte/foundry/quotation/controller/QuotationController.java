@@ -10,12 +10,14 @@ import com.kalibyte.foundry.quotation.mapper.QuotationMapper;
 import com.kalibyte.foundry.quotation.service.QuotationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/quotations")
 @RequiredArgsConstructor

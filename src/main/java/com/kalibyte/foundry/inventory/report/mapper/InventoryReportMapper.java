@@ -33,11 +33,11 @@ public interface InventoryReportMapper {
     @Mapping(source = "itemDetails", target = "items")
     InwardReportResponse.InwardDocumentDetail toInwardDocumentDetail(MaterialInward in, BigDecimal docValue, List<InwardReportResponse.InwardItemDetail> itemDetails);
 
-    @Mapping(source = "item.code", target = "itemCode")
-    @Mapping(source = "item.name", target = "itemName")
-    @Mapping(source = "receivedQuantity", target = "quantity")
+    @Mapping(source = "ri.item.code", target = "itemCode")
+    @Mapping(source = "ri.item.name", target = "itemName")
+    @Mapping(source = "ri.receivedQuantity", target = "quantity")
     @Mapping(target = "unit", expression = "java(ri.getItem().getUnit().name())")
-    @Mapping(source = "unitRate", target = "unitRate")
+    @Mapping(source = "ri.unitRate", target = "unitRate")
     @Mapping(target = "totalValue", expression = "java(ri.getAmount())")
     @Mapping(target = "status", expression = "java(ri.getReceiptStatus())")
     InwardReportResponse.InwardItemDetail toInwardItemDetail(ReceivedItem ri);
@@ -61,9 +61,9 @@ public interface InventoryReportMapper {
     @Mapping(source = "items", target = "suppliedItems")
     VendorSummaryReport.VendorSummaryDetail toVendorSummaryDetail(Vendor v, long poCount, BigDecimal totalPoVal, long inwardCount, BigDecimal totalInVal, BigDecimal pendingVal, BigDecimal balance, List<VendorSummaryReport.SuppliedItemDetail> items);
 
-    @Mapping(source = "item.code", target = "itemCode")
-    @Mapping(source = "item.name", target = "itemName")
-    @Mapping(source = "issuedQuantity", target = "quantity")
+    @Mapping(source = "ii.item.code", target = "itemCode")
+    @Mapping(source = "ii.item.name", target = "itemName")
+    @Mapping(source = "ii.issuedQuantity", target = "quantity")
     @Mapping(target = "unit", expression = "java(ii.getItem().getUnit().name())")
     @Mapping(target = "totalValue", expression = "java(ii.getAmount())")
     IssueReportResponse.IssueItemDetail toIssueItemDetail(IssuedItem ii);
@@ -111,4 +111,28 @@ public interface InventoryReportMapper {
     @Mapping(target = "netMovement", expression = "java(totalInwardQty.subtract(totalIssueQty))")
     @Mapping(source = "transactions", target = "transactions")
     ItemLedgerReport toItemLedgerReport(Item item, BigDecimal openingStock, BigDecimal closingStock, BigDecimal totalInwardQty, BigDecimal totalInwardValue, BigDecimal totalIssueQty, BigDecimal totalIssueValue, List<ItemLedgerReport.ItemLedgerTransaction> transactions);
+
+    // --- Report Final Mappings ---
+
+    @Mapping(source = "totalQty", target = "totalQuantity")
+    @Mapping(source = "totalValue", target = "totalValue")
+    @Mapping(source = "documentCount", target = "totalInwardCount")
+    @Mapping(source = "documents", target = "records")
+    InwardReportResponse toInwardReportResponse(BigDecimal totalQty, BigDecimal totalValue, int documentCount, List<InwardReportResponse.InwardDocumentDetail> documents);
+
+    @Mapping(source = "totalQty", target = "totalQuantity")
+    @Mapping(source = "totalValue", target = "totalValue")
+    @Mapping(source = "documentCount", target = "totalIssueCount")
+    @Mapping(source = "documents", target = "records")
+    IssueReportResponse toIssueReportResponse(BigDecimal totalQty, BigDecimal totalValue, int documentCount, List<IssueReportResponse.IssueDocumentDetail> documents);
+
+    @Mapping(source = "date", target = "date")
+    @Mapping(source = "items", target = "records")
+    DailyMovementReport toDailyMovementReport(LocalDate date, List<DailyMovementReport.DailyMovementItem> items);
+
+    @Mapping(source = "totalValue", target = "totalStockValue")
+    @Mapping(source = "lowCount", target = "lowStockCount")
+    @Mapping(source = "criticalCount", target = "criticalStockCount")
+    @Mapping(source = "records", target = "items")
+    StockSummaryReport toStockSummaryReport(BigDecimal totalValue, long lowCount, long criticalCount, List<StockSummaryReport.StockSummaryItem> records);
 }

@@ -6,6 +6,7 @@ import com.kalibyte.foundry.reports.account.dto.response.aging.AgingReport;
 import com.kalibyte.foundry.reports.account.dto.response.aging.AgingSummary;
 import com.kalibyte.foundry.reports.account.service.aging.AgingReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AgingReportServiceImpl implements AgingReportService {

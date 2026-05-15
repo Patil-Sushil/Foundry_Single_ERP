@@ -1,7 +1,7 @@
 package com.kalibyte.foundry.labors.attendance.mapper;
 
-import com.kalibyte.foundry.labors.attendance.dto.AttendanceRequestDTO;
-import com.kalibyte.foundry.labors.attendance.dto.AttendanceResponseDTO;
+import com.kalibyte.foundry.labors.attendance.dto.AttendanceRequest;
+import com.kalibyte.foundry.labors.attendance.dto.AttendanceResponse;
 import com.kalibyte.foundry.labors.attendance.entity.Attendance;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -12,14 +12,11 @@ import java.util.List;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AttendanceMapper {
 	@Mapping(target = "id", ignore = true)
-	Attendance toEntity(AttendanceRequestDTO attendanceRequestDTO);
+	Attendance toEntity(AttendanceRequest request);
 
-	AttendanceRequestDTO toDTO(Attendance attendance);
+	@Mapping(target = "laborerId", source = "laborer.id")
+	@Mapping(target = "laborerName", source = "laborer.name")
+	AttendanceResponse toResponse(Attendance attendance);
 
-	AttendanceResponseDTO toResponse(Attendance attendance);
-
-	List<AttendanceResponseDTO> toResponseDTOList(List<Attendance> attendances);
-
-	List<AttendanceResponseDTO> toResponseDTOList1(List<AttendanceResponseDTO> attendances);
-
+	List<AttendanceResponse> toResponseList(List<Attendance> attendances);
 }

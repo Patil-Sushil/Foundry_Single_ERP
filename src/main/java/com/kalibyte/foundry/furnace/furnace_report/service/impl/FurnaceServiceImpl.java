@@ -5,14 +5,15 @@ import com.kalibyte.foundry.furnace.furnace_heats.dto.request.FurnaceHeatRequest
 import com.kalibyte.foundry.furnace.furnace_heats.entity.Enum.HeatMaterialType;
 import com.kalibyte.foundry.furnace.furnace_heats.service.FurnaceHeatService;
 import com.kalibyte.foundry.furnace.furnace_report.common.FurnaceRefNoGenerator;
-import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequestDTO;
-import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponseDTO;
+import com.kalibyte.foundry.furnace.furnace_report.dto.Request.FurnaceRequest;
+import com.kalibyte.foundry.furnace.furnace_report.dto.response.FurnaceResponse;
 import com.kalibyte.foundry.furnace.furnace_report.entity.Furnace;
 import com.kalibyte.foundry.furnace.furnace_report.repository.FurnaceRepository;
 import com.kalibyte.foundry.furnace.furnace_report.service.FurnaceService;
 import com.kalibyte.foundry.furnace.furnace_report.mapper.FurnaceMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class FurnaceServiceImpl implements FurnaceService {
 
     private final FurnaceRepository furnaceRepository;
@@ -30,17 +33,10 @@ public class FurnaceServiceImpl implements FurnaceService {
     private final FurnaceRefNoGenerator furnaceRefNoGenerator;
     private final FurnaceHeatService furnaceHeatService;
 
-    public FurnaceServiceImpl(FurnaceRepository furnaceRepository, FurnaceMapper furnaceMapper, FurnaceRefNoGenerator furnaceRefNoGenerator, FurnaceHeatService furnaceHeatService) {
-        this.furnaceRepository = furnaceRepository;
-        this.furnaceMapper = furnaceMapper;
-        this.furnaceRefNoGenerator = furnaceRefNoGenerator;
-        this.furnaceHeatService = furnaceHeatService;
-    }
-
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
     @Transactional(readOnly = true)
-    public FurnaceResponseDTO findById(long id) {
+    public FurnaceResponse findById(long id) {
         return furnaceRepository.findById(id)
                 .map(furnaceMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + id));
@@ -49,7 +45,7 @@ public class FurnaceServiceImpl implements FurnaceService {
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
     @Transactional
-    public FurnaceResponseDTO createFurnace(@Valid FurnaceRequestDTO request) {
+    public FurnaceResponse createFurnace(@Valid FurnaceRequest request) {
         Furnace furnace = furnaceMapper.toEntity(request);
         if (furnace.getDate() == null) {
             furnace.setDate(LocalDate.now());
@@ -72,7 +68,7 @@ public class FurnaceServiceImpl implements FurnaceService {
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
     @Transactional
-    public FurnaceResponseDTO updateFurnace(Long id, FurnaceRequestDTO request) {
+    public FurnaceResponse updateFurnace(Long id, FurnaceRequest request) {
         Furnace existingFurnace = furnaceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with id: " + id));
 
@@ -148,7 +144,7 @@ public class FurnaceServiceImpl implements FurnaceService {
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
     @Transactional(readOnly = true)
-    public FurnaceResponseDTO findByFurnaceRefNo(String refNo) {
+    public FurnaceResponse findByFurnaceRefNo(String refNo) {
         return furnaceRepository.findByFurnaceRefNo(refNo)
                 .map(furnaceMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Furnace report not found with refNo: " + refNo));
@@ -157,7 +153,7 @@ public class FurnaceServiceImpl implements FurnaceService {
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','PRODUCTION')")
     @Transactional(readOnly = true)
-    public List<FurnaceResponseDTO> findAll() {
+    public List<FurnaceResponse> findAll() {
         return furnaceRepository.findAllWithHeats().stream()
                 .map(furnaceMapper::toResponse)
                 .collect(Collectors.toList());

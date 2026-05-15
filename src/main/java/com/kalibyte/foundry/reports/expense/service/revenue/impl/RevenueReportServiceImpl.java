@@ -7,6 +7,7 @@ import com.kalibyte.foundry.reports.expense.dto.response.revenue.RevenueReport;
 import com.kalibyte.foundry.reports.expense.dto.response.revenue.RevenueTopCustomerItem;
 import com.kalibyte.foundry.reports.expense.service.revenue.RevenueReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.*;
  * Responsible for generating revenue analytics based on
  * invoice and payment data.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

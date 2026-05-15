@@ -6,6 +6,7 @@ import com.kalibyte.foundry.reports.account.dto.response.cashflow.CashFlowItem;
 import com.kalibyte.foundry.reports.account.dto.response.cashflow.CashFlowReport;
 import com.kalibyte.foundry.reports.account.service.cashflow.CashFlowReportService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CashFlowReportServiceImpl implements CashFlowReportService {

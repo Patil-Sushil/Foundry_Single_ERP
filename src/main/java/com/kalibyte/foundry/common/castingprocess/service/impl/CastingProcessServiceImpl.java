@@ -8,6 +8,7 @@ import com.kalibyte.foundry.common.castingprocess.mapper.CastingProcessMapper;
 import com.kalibyte.foundry.common.castingprocess.repository.CastingProcessRepository;
 import com.kalibyte.foundry.common.castingprocess.service.CastingProcessService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CastingProcessServiceImpl implements CastingProcessService {

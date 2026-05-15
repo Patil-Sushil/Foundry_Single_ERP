@@ -12,6 +12,7 @@ import com.kalibyte.foundry.billing.util.GstCalculationResult;
 import com.kalibyte.foundry.common.exception.ResourceNotFoundException;
 import com.kalibyte.foundry.qa.customerreturn.entity.CustomerReturn;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CreditNoteServiceImpl implements CreditNoteService {

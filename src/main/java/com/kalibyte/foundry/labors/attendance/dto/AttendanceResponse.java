@@ -10,7 +10,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AttendanceResponseDTO {
+public class AttendanceResponse {
     private Long id;
     private Long laborerId;
     private String laborerName;

@@ -5,8 +5,10 @@ import com.kalibyte.foundry.auth.repository.UserRepository;
 import com.kalibyte.foundry.auth.service.UserService;
 import com.kalibyte.foundry.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {

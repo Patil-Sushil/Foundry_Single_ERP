@@ -1,6 +1,7 @@
 package com.kalibyte.foundry.inventory.purchaseinvoice.service;
 
 import com.kalibyte.foundry.inventory.purchaseinvoice.entity.PurchaseInvoice;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
@@ -12,14 +13,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class PurchaseInvoiceExportService {
 
     private final PurchaseInvoiceService purchaseInvoiceService;
     private static final String COMPANY_STATE = "Maharashtra";
-
-    public PurchaseInvoiceExportService(PurchaseInvoiceService purchaseInvoiceService) {
-        this.purchaseInvoiceService = purchaseInvoiceService;
-    }
 
     public byte[] exportGstReport(LocalDate startDate, LocalDate endDate) throws IOException {
         List<PurchaseInvoice> invoices = purchaseInvoiceService.getInvoicesForExport(startDate, endDate);

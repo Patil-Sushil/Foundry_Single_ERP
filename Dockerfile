@@ -3,24 +3,20 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
-# copy pom and source
 COPY pom.xml .
 COPY src ./src
 
-# build jar (skip tests for faster deploy)
+# cache dependencies better
 RUN mvn clean package -DskipTests
 
 
 # ---------- RUNTIME STAGE ----------
-FROM eclipse-temurin:21-jdk-alpine
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# copy jar from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Railway uses dynamic PORT (still safe to expose 8080)
 EXPOSE 8080
 
-# run app
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java","-XX:+UseContainerSupport","-XX:MaxRAMPercentage=75.0","-jar","app.jar"]

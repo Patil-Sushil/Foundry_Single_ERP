@@ -9,6 +9,7 @@ import com.kalibyte.foundry.qa.customerreturn.mapper.CustomerReturnMapper;
 import com.kalibyte.foundry.qa.customerreturn.service.CustomerReturnService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/qa/customer-returns")
 @RequiredArgsConstructor

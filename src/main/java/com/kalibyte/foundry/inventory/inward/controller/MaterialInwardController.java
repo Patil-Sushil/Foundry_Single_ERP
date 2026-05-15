@@ -12,6 +12,8 @@ import com.kalibyte.foundry.inventory.inward.entity.enums.InwardStatus;
 import com.kalibyte.foundry.inventory.inward.service.MaterialInwardService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,17 +22,15 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/inwards")
 @Tag(name = "Material Inward", description = "Material Inward Management APIs")
 @PreAuthorize("hasAnyRole('ADMIN', 'STORE', 'FINANCE')")
+@RequiredArgsConstructor
 public class MaterialInwardController {
 
     private final MaterialInwardService materialInwardService;
-
-	public MaterialInwardController(MaterialInwardService materialInwardService) {
-		this.materialInwardService = materialInwardService;
-	}
 
 	@PostMapping("/from-po/{poId}")
     @ResponseStatus(HttpStatus.CREATED)
