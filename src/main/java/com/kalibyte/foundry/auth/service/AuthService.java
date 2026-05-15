@@ -11,7 +11,8 @@ import java.util.UUID;
 public interface AuthService {
 
     LoginResponse login(LoginRequest request);
-
+    TokenRefreshResponse refreshToken(TokenRefreshRequest request);
+    void logout(String refreshToken);
     void createUser(UserRegistrationRequest request);
 
     void changePassword(ChangePasswordRequest request);

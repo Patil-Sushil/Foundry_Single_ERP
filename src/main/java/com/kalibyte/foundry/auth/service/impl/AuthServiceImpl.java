@@ -8,6 +8,7 @@ import com.kalibyte.foundry.auth.repository.UserRepository;
 import com.kalibyte.foundry.auth.security.token.CustomUserDetails;
 import com.kalibyte.foundry.auth.security.token.JwtTokenProvider;
 import com.kalibyte.foundry.auth.service.AuthService;
+import com.kalibyte.foundry.auth.service.RefreshTokenService;
 import com.kalibyte.foundry.common.exception.BusinessException;
 import com.kalibyte.foundry.common.util.PasswordValidator;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -48,9 +50,9 @@ public class AuthServiceImpl implements AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String jwt = tokenProvider.generateToken(authentication);
-
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String jwt = tokenProvider.generateToken(userDetails);
+        var refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
 
         List<String> roles = userDetails.getAuthorities()
                 .stream()
@@ -59,10 +61,21 @@ public class AuthServiceImpl implements AuthService {
 
         return LoginResponse.builder()
                 .token(jwt)
+                .refreshToken(refreshToken.getToken())
                 .id(userDetails.getId())
                 .email(userDetails.getEmail())
                 .roles(roles)
                 .build();
+    }
+
+    @Override
+    public TokenRefreshResponse refreshToken(TokenRefreshRequest request) {
+        return refreshTokenService.refreshAccessToken(request);
+    }
+
+    @Override
+    public void logout(String refreshToken) {
+        refreshTokenService.revokeRefreshToken(refreshToken);
     }
 
     @Override
@@ -125,6 +138,9 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        // Delete all refresh tokens on password change
+        refreshTokenService.deleteByUser(user);
     }
 
     @Override
@@ -210,4 +226,3 @@ public class AuthServiceImpl implements AuthService {
                 .build());
     }
 }
-

@@ -147,21 +147,26 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         byte[] pdf = pdfGenerator.generateDeliveryChallanPdf(dc, items);
 
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("customerName", customer.getName());
-        variables.put("dcNumber", dc.getDcNumber());
-        variables.put("dispatchDate", dc.getDispatchDate().toString());
-        variables.put("vehicleNumber", dc.getVehicleNumber());
-        variables.put("totalItems", dc.getTotalQuantity());
+        try {
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("customerName", customer.getName());
+            variables.put("dcNumber", dc.getDcNumber());
+            variables.put("dispatchDate", dc.getDispatchDate().toString());
+            variables.put("vehicleNumber", dc.getVehicleNumber());
+            variables.put("totalItems", dc.getTotalQuantity());
 
-        emailService.sendTemplatedEmailWithAttachment(
-                customer.getEmail(),
-                "Dispatch Notification - " + dc.getDcNumber(),
-                "dispatch",
-                variables,
-                pdf,
-                "DeliveryChallan-" + dc.getDcNumber() + ".pdf"
-        );
+            emailService.sendTemplatedEmailWithAttachment(
+                    customer.getEmail(),
+                    "Dispatch Notification - " + dc.getDcNumber(),
+                    "dispatch",
+                    variables,
+                    pdf,
+                    "DeliveryChallan-" + dc.getDcNumber() + ".pdf"
+            );
+            log.info("Delivery challan email sent successfully for: {}", dc.getDcNumber());
+        } catch (Exception e) {
+            log.error("Failed to send delivery challan email for {}: {}", dc.getDcNumber(), e.getMessage());
+        }
 
         return deliveryChallanMapper.toResponse(dc);
     }

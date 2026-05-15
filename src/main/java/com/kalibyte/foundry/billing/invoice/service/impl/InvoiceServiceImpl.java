@@ -189,21 +189,26 @@ public class InvoiceServiceImpl implements InvoiceService {
         // SEND EMAIL
         //------------------------------------------------
 
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("customerName", customer.getName());
-        variables.put("invoiceNumber", invoice.getInvoiceNumber());
-        variables.put("invoiceDate", invoice.getInvoiceDate().toString());
-        variables.put("dueDate", invoice.getDueDate().toString());
-        variables.put("totalAmount", "₹ " + invoice.getTotalAmount());
+        try {
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("customerName", customer.getName());
+            variables.put("invoiceNumber", invoice.getInvoiceNumber());
+            variables.put("invoiceDate", invoice.getInvoiceDate().toString());
+            variables.put("dueDate", invoice.getDueDate().toString());
+            variables.put("totalAmount", "₹ " + invoice.getTotalAmount());
 
-        emailService.sendTemplatedEmailWithAttachment(
-                customer.getEmail(),
-                "Invoice - " + invoice.getInvoiceNumber(),
-                "invoice",
-                variables,
-                pdf,
-                "Invoice-" + invoice.getInvoiceNumber() + ".pdf"
-        );
+            emailService.sendTemplatedEmailWithAttachment(
+                    customer.getEmail(),
+                    "Invoice - " + invoice.getInvoiceNumber(),
+                    "invoice",
+                    variables,
+                    pdf,
+                    "Invoice-" + invoice.getInvoiceNumber() + ".pdf"
+            );
+            log.info("Invoice email sent successfully for: {}", invoice.getInvoiceNumber());
+        } catch (Exception e) {
+            log.error("Failed to send invoice email for {}: {}", invoice.getInvoiceNumber(), e.getMessage());
+        }
 
         //------------------------------------------------
         // AUTO CLOSE ORDER

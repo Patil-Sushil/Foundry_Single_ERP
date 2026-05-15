@@ -110,6 +110,21 @@ Many-to-many relationship between users and roles.
 
 ---
 
+## Refresh Tokens Table
+
+Stores refresh tokens for session management and rotation.
+
+| Column      | Type      | Description                     |
+| ----------- | --------- | ------------------------------- |
+| id          | UUID      | Primary key                     |
+| user_id     | UUID      | Foreign key referencing users   |
+| token       | TEXT      | Unique refresh token string     |
+| expiry_date | TIMESTAMP | Token expiration timestamp      |
+| revoked     | BOOLEAN   | Whether the token is invalidated |
+| created_at  | TIMESTAMP | Creation timestamp              |
+
+---
+
 ## Audit Log
 
 Tracks security related activities.
@@ -149,7 +164,8 @@ ROLE_SALES
 
 Responsible for:
 
-* Generating JWT tokens after successful login
+* Generating JWT access tokens after successful login
+* Generating JWT access tokens from refresh tokens
 * Extracting claims from tokens
 * Validating token integrity
 * Checking token expiration
@@ -164,6 +180,20 @@ iat → issued time
 exp → expiration time
 iss → token issuer
 ```
+
+---
+
+## RefreshTokenService
+
+Manages the lifecycle of refresh tokens.
+
+Responsibilities:
+
+* Creating new refresh tokens upon login
+* Validating refresh tokens (expiry and revocation check)
+* Implementing token rotation (issuing new tokens on refresh)
+* Revoking tokens on logout
+* Deleting all user tokens upon password change
 
 ---
 
@@ -234,11 +264,61 @@ Authenticates user and returns JWT token.
   "success": true,
   "message": "Login successful",
   "data": {
-    "token": "jwt_token_here",
+    "token": "access_jwt_token_here",
+    "refreshToken": "refresh_uuid_token_here",
     "id": "user_uuid",
     "email": "admin@foundry.com",
     "roles": ["ROLE_ADMIN"]
   }
+}
+```
+
+---
+
+## Refresh Token
+
+```
+POST /api/auth/refresh
+```
+
+Uses a valid refresh token to obtain a new access token and a new refresh token (rotation).
+
+### Request
+
+```json
+{
+  "refreshToken": "refresh_uuid_token_here"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "accessToken": "new_access_jwt_token_here",
+    "refreshToken": "new_refresh_uuid_token_here"
+  }
+}
+```
+
+---
+
+## Logout
+
+```
+POST /api/auth/logout
+```
+
+Invalidates the provided refresh token.
+
+### Request
+
+```json
+{
+  "refreshToken": "refresh_uuid_token_here"
 }
 ```
 
@@ -412,8 +492,7 @@ app.default-admin.password=Admin@123
 
 Planned security enhancements:
 
-* Refresh token support
-* Login rate limiting
+* Login rate limiting (Basic implemented)
 * Multi-factor authentication
 * Tenant-based authentication
 * Password reset via email
@@ -426,8 +505,9 @@ Planned security enhancements:
 
 The Authentication module provides:
 
-* Secure login system
+* Secure login system with Access & Refresh tokens
 * JWT-based authentication
+* Token rotation and revocation
 * Role-based authorization
 * Password management
 * Admin user management

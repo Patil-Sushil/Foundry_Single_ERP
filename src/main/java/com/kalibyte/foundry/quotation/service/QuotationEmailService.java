@@ -37,7 +37,8 @@ public class QuotationEmailService {
             );
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send quotation email", e);
+            log.error("Failed to send quotation email for {}: {}", 
+                quotation.getQuotationNumber(), e.getMessage());
         }
     }
 }

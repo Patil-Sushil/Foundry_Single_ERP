@@ -26,6 +26,9 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private long jwtExpirationInMs;
 
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpirationInMs;
+
     private SecretKey key;
 
     @PostConstruct
@@ -39,11 +42,15 @@ public class JwtTokenProvider {
         CustomUserDetails user =
                 (CustomUserDetails) authentication.getPrincipal();
 
+        return generateToken(user);
+    }
+
+    public String generateToken(CustomUserDetails user) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
-	    assert user != null;
-	    List<String> roles = user.getAuthorities().stream()
+        assert user != null;
+        List<String> roles = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
@@ -56,6 +63,10 @@ public class JwtTokenProvider {
                 .expiration(expiryDate)
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
+    }
+
+    public long getRefreshExpirationInMs() {
+        return refreshExpirationInMs;
     }
 
     public boolean validateToken(String token) {

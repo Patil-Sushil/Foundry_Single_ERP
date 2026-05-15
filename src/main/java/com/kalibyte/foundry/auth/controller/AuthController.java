@@ -21,6 +21,18 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Login successful", response));
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        TokenRefreshResponse response = authService.refreshToken(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Token refreshed successfully", response));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody TokenRefreshRequest request) {
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Logged out successfully", null));
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @Valid @RequestBody ChangePasswordRequest request) {
